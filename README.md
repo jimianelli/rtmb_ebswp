@@ -56,6 +56,12 @@ quarto render reporting/ebs_pollock_rtmb_ebswp_assessment.qmd
 See [REPRODUCIBILITY.md](REPRODUCIBILITY.md) for the full workflow and expected
 software dependencies.
 
+The rendered report is published with GitHub Pages at:
+
+```text
+https://jimianelli.github.io/rtmb_ebswp/
+```
+
 ## Repository Contents
 
 - `R/`: RTMB model, data utilities, run scripts, and output writers.

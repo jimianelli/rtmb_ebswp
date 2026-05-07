@@ -6,4 +6,5 @@ authors:
     given-names: "Jim"
 date-released: 2026-05-07
 license: MIT
+repository-code: "https://github.com/jimianelli/rtmb_ebswp"
 abstract: "Standalone RTMB reimplementation and diagnostic bridge for the ADMB EBS pollock model."

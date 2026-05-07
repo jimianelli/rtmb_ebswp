@@ -110,6 +110,12 @@ if (is.na(pollock_root) || !nzchar(pollock_root)) {
 pollock_root <- normalizePath(pollock_root, mustWork = TRUE)
 rtmb_file <- function(...) normalizePath(file.path(rtmb_root, ...), mustWork = FALSE)
 pollock_file <- function(...) normalizePath(file.path(pollock_root, ...), mustWork = FALSE)
+display_path <- function(path) {
+  path <- as.character(path)
+  path <- ifelse(startsWith(path, rtmb_root), paste0("[repo]", substring(path, nchar(rtmb_root) + 1L)), path)
+  path <- ifelse(startsWith(path, pollock_root), paste0("[pollock]", substring(path, nchar(pollock_root) + 1L)), path)
+  path
+}
 
 model_file <- rtmb_file(params$model_file)
 only_bts_file <- rtmb_file(params$only_bts_file %||% "analysis/output/only_bts.rds")
@@ -532,12 +538,13 @@ availability |>
 ```{r}
 #| label: tbl-bridge-files
 #| tbl-cap: "ADMB bridge files used by the RTMB implementation."
+bridge_file_paths <- c(rtmb_metadata$admb_rep, rtmb_metadata$admb_par, pollock_file("admb", "runs", "for_rtmb", "pm.tpl"))
 bridge_files <- tibble(
-  file = c(rtmb_metadata$admb_rep, rtmb_metadata$admb_par, pollock_file("admb", "runs", "for_rtmb", "pm.tpl")),
+  file = display_path(bridge_file_paths),
   role = c("ADMB report used for comparison", "ADMB parameter file used for initialization", "ADMB bridge template"),
-  exists = file.exists(file),
-  size_kb = round(file.info(file)$size / 1024, 1),
-  modified = as.POSIXct(file.info(file)$mtime)
+  exists = file.exists(bridge_file_paths),
+  size_kb = round(file.info(bridge_file_paths)$size / 1024, 1),
+  modified = as.POSIXct(file.info(bridge_file_paths)$mtime)
 )
 
 bridge_files |>
@@ -1073,7 +1080,7 @@ ggplot(ridge_df |> filter(fleet == "ATS"), aes(x = age, y = year_factor, height 
 
 # Projections
 
-The RTMB bridge can now write a Standard Projection Model input directory for use with `spmR`. This report writes the current saved RTMB output to `r projection_dir`, using the same SPM setup structure as the ADMB bridge projection directory while replacing the species assessment input file with an RTMB-derived `pm.prj`.
+The RTMB bridge can now write a Standard Projection Model input directory for use with `spmR`. This report writes the current saved RTMB output to `r display_path(projection_dir)`, using the same SPM setup structure as the ADMB bridge projection directory while replacing the species assessment input file with an RTMB-derived `pm.prj`.
 
 ```{r}
 #| label: spmr-projection-inputs
@@ -1086,8 +1093,8 @@ spmr_projection <- spmr_writer_env$write_spmr_projection_inputs(
   config_path = rtmb_file("R", "config.R")
 )
 spmr_manifest <- as_tibble(spmr_projection$manifest)
-spmr_detail_file <- file.path(spmr_projection$output_dir, "spm_detail.csv")
-spmr_summary_file <- file.path(spmr_projection$output_dir, "spm_summary.csv")
+spmr_detail_file <- file.path(display_path(spmr_projection$output_dir), "spm_detail.csv")
+spmr_summary_file <- file.path(display_path(spmr_projection$output_dir), "spm_summary.csv")
 spmr_detail <- if (file.exists(spmr_detail_file)) {
   as_tibble(utils::read.csv(spmr_detail_file, check.names = FALSE))
 } else {
@@ -1098,10 +1105,10 @@ spmr_summary <- if (file.exists(spmr_summary_file)) {
 } else {
   tibble()
 }
-spmr_input <- if (file.exists(file.path(spmr_projection$output_dir, "spm.dat")) &&
+spmr_input <- if (file.exists(file.path(display_path(spmr_projection$output_dir), "spm.dat")) &&
                   requireNamespace("spmR", quietly = TRUE)) {
   tryCatch(
-    spmR::dat2list(file.path(spmr_projection$output_dir, "spm.dat")),
+    spmR::dat2list(file.path(display_path(spmr_projection$output_dir), "spm.dat")),
     error = function(e) NULL
   )
 } else {
@@ -1135,7 +1142,7 @@ if (!is.null(spmr_input)) {
       "Species input file"
     ),
     value = c(
-      spmr_projection$output_dir,
+      display_path(spmr_projection$output_dir),
       as.character(spmr_input$beg_yr %||% spmr_input$styr),
       as.character(spmr_input$nprj_yrs %||% spmr_input$npro),
       as.character(spmr_input$nsims),
@@ -1148,7 +1155,7 @@ if (!is.null(spmr_input)) {
 } else {
   tibble(
     item = c("Projection directory", "spmR parser"),
-    value = c(spmr_projection$output_dir, "spmR is not installed in the render environment")
+    value = c(display_path(spmr_projection$output_dir), "spmR is not installed in the render environment")
   ) |>
     gt_report() |>
     tab_header(title = "Generated SPM Setup")
@@ -1254,7 +1261,7 @@ if (nrow(spmr_alt2_detail) > 0) {
     ) |>
     tab_header(title = "Candidate ABC Projection Given Assumed Future Catches")
 } else {
-  tibble(note = paste("No Alternative 2 fixed-catch SPM output found at", spmr_alt2_detail_file)) |>
+  tibble(note = paste("No Alternative 2 fixed-catch SPM output found at", display_path(spmr_alt2_detail_file))) |>
     gt_report()
 }
 ```
@@ -1381,7 +1388,7 @@ if (nrow(spmr_detail) > 0) {
       tab_header(title = "SPM Projection Means")
   }
 } else {
-  tibble(note = paste("No SPM projection detail output found at", spmr_detail_file)) |>
+  tibble(note = paste("No SPM projection detail output found at", display_path(spmr_detail_file))) |>
     gt_report()
 }
 ```
@@ -1486,8 +1493,8 @@ model_status_tbl <- tibble(
     as.character(length(obj$par)),
     sprintf("%.3f", obj$fn(obj$par)),
     sprintf("%.3f", as.numeric(rtmb_report$tot_like)),
-    rtmb_metadata$admb_rep,
-    rtmb_metadata$admb_par,
+    display_path(rtmb_metadata$admb_rep),
+    display_path(rtmb_metadata$admb_par),
     "Saved report loads and the RTMB objective tapes successfully; full convergence diagnostics require a fitted optimizer object."
   )
 )
@@ -1581,7 +1588,7 @@ if (nrow(retro_diagnostics) > 0) {
     fmt_number(columns = any_of(c("objective", "max_gradient")), decimals = 3) |>
     tab_header(title = "RTMB Retrospective Peel Status")
 } else {
-  tibble(note = paste("No retrospective output found at", retro_file)) |>
+  tibble(note = paste("No retrospective output found at", display_path(retro_file))) |>
     gt_report()
 }
 ```
@@ -1620,7 +1627,7 @@ The bridge comparison uses shared numeric objects from the saved RTMB report and
 tibble(
   item = c("Only BTS output", "Excluded likelihoods", "Convergence", "Objective", "Maximum gradient"),
   value = c(
-    only_bts_file,
+    display_path(only_bts_file),
     if (!is.null(only_bts_metadata$excluded_likelihoods)) paste(only_bts_metadata$excluded_likelihoods, collapse = ", ") else NA_character_,
     if (!is.null(only_bts_saved$fit$convergence)) as.character(only_bts_saved$fit$convergence) else NA_character_,
     if (!is.null(only_bts_saved$fit$objective)) sprintf("%.3f", only_bts_saved$fit$objective) else NA_character_,
@@ -1681,14 +1688,14 @@ repro_tbl <- tibble(
     "RTMB source"
   ),
   value = c(
-    pollock_root,
+    display_path(pollock_root),
     "Rscript R/write_output.R",
     "quarto render reporting/ebs_pollock_rtmb_ebswp_assessment.qmd",
     "quarto render reporting/ebs_pollock_rtmb_ebswp_assessment.qmd -P run_sparsenuts:true",
-    model_file,
-    sparsenuts_file,
-    pollock_file("admb", "runs", "for_rtmb"),
-    rtmb_root
+    display_path(model_file),
+    display_path(sparsenuts_file),
+    display_path(pollock_file("admb", "runs", "for_rtmb")),
+    display_path(rtmb_root)
   )
 )
 
@@ -1881,7 +1888,7 @@ sparsenuts_status <- tibble(
     as.character(param_is_true(params$run_sparsenuts)),
     as.character(param_is_true(params$force_sparsenuts)),
     as.character(file.exists(sparsenuts_file)),
-    sparsenuts_file,
+    display_path(sparsenuts_file),
     as.character(sparsenuts_fit$algorithm %||% NA_character_),
     as.character(sparsenuts_fit$metric %||% NA_character_),
     as.character(chains),
