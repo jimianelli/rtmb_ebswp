@@ -109,13 +109,13 @@ Rscript R/run_sparsenuts_default.R
 After creating the required generated outputs:
 
 ```bash
-quarto render reporting/ebs_pollock_rtmb_admb_assessment.qmd
+quarto render reporting/ebs_pollock_rtmb_ebswp_assessment.qmd
 ```
 
 To force the SparseNUTS run during render:
 
 ```bash
-quarto render reporting/ebs_pollock_rtmb_admb_assessment.qmd -P run_sparsenuts:true
+quarto render reporting/ebs_pollock_rtmb_ebswp_assessment.qmd -P run_sparsenuts:true
 ```
 
 Rendered HTML is generated output and should not be committed.

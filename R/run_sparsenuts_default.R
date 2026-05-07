@@ -21,10 +21,10 @@ rtmb_env$source <- function(file, ...) {
 source(file.path(rtmb_root, "R", "config.R"), local = rtmb_env)
 obj <- rtmb_env$obj
 
-output_file <- file.path(rtmb_root, "analysis", "output", "sparsenuts", "rtmb_admb_sparsenuts_default.rds")
+output_file <- file.path(rtmb_root, "analysis", "output", "sparsenuts", "rtmb_ebswp_sparsenuts_default.rds")
 figure_dir <- file.path(rtmb_root, "analysis", "output", "figures")
-pairs_file <- file.path(figure_dir, "rtmb_admb_sparsenuts_pairs_slow.png")
-marginals_file <- file.path(figure_dir, "rtmb_admb_sparsenuts_marginals_slow.png")
+pairs_file <- file.path(figure_dir, "rtmb_ebswp_sparsenuts_pairs_slow.png")
+marginals_file <- file.path(figure_dir, "rtmb_ebswp_sparsenuts_marginals_slow.png")
 
 dir.create(dirname(output_file), showWarnings = FALSE, recursive = TRUE)
 dir.create(figure_dir, showWarnings = FALSE, recursive = TRUE)
@@ -35,7 +35,7 @@ fit <- SparseNUTS::sample_snuts(
   cores = 1,
   globals = list(data = rtmb_env$data)
 )
-attr(fit, "rtmb_admb_sparsenuts") <- list(
+attr(fit, "rtmb_ebswp_sparsenuts") <- list(
   runner = "R/run_sparsenuts_default.R",
   r_version = R.version.string,
   call = "SparseNUTS::sample_snuts(obj, cores = 1, globals = list(data = data))",

@@ -1,5 +1,5 @@
 ---
-title: "EBS Pollock RTMB-ADMB Implementation"
+title: "EBS Pollock RTMB Implementation"
 execute:
   echo: true
   warning: false
@@ -18,7 +18,7 @@ params:
   model_file: "analysis/output/base.rds"
   only_bts_file: "analysis/output/only_bts.rds"
   retro_file: "analysis/output/retro_5_peel.rds"
-  sparsenuts_file: "analysis/output/sparsenuts/rtmb_admb_sparsenuts_default.rds"
+  sparsenuts_file: "analysis/output/sparsenuts/rtmb_ebswp_sparsenuts_default.rds"
   projection_dir: "analysis/output/spmR_projection"
   projection_alt2_dir: "analysis/output/spmR_projection_alt2_fixed1300"
   refit: false
@@ -47,7 +47,7 @@ if (!exists("params", inherits = FALSE)) {
     model_file = "analysis/output/base.rds",
     only_bts_file = "analysis/output/only_bts.rds",
     retro_file = "analysis/output/retro_5_peel.rds",
-    sparsenuts_file = "analysis/output/sparsenuts/rtmb_admb_sparsenuts_default.rds",
+    sparsenuts_file = "analysis/output/sparsenuts/rtmb_ebswp_sparsenuts_default.rds",
     projection_dir = "analysis/output/spmR_projection",
     projection_alt2_dir = "analysis/output/spmR_projection_alt2_fixed1300",
     run_sparsenuts = FALSE,
@@ -140,7 +140,7 @@ if (isTRUE(params$refit)) {
   fit <- nlminb(obj$par, obj$fn, obj$gr)
   rtmb_report <- obj$report()
   rtmb_metadata <- list(
-    model = "rtmb_admb",
+    model = "rtmb_ebswp",
     created = Sys.time(),
     admb_rep = admb_rep_path,
     admb_par = admb_par_path,
@@ -324,7 +324,7 @@ plot_osa_aggregate_panel <- function(residual_data, aggregate_data, osa_output =
 }
 
 osa_helper_file <- pollock_file("R", "plot_osa_comps.R")
-osa_output_file <- rtmb_file("analysis", "output", "osa", "rtmb_admb_osa_residuals.rds")
+osa_output_file <- rtmb_file("analysis", "output", "osa", "rtmb_ebswp_osa_residuals.rds")
 osa_plot_file <- rtmb_file("analysis", "output", "osa", "osa_age_diagnostics.png")
 osa_env <- new.env(parent = globalenv())
 osa_helper_loaded <- FALSE
@@ -680,7 +680,7 @@ source("R/config.R")
 data$return_nll_only <- 0
 rtmb_result <- rpm(parms)
 saveRDS(
-  list(report = rtmb_result$rtmb, metadata = list(model = "rtmb_admb")),
+  list(report = rtmb_result$rtmb, metadata = list(model = "rtmb_ebswp")),
   "analysis/output/base.rds"
 )
 ```
@@ -1683,8 +1683,8 @@ repro_tbl <- tibble(
   value = c(
     pollock_root,
     "Rscript R/write_output.R",
-    "quarto render reporting/ebs_pollock_rtmb_admb_assessment.qmd",
-    "quarto render reporting/ebs_pollock_rtmb_admb_assessment.qmd -P run_sparsenuts:true",
+    "quarto render reporting/ebs_pollock_rtmb_ebswp_assessment.qmd",
+    "quarto render reporting/ebs_pollock_rtmb_ebswp_assessment.qmd -P run_sparsenuts:true",
     model_file,
     sparsenuts_file,
     pollock_file("admb", "runs", "for_rtmb"),
@@ -1855,7 +1855,7 @@ draws_per_chain <- if (!is.null(sample_dims) && length(sample_dims) >= 2) sample
 chains <- if (!is.null(sample_dims) && length(sample_dims) >= 2) sample_dims[2] else NA_integer_
 warmup <- sparsenuts_fit$warmup %||% NA_integer_
 post_warmup <- if (is.finite(draws_per_chain) && is.finite(warmup)) draws_per_chain - warmup else NA_integer_
-sparsenuts_run_metadata <- attr(sparsenuts_fit, "rtmb_admb_sparsenuts") %||% list()
+sparsenuts_run_metadata <- attr(sparsenuts_fit, "rtmb_ebswp_sparsenuts") %||% list()
 
 sparsenuts_status <- tibble(
   metric = c(
@@ -1954,11 +1954,11 @@ make_sparsenuts_pairs_plot <- function(fit, pars, file) {
 }
 
 sparsenuts_figures <- list(
-  pairs_slow = file.path(sparsenuts_fig_dir, "rtmb_admb_sparsenuts_pairs_slow.png"),
-  marginals_slow = file.path(sparsenuts_fig_dir, "rtmb_admb_sparsenuts_marginals_slow.png"),
-  sampler = file.path(sparsenuts_fig_dir, "rtmb_admb_sparsenuts_sampler_params.png"),
-  q = file.path(sparsenuts_fig_dir, "rtmb_admb_sparsenuts_Q.png"),
-  uncertainties = file.path(sparsenuts_fig_dir, "rtmb_admb_sparsenuts_uncertainties.png")
+  pairs_slow = file.path(sparsenuts_fig_dir, "rtmb_ebswp_sparsenuts_pairs_slow.png"),
+  marginals_slow = file.path(sparsenuts_fig_dir, "rtmb_ebswp_sparsenuts_marginals_slow.png"),
+  sampler = file.path(sparsenuts_fig_dir, "rtmb_ebswp_sparsenuts_sampler_params.png"),
+  q = file.path(sparsenuts_fig_dir, "rtmb_ebswp_sparsenuts_Q.png"),
+  uncertainties = file.path(sparsenuts_fig_dir, "rtmb_ebswp_sparsenuts_uncertainties.png")
 )
 
 if (!is.null(sparsenuts_fit) && sparsenuts_available) {

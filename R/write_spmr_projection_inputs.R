@@ -74,7 +74,7 @@ write_spm_dat <- function(output_file,
                           fixed_catches = c(1350, 1350),
                           nproj_years = 14,
                           nsims = 1000,
-                          run_name = "rtmb_admb") {
+                          run_name = "rtmb_ebswp") {
   if (is.null(names(fixed_catches))) {
     catch_years <- begin_year + seq_along(fixed_catches) - 1L
   } else {
@@ -141,7 +141,7 @@ write_spmr_projection_inputs <- function(model_file = file.path("analysis", "out
                                          fixed_catches = c(1350, 1350),
                                          nproj_years = 14,
                                          nsims = 1000,
-                                         run_name = "rtmb_admb") {
+                                         run_name = "rtmb_ebswp") {
   if (is.null(config_path)) {
     config_path <- file.path("R", "config.R")
   }

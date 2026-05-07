@@ -1,4 +1,4 @@
-# EBS Pollock RTMB-ADMB Bridge
+# EBS Pollock RTMB Bridge
 
 This repository contains a standalone RTMB reimplementation of the ADMB EBS
 pollock bridge model. It is intended for model-port debugging, reproducibility
@@ -50,7 +50,7 @@ Rscript analysis/Run_rpm.R
 To render the diagnostics report after generating required outputs:
 
 ```bash
-quarto render reporting/ebs_pollock_rtmb_admb_assessment.qmd
+quarto render reporting/ebs_pollock_rtmb_ebswp_assessment.qmd
 ```
 
 See [REPRODUCIBILITY.md](REPRODUCIBILITY.md) for the full workflow and expected

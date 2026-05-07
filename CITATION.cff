@@ -1,6 +1,6 @@
 cff-version: 1.2.0
 message: "If you use this repository, please cite it as below."
-title: "EBS Pollock RTMB-ADMB Bridge"
+title: "EBS Pollock RTMB Bridge"
 authors:
   - family-names: "Ianelli"
     given-names: "Jim"

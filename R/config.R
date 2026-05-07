@@ -9,7 +9,7 @@ rm(list = ls())
 
 # --- Path Configuration ---
 get_rtmb_root <- function() {
-  env_root <- Sys.getenv("RTMB_ADMB_ROOT", unset = NA_character_)
+  env_root <- Sys.getenv("RTMB_EBSWP_ROOT", unset = NA_character_)
   if (!is.na(env_root) && nzchar(env_root)) {
     return(normalizePath(env_root, mustWork = TRUE))
   }
@@ -28,14 +28,14 @@ get_rtmb_root <- function() {
   }
 
   wd <- normalizePath(getwd(), mustWork = TRUE)
-  candidates <- c(wd, file.path(wd, "rtmb_admb"), file.path(wd, ".."))
+  candidates <- c(wd, file.path(wd, "rtmb_ebswp"), file.path(wd, ".."))
   for (cand in candidates) {
     if (file.exists(file.path(cand, "R", "config.R"))) {
       return(normalizePath(cand, mustWork = TRUE))
     }
   }
 
-  stop("Cannot locate this repository root. Set RTMB_ADMB_ROOT.")
+  stop("Cannot locate this repository root. Set RTMB_EBSWP_ROOT.")
 }
 
 get_pollock_root <- function(rtmb_root) {

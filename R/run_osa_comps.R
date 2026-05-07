@@ -8,7 +8,7 @@ rtmb_root <- if (length(file_arg) > 0) {
 }
 osa_input_file <- file.path(rtmb_root, "analysis", "output", "osa_inputs.rds")
 osa_output_dir <- file.path(rtmb_root, "analysis", "output", "osa")
-osa_output_file <- file.path(osa_output_dir, "rtmb_admb_osa_residuals.rds")
+osa_output_file <- file.path(osa_output_dir, "rtmb_ebswp_osa_residuals.rds")
 
 if (!file.exists(osa_input_file)) {
   stop("Missing OSA input file at: ", osa_input_file)

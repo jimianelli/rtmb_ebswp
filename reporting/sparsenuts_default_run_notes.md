@@ -7,7 +7,7 @@ Current RTMB configuration: steepness is fixed at `0.67`.
 The RTMB-ADMB SparseNUTS run was created by rendering:
 
 ```bash
-quarto render reporting/ebs_pollock_rtmb_admb_assessment.qmd -P run_sparsenuts:true
+quarto render reporting/ebs_pollock_rtmb_ebswp_assessment.qmd -P run_sparsenuts:true
 ```
 
 The report calls the library default:
@@ -33,9 +33,9 @@ Each chain is still internally sequential, but the run was not requested with
 ## Saved Output
 
 - SparseNUTS RDS:
-  `analysis/output/sparsenuts/rtmb_admb_sparsenuts_default.rds`
+  `analysis/output/sparsenuts/rtmb_ebswp_sparsenuts_default.rds`
 - Rendered report:
-  `reporting/ebs_pollock_rtmb_admb_assessment.html`
+  `reporting/ebs_pollock_rtmb_ebswp_assessment.html`
 
 ## Diagnostics
 
@@ -63,15 +63,15 @@ inference.
 The report now includes the following default-run plots:
 
 - Slow-order pairs-style plot:
-  `analysis/output/figures/rtmb_admb_sparsenuts_pairs_slow.png`
+  `analysis/output/figures/rtmb_ebswp_sparsenuts_pairs_slow.png`
 - `SparseNUTS::plot_marginals(..., order = "slow")`:
-  `analysis/output/figures/rtmb_admb_sparsenuts_marginals_slow.png`
+  `analysis/output/figures/rtmb_ebswp_sparsenuts_marginals_slow.png`
 - `SparseNUTS::plot_sampler_params()`:
-  `analysis/output/figures/rtmb_admb_sparsenuts_sampler_params.png`
+  `analysis/output/figures/rtmb_ebswp_sparsenuts_sampler_params.png`
 - `SparseNUTS::plot_Q()`:
-  `analysis/output/figures/rtmb_admb_sparsenuts_Q.png`
+  `analysis/output/figures/rtmb_ebswp_sparsenuts_Q.png`
 - `SparseNUTS::plot_uncertainties()`:
-  `analysis/output/figures/rtmb_admb_sparsenuts_uncertainties.png`
+  `analysis/output/figures/rtmb_ebswp_sparsenuts_uncertainties.png`
 
 No installed namespace in this workspace exposes a callable `pairs_admb()`
 function. The report therefore includes an equivalent slow-order pairs-style

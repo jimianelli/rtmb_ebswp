@@ -43,7 +43,7 @@ saveRDS(
   list(
     report = rtmb_report,
     metadata = list(
-      model = "rtmb_admb",
+      model = "rtmb_ebswp",
       created = Sys.time(),
       admb_rep = admb_rep_path,
       admb_par = admb_par_path
