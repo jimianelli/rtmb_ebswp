@@ -1,0 +1,2118 @@
+---
+title: "EBS Pollock RTMB-ADMB Implementation"
+execute:
+  echo: true
+  warning: false
+  message: false
+format:
+  html:
+    toc: true
+    toc-depth: 3
+    number-sections: true
+    embed-resources: true
+    lightbox: true
+    code-fold: true
+    code-summary: "Show code"
+    code-tools: true
+params:
+  model_file: "analysis/output/base.rds"
+  only_bts_file: "analysis/output/only_bts.rds"
+  retro_file: "analysis/output/retro_5_peel.rds"
+  sparsenuts_file: "analysis/output/sparsenuts/rtmb_admb_sparsenuts_default.rds"
+  projection_dir: "analysis/output/spmR_projection"
+  projection_alt2_dir: "analysis/output/spmR_projection_alt2_fixed1300"
+  refit: false
+  run_sparsenuts: false
+  force_sparsenuts: false
+---
+
+```{r setup}
+#| include: false
+suppressPackageStartupMessages({
+  library(dplyr)
+  library(tidyr)
+  library(ggplot2)
+  library(ggthemes)
+  library(ggridges)
+  library(cowplot)
+  library(gt)
+  library(knitr)
+  library(tibble)
+})
+
+theme_set(ggthemes::theme_few())
+
+if (!exists("params", inherits = FALSE)) {
+  params <- list(
+    model_file = "analysis/output/base.rds",
+    only_bts_file = "analysis/output/only_bts.rds",
+    retro_file = "analysis/output/retro_5_peel.rds",
+    sparsenuts_file = "analysis/output/sparsenuts/rtmb_admb_sparsenuts_default.rds",
+    projection_dir = "analysis/output/spmR_projection",
+    projection_alt2_dir = "analysis/output/spmR_projection_alt2_fixed1300",
+    run_sparsenuts = FALSE,
+    force_sparsenuts = FALSE,
+    refit = FALSE
+  )
+}
+
+`%||%` <- function(x, y) {
+  if (is.null(x) || length(x) == 0) y else x
+}
+
+param_is_true <- function(x) {
+  isTRUE(x) || (
+    is.character(x) &&
+      length(x) > 0 &&
+      tolower(x[1]) %in% c("true", "t", "yes", "y", "1")
+  )
+}
+
+drop_all_na_cols <- function(data) {
+  data |>
+    select(where(~!all(is.na(.x))))
+}
+
+gt_report <- function(data, ...) {
+  data <- drop_all_na_cols(data)
+  table <- gt(data, ...)
+
+  integer_cols <- names(data)[tolower(names(data)) %in% c("year", "age")]
+  if (length(integer_cols) > 0) {
+    table <- table |>
+      fmt_number(columns = all_of(integer_cols), decimals = 0, use_seps = FALSE)
+  }
+
+  table
+}
+
+qmd_file <- tryCatch(knitr::current_input(dir = TRUE), error = function(e) NULL)
+if (is.null(qmd_file)) {
+  qmd_dir <- normalizePath(file.path(getwd(), "reporting"), mustWork = FALSE)
+} else {
+  qmd_dir <- dirname(normalizePath(qmd_file, mustWork = TRUE))
+}
+
+rtmb_root <- normalizePath(file.path(qmd_dir, ".."), mustWork = TRUE)
+pollock_root <- Sys.getenv("POLLOCK_ROOT", unset = NA_character_)
+if (is.na(pollock_root) || !nzchar(pollock_root)) {
+  pollock_root <- Sys.getenv("POLLOCK_BASE", unset = NA_character_)
+}
+if (is.na(pollock_root) || !nzchar(pollock_root)) {
+  parent_candidate <- dirname(rtmb_root)
+  if (file.exists(file.path(parent_candidate, "admb", "runs", "for_rtmb"))) {
+    pollock_root <- parent_candidate
+  }
+}
+if (is.na(pollock_root) || !nzchar(pollock_root)) {
+  stop("Set POLLOCK_ROOT to a directory containing admb/runs/for_rtmb/.")
+}
+pollock_root <- normalizePath(pollock_root, mustWork = TRUE)
+rtmb_file <- function(...) normalizePath(file.path(rtmb_root, ...), mustWork = FALSE)
+pollock_file <- function(...) normalizePath(file.path(pollock_root, ...), mustWork = FALSE)
+
+model_file <- rtmb_file(params$model_file)
+only_bts_file <- rtmb_file(params$only_bts_file %||% "analysis/output/only_bts.rds")
+retro_file <- rtmb_file(params$retro_file %||% "analysis/output/retro_5_peel.rds")
+sparsenuts_file <- rtmb_file(params$sparsenuts_file)
+projection_dir <- rtmb_file(params$projection_dir %||% "analysis/output/spmR_projection")
+projection_alt2_dir <- rtmb_file(params$projection_alt2_dir %||% "analysis/output/spmR_projection_alt2_fixed1300")
+if (!file.exists(model_file)) {
+  stop("Missing saved RTMB output at: ", model_file, "\nRun: Rscript R/write_output.R")
+}
+
+rtmb_env <- new.env(parent = globalenv())
+rtmb_env$rm <- function(...) invisible(NULL)
+rtmb_env$source <- function(file, ...) {
+  base::source(file, local = parent.frame(), ...)
+}
+source(rtmb_file("R", "config.R"), local = rtmb_env)
+data <- rtmb_env$data
+pm <- rtmb_env$pm
+obj <- rtmb_env$obj
+rpm <- rtmb_env$rpm
+parms <- rtmb_env$parms
+admb_rep_path <- rtmb_env$admb_rep_path
+admb_par_path <- rtmb_env$admb_par_path
+compare_max_pct <- rtmb_env$compare_max_pct
+
+if (isTRUE(params$refit)) {
+  fit <- nlminb(obj$par, obj$fn, obj$gr)
+  rtmb_report <- obj$report()
+  rtmb_metadata <- list(
+    model = "rtmb_admb",
+    created = Sys.time(),
+    admb_rep = admb_rep_path,
+    admb_par = admb_par_path,
+    objective = fit$objective,
+    convergence = fit$convergence,
+    max_gradient = max(abs(obj$gr(fit$par)), na.rm = TRUE)
+  )
+} else {
+  saved <- readRDS(model_file)
+  rtmb_report <- saved$report
+  rtmb_metadata <- saved$metadata
+}
+
+only_bts_saved <- NULL
+only_bts_report <- NULL
+only_bts_metadata <- NULL
+if (file.exists(only_bts_file)) {
+  only_bts_saved <- readRDS(only_bts_file)
+  only_bts_report <- only_bts_saved$report
+  only_bts_metadata <- only_bts_saved$metadata
+}
+
+retro_saved <- NULL
+retro_diagnostics <- tibble()
+retro_series <- tibble()
+if (file.exists(retro_file)) {
+  retro_saved <- readRDS(retro_file)
+  retro_diagnostics <- as_tibble(retro_saved$diagnostics)
+  retro_series <- as_tibble(retro_saved$series %||% data.frame())
+}
+
+years <- data$styr:data$endyr
+ages <- seq_len(data$nages)
+terminal_year <- max(years)
+first_year <- min(years)
+
+as_year_age_df <- function(x, row_years, fleet_name, value_col, age_values = ages) {
+  out <- as_tibble(x, .name_repair = "minimal")
+  names(out) <- age_values
+  out |>
+    mutate(year = row_years, .before = 1) |>
+    pivot_longer(-year, names_to = "age", values_to = "value") |>
+    rename(!!value_col := value) |>
+    mutate(age = as.integer(age), fleet = fleet_name)
+}
+
+normalize_agecomp <- function(data, value_col) {
+  value_col <- rlang::ensym(value_col)
+
+  data |>
+    group_by(fleet, year) |>
+    mutate(
+      .total = sum(!!value_col, na.rm = TRUE),
+      !!value_col := ifelse(is.finite(.total) & .total > 0, !!value_col / .total, NA_real_)
+    ) |>
+    ungroup() |>
+    select(-.total)
+}
+
+make_agecomp_fit <- function(obs, pred, row_years, fleet_name, age_values = ages) {
+  observed <- as_year_age_df(obs, row_years, fleet_name, "observed", age_values = age_values) |>
+    normalize_agecomp(observed)
+  predicted <- as_year_age_df(pred, row_years, fleet_name, "predicted", age_values = age_values) |>
+    normalize_agecomp(predicted)
+
+  full_join(observed, predicted, by = c("fleet", "year", "age")) |>
+    filter(is.finite(observed) | is.finite(predicted))
+}
+
+plot_agecomp_fit <- function(data, fleet_name, ncol = 4) {
+  plot_data <- data |>
+    filter(fleet == fleet_name, is.finite(observed) | is.finite(predicted))
+
+  ggplot(plot_data, aes(x = age)) +
+    geom_line(aes(y = predicted), linewidth = 0.5, color = "#4daf4a", na.rm = TRUE) +
+    geom_point(aes(y = observed), color = "#1f78b4", size = 0.9, alpha = 0.8, na.rm = TRUE) +
+    facet_wrap(~year, ncol = ncol, dir = "v") +
+    scale_y_continuous(limits = c(0, NA)) +
+    labs(x = "Age", y = "Proportion", title = paste(fleet_name, "Age Composition Fits"))
+}
+
+make_comp_residuals <- function(data, sample_sizes) {
+  data |>
+    left_join(sample_sizes, by = c("fleet", "year")) |>
+    filter(is.finite(observed), is.finite(predicted), is.finite(n_eff), n_eff > 0) |>
+    mutate(
+      observed_count = n_eff * observed,
+      expected_count = n_eff * predicted,
+      residual = (observed_count - expected_count) /
+        sqrt(pmax(expected_count, .Machine$double.eps)),
+      sign = ifelse(residual < 0, "Negative", "Positive"),
+      outlier = ifelse(abs(residual) > 3, "|residual| > 3", "|residual| <= 3")
+    )
+}
+
+plot_comp_residual_bubbles <- function(data, fleet_name) {
+  plot_data <- data |> filter(fleet == fleet_name)
+  ggplot(
+    plot_data,
+    aes(x = year, y = age, color = sign, size = abs(residual),
+        shape = outlier, alpha = abs(residual))
+  ) +
+    geom_point() +
+    scale_color_manual(values = c(Negative = "#1f78b4", Positive = "#d95f02")) +
+    scale_size(range = c(0.3, 4)) +
+    scale_y_continuous(breaks = sort(unique(plot_data$age))) +
+    labs(
+      x = "Year",
+      y = "Age",
+      color = "Sign",
+      size = "Absolute residual",
+      shape = NULL,
+      alpha = "Absolute residual"
+    ) +
+    theme(legend.position = "top")
+}
+
+make_weighted_aggregate_agecomp <- function(data, sample_sizes) {
+  data |>
+    left_join(sample_sizes, by = c("fleet", "year")) |>
+    filter(
+      is.finite(observed),
+      is.finite(predicted),
+      is.finite(n_eff),
+      n_eff > 0
+    ) |>
+    group_by(fleet, age) |>
+    summarize(
+      observed = sum(n_eff * observed, na.rm = TRUE) / sum(n_eff, na.rm = TRUE),
+      expected = sum(n_eff * predicted, na.rm = TRUE) / sum(n_eff, na.rm = TRUE),
+      .groups = "drop"
+    )
+}
+
+plot_weighted_aggregate_agecomp <- function(data) {
+  ggplot(data, aes(x = age)) +
+    geom_col(aes(y = observed), fill = "#9ecae1", color = "#2b8cbe", alpha = 0.65, width = 0.85) +
+    geom_line(aes(y = expected), color = "#e41a1c", linewidth = 0.8) +
+    geom_point(aes(y = expected), color = "#e41a1c", size = 1.4) +
+    facet_wrap(~fleet, nrow = 1, scales = "free_x") +
+    scale_x_continuous(breaks = sort(unique(data$age))) +
+    scale_y_continuous(limits = c(0, NA)) +
+    labs(x = "Age", y = "Proportion", title = "Sample-Size Weighted Aggregate Age-Composition Fits")
+}
+
+plot_residual_qq <- function(data) {
+  plot_data <- data |>
+    filter(is.finite(residual))
+
+  label_data <- plot_data |>
+    group_by(fleet) |>
+    summarize(
+      sdnr = sd(residual, na.rm = TRUE),
+      .groups = "drop"
+    )
+
+  ggplot(plot_data, aes(sample = residual)) +
+    stat_qq(size = 0.7, alpha = 0.7) +
+    stat_qq_line(color = "#d95f02") +
+    geom_text(
+      data = label_data,
+      aes(x = -Inf, y = Inf, label = paste0("SDNR = ", round(sdnr, 2))),
+      inherit.aes = FALSE,
+      hjust = -0.05,
+      vjust = 1.2,
+      size = 3
+    ) +
+    facet_wrap(~fleet, scales = "free") +
+    labs(x = "Theoretical quantiles", y = "Sample quantiles", title = "OSA Residual QQ Diagnostics")
+}
+
+plot_osa_aggregate_panel <- function(residual_data, aggregate_data, osa_output = NULL) {
+  qq_plot <- plot_residual_qq(residual_data)
+
+  cowplot::plot_grid(
+    qq_plot,
+    plot_weighted_aggregate_agecomp(aggregate_data),
+    ncol = 1,
+    rel_heights = c(1, 1)
+  )
+}
+
+osa_helper_file <- pollock_file("R", "plot_osa_comps.R")
+osa_output_file <- rtmb_file("analysis", "output", "osa", "rtmb_admb_osa_residuals.rds")
+osa_plot_file <- rtmb_file("analysis", "output", "osa", "osa_age_diagnostics.png")
+osa_env <- new.env(parent = globalenv())
+osa_helper_loaded <- FALSE
+osa_res_multi_loaded <- FALSE
+osa_output <- NULL
+osa_precomputed_available <- file.exists(osa_output_file)
+
+if (isTRUE(osa_precomputed_available)) {
+  osa_output <- readRDS(osa_output_file)
+}
+
+if (file.exists(osa_helper_file)) {
+  tryCatch({
+    source(osa_helper_file, local = osa_env)
+    osa_helper_loaded <- exists("plot_osa_comps", envir = osa_env, inherits = FALSE)
+  }, error = function(e) {
+    osa_helper_loaded <<- FALSE
+  })
+}
+
+if (requireNamespace("afscOSA", quietly = TRUE)) {
+  tryCatch({
+    osa_env$resMulti <- get("resMulti", envir = asNamespace("afscOSA"))
+    osa_res_multi_loaded <- TRUE
+  }, error = function(e) {
+    osa_res_multi_loaded <<- FALSE
+  })
+}
+
+osa_helper_ready <- osa_helper_loaded &&
+  osa_res_multi_loaded &&
+  requireNamespace("reshape2", quietly = TRUE) &&
+  requireNamespace("cowplot", quietly = TRUE)
+
+osa_residual_method <- if (isTRUE(osa_precomputed_available)) {
+  "Precomputed afscOSA::run_osa output from R 4.6"
+} else if (isTRUE(osa_helper_ready)) {
+  "R/plot_osa_comps.R with afscOSA::resMulti"
+} else {
+  "Pearson residual fallback for composition data"
+}
+
+osa_residual_df <- if (isTRUE(osa_precomputed_available)) {
+  bind_rows(lapply(osa_output$runs, `[[`, "res")) |>
+    as_tibble() |>
+    mutate(
+      age = as.integer(index),
+      residual = as.numeric(resid),
+      sign = ifelse(residual < 0, "Negative", "Positive"),
+      outlier = ifelse(abs(residual) > 3, "|residual| > 3", "|residual| <= 3")
+    ) |>
+    filter(!(fleet %in% c("BTS", "ATS") & age == 1))
+} else {
+  NULL
+}
+
+make_osa_composition_inputs <- function(data, sample_sizes, fleet_name) {
+  plot_data <- data |>
+    filter(fleet == fleet_name) |>
+    arrange(year, age)
+
+  observed <- plot_data |>
+    select(year, age, observed) |>
+    pivot_wider(names_from = age, values_from = observed) |>
+    arrange(year)
+  predicted <- plot_data |>
+    select(year, age, predicted) |>
+    pivot_wider(names_from = age, values_from = predicted) |>
+    arrange(year)
+  pearson <- plot_data |>
+    select(year, age, residual) |>
+    pivot_wider(names_from = age, values_from = residual) |>
+    arrange(year)
+
+  input_years <- observed$year
+  input_ages <- as.integer(names(observed)[-1])
+  input_neff <- sample_sizes |>
+    filter(fleet == fleet_name) |>
+    arrange(match(year, input_years)) |>
+    filter(year %in% input_years) |>
+    pull(n_eff)
+
+  list(
+    obs = as.matrix(select(observed, -year)),
+    exp = as.matrix(select(predicted, -year)),
+    pearson = as.matrix(select(pearson, -year)),
+    index = input_ages,
+    years = input_years,
+    neff = input_neff
+  )
+}
+
+plot_osa_comps_for_fleet <- function(fleet_name) {
+  if (isTRUE(osa_precomputed_available)) {
+    plot_data <- osa_residual_df |> filter(fleet == fleet_name)
+    return(
+      ggplot(
+        plot_data,
+        aes(x = year, y = age, color = sign, size = abs(residual),
+            shape = outlier, alpha = abs(residual))
+      ) +
+        geom_point() +
+        scale_color_manual(values = c(Negative = "#1f78b4", Positive = "#d95f02")) +
+        scale_size(range = c(0.3, 4)) +
+        scale_y_continuous(breaks = sort(unique(plot_data$age))) +
+        labs(
+          x = "Year",
+          y = "Age",
+          color = "Sign",
+          size = "Absolute OSA residual",
+          shape = NULL,
+          alpha = "Absolute OSA residual"
+        ) +
+        theme(legend.position = "top")
+    )
+  }
+
+  if (!isTRUE(osa_helper_ready)) {
+    return(plot_comp_residual_bubbles(composition_residual_df, fleet_name))
+  }
+
+  input <- make_osa_composition_inputs(agecomp_df, sample_size_df, fleet_name)
+  osa_env$plot_osa_comps(
+    obs = input$obs,
+    exp = input$exp,
+    pearson = input$pearson,
+    index = input$index,
+    years = input$years,
+    index_label = "Age",
+    Neff = input$neff,
+    stock = "RTMB_ADMB",
+    survey = fleet_name,
+    do_pdf = FALSE
+  )
+}
+```
+
+# Overview
+
+This document summarizes the RTMB implementation of the EBS pollock ADMB bridge model in this standalone source repository. It follows the same assessment-reporting framework used by the FIMS, SPoRC, and Rceattle implementation documents, but reads the RTMB report object written by `Rscript R/write_output.R`.
+
+The current RTMB implementation should be interpreted as an ADMB-port bridge rather than a self-contained assessment package. It uses the dedicated ADMB bridge run in `admb/runs/for_rtmb/` for initialization and comparison. By default, this report reads the saved RTMB output at `analysis/output/base.rds`, which was created from the ADMB bridge `pm.rep` and `pm.par` files.
+
+# Data Inputs
+
+The RTMB input series include annual fishery catch, fishery age compositions, BTS and ATS age compositions, BTS and ATS survey biomass or abundance indices, acoustic vessels of opportunity, and fishery CPUE. The input data and bridge ADMB output are resolved through `R/config.R` using the external pollock workspace supplied by `POLLOCK_ROOT`.
+
+```{r}
+#| label: tbl-input-summary
+#| tbl-cap: "Summary of the EBS pollock RTMB-ADMB input data."
+summary_tbl <- tibble(
+  item = c(
+    "Years",
+    "Ages",
+    "Fishery age-composition years",
+    "BTS index years",
+    "ATS index years",
+    "CPUE years",
+    "AVO years",
+    "Saved RTMB output"
+  ),
+  value = c(
+    paste0(first_year, "-", terminal_year, " (", length(years), ")"),
+    paste0(min(ages), "-", max(ages), " (", length(ages), ")"),
+    paste0(min(data$yrs_fsh_data), "-", max(data$yrs_fsh_data), " (", length(data$yrs_fsh_data), ")"),
+    paste0(min(data$yrs_bts_data), "-", max(data$yrs_bts_data), " (", length(data$yrs_bts_data), ")"),
+    paste0(min(data$yrs_ats_data), "-", max(data$yrs_ats_data), " (", length(data$yrs_ats_data), ")"),
+    paste0(min(data$yrs_cpue), "-", max(data$yrs_cpue), " (", length(data$yrs_cpue), ")"),
+    paste0(min(data$yrs_avo), "-", max(data$yrs_avo), " (", length(data$yrs_avo), ")"),
+    params$model_file
+  )
+)
+
+summary_tbl |>
+  gt_report() |>
+  tab_header(title = "RTMB-ADMB Input Summary")
+```
+
+```{r}
+#| label: tbl-data-availability
+#| tbl-cap: "Available observations by fleet and data type."
+availability <- bind_rows(
+  tibble(name = "Fishery", type = "catch", year = years),
+  tibble(name = "Fishery", type = "age_comp", year = data$yrs_fsh_data),
+  tibble(name = "BTS", type = "index", year = data$yrs_bts_data),
+  tibble(name = "BTS", type = "age_comp", year = data$yrs_bts_data),
+  tibble(name = "ATS", type = "index", year = data$yrs_ats_data),
+  tibble(name = "ATS", type = "age_comp", year = data$yrs_ats_data),
+  tibble(name = "CPUE", type = "index", year = data$yrs_cpue),
+  tibble(name = "AVO", type = "index", year = data$yrs_avo)
+) |>
+  group_by(name, type) |>
+  summarize(
+    n_obs = n(),
+    years = paste0(min(year, na.rm = TRUE), "-", max(year, na.rm = TRUE)),
+    .groups = "drop"
+  ) |>
+  arrange(type, name)
+
+availability |>
+  gt_report() |>
+  tab_header(title = "Data Availability by Fleet")
+```
+
+```{r}
+#| label: tbl-bridge-files
+#| tbl-cap: "ADMB bridge files used by the RTMB implementation."
+bridge_files <- tibble(
+  file = c(rtmb_metadata$admb_rep, rtmb_metadata$admb_par, pollock_file("admb", "runs", "for_rtmb", "pm.tpl")),
+  role = c("ADMB report used for comparison", "ADMB parameter file used for initialization", "ADMB bridge template"),
+  exists = file.exists(file),
+  size_kb = round(file.info(file)$size / 1024, 1),
+  modified = as.POSIXct(file.info(file)$mtime)
+)
+
+bridge_files |>
+  gt_report() |>
+  fmt_number(columns = size_kb, decimals = 1) |>
+  tab_header(title = "ADMB Bridge Files")
+```
+
+# Model Implementation
+
+## Structure
+
+- **Population**: single EBS pollock stock.
+- **Model engine**: RTMB with the negative log-likelihood written in R.
+- **Reference model**: ADMB bridge run in `admb/runs/for_rtmb/`.
+- **Fleets and indices**: fishery catch, fishery CPUE, BTS, ATS, and AVO.
+- **Age compositions**: fishery, BTS, and ATS age-composition likelihoods.
+- **Recruitment**: ADMB-port recruitment likelihood and deviations.
+- **Natural mortality**: age-specific input vector from the ADMB bridge data.
+- **Selectivity**: fishery, BTS, and ATS selectivity blocks ported from the ADMB bridge configuration.
+
+## BTS Selectivity Variation and Penalties
+
+The bottom trawl survey (BTS) selectivity in the RTMB bridge is represented as a time-varying logistic curve for ages 2 and older, with a separate age-1 term. For BTS year \(t\) and model age \(a\), the code uses the age midpoint \(x_a = a + 0.5\) and computes
+
+$$
+\log s_{t,a}^{\mathrm{BTS}}
+= -\log\left[
+1 + \exp\left\{-\exp(\gamma_t)\left(x_a - \exp(\alpha_t)\right)\right\}
+\right],
+$$
+
+where $\gamma_t$ is the annual log-slope parameter (`sel_slp_bts_dev`) and $\alpha_t$ is the annual log-age-at-50% parameter (`sel_a50_bts_dev`). Thus the realized slope is $\exp(\gamma_t)$, and the realized age-at-50% is $\exp(\alpha_t)$. Age 1 is then overwritten by its own annual log-selectivity term:
+
+$$
+\log s_{t,1}^{\mathrm{BTS}} = \eta_t,
+$$
+
+where $\eta_t$ is `sel_age_one_bts_dev`.
+
+The current RTMB call treats `sel_slp_bts_dev`, `sel_a50_bts_dev`, and `sel_age_one_bts_dev` as estimated annual vectors. The base logistic BTS terms `sel_slp_bts`, `sel_a50_bts`, `sel_age_one_bts`, and `sel_devs_bts` are fixed in `R/config.R`; the time variation is carried by the annual deviation vectors above.
+
+The regularization is applied to the implied annual log-selectivity curves, not directly to $\alpha_t$ or $\gamma_t$. In `selectivity_like_bts()`, an extended matrix $\tilde{\ell}_{t,a}$ is formed by prepending a zero row for the year before the BTS time series. Let $\Delta_t z_t = z_t - z_{t-1}$. The BTS time-variation penalty for ages $a = q_{\min}, \ldots, q_{\max}-1$ is
+
+$$
+P_{\mathrm{BTS,time}}
+= \lambda_{\mathrm{BTS}}
+\sum_{a=q_{\min}}^{q_{\max}-1}
+\sum_t
+\left(\Delta_t \tilde{\ell}_{t,a}\right)^2,
+$$
+
+where $\lambda_{\mathrm{BTS}}$ is `selVarbts`. In this configuration, `q_amin = 3`, `q_amax` defaults to `nages`, and `nages = 15`, so this penalty applies to ages 3 through 14. Age 2 is not included in this time-smoothness sum, and age 15 is not directly included because the loop stops at `q_amax - 1`.
+
+The age-1 BTS term has a separate first-difference penalty:
+
+$$
+P_{\mathrm{BTS,age1}}
+= 8
+\sum_t
+\left[
+\Delta_t\left(\eta_t - \bar{\eta}\right)
+\right]^2,
+$$
+
+where $\bar{\eta}$ is the mean of the age-1 deviation vector. The total BTS selectivity regularization returned by `selectivity_like_bts()` is
+
+$$
+P_{\mathrm{BTS}}
+= P_{\mathrm{BTS,time}} + P_{\mathrm{BTS,age1}},
+$$
+
+with no additional BTS curvature penalty active under the current logistic-deviation parameterization.
+
+```{r}
+#| label: tbl-bts-selectivity-regularization
+#| tbl-cap: "BTS selectivity variation and regularization settings in the current RTMB-ADMB configuration."
+bts_sel_tbl <- tibble(
+  item = c(
+    "BTS selectivity start year",
+    "Terminal year",
+    "Number of annual BTS selectivity years",
+    "Estimated annual slope vector",
+    "Estimated annual age-at-50 vector",
+    "Estimated annual age-1 vector",
+    "Time-smoothness weight (`selVarbts`)",
+    "Time-smoothness age range",
+    "Age-1 first-difference weight",
+    "Inactive base BTS terms fixed in config"
+  ),
+  value = c(
+    as.character(data$styr_bts),
+    as.character(data$endyr),
+    as.character(data$endyr - data$styr_bts + 1),
+    "sel_slp_bts_dev",
+    "sel_a50_bts_dev",
+    "sel_age_one_bts_dev",
+    as.character(data$selVarbts),
+    paste0(data$q_amin, "-", data$nages - 1),
+    "8",
+    "sel_devs_bts, sel_slp_bts, sel_a50_bts, sel_age_one_bts"
+  )
+)
+
+bts_sel_tbl |>
+  gt_report() |>
+  tab_header(title = "BTS Selectivity Regularization")
+```
+
+## Run Definitions
+
+The current report has one saved RTMB run, `base`, written by `R/write_output.R`. Refitting can be enabled at render time with `params$refit: true`, but the default render reads the saved RTMB report object to avoid rerunning the optimizer.
+
+```{r}
+#| label: tbl-run-definitions
+#| tbl-cap: "Configured RTMB-ADMB run definitions."
+run_tbl <- tibble(
+  run = "base",
+  source = params$model_file,
+  refit_default = params$refit,
+  output_available = file.exists(model_file),
+  report_elements = length(names(rtmb_report)),
+  created = as.character(rtmb_metadata$created %||% NA_character_)
+)
+
+run_tbl |>
+  gt_report() |>
+  tab_header(title = "RTMB-ADMB Run Definitions")
+```
+
+The base output writer follows this pattern.
+
+```{r}
+#| label: lst-base-run
+#| eval: false
+#| echo: true
+#| code-fold: true
+#| code-summary: "Show RTMB output-generation call"
+source("R/config.R")
+data$return_nll_only <- 0
+rtmb_result <- rpm(parms)
+saveRDS(
+  list(report = rtmb_result$rtmb, metadata = list(model = "rtmb_admb")),
+  "analysis/output/base.rds"
+)
+```
+
+# Results
+
+## Fit to Base RTMB-ADMB Run
+
+The current fitted results are for the saved RTMB-ADMB `base` run. The fitted spawning biomass trajectory is shown in @fig-ssb. Fishery observed and predicted catch are compared in @fig-catch-fit, while survey, CPUE, and AVO index fits are summarized in @fig-fits-by-fleet and residual patterns are shown in @fig-residuals. Expected age-composition outputs for fishery, BTS, and ATS are shown in @fig-agecomp-fishery, @fig-agecomp-bts, and @fig-agecomp-ats. Fleet selectivity curves are shown in @fig-selectivity-curves. Diagnostics and bridge comparisons are reported in @tbl-model-status, @tbl-diagnostics, @tbl-admb-bridge, and @fig-admb-bridge.
+
+```{r}
+#| label: rtmb-result-data
+#| include: false
+ts_df <- tibble(
+  year = years,
+  biomass = rowSums(rtmb_report$N * data$wt_ssb, na.rm = TRUE),
+  ssb = as.numeric(rtmb_report$SSB),
+  recruitment = as.numeric(rtmb_report$N[, 1]),
+  total_f = rowSums(rtmb_report$F, na.rm = TRUE),
+  mean_f = rowMeans(rtmb_report$F, na.rm = TRUE)
+)
+
+only_bts_ts <- tibble()
+if (!is.null(only_bts_report)) {
+  only_bts_ts <- tibble(
+    model = "Only BTS",
+    source = "RTMB",
+    year = years,
+    quantity = "SSB",
+    value = as.numeric(only_bts_report$SSB)
+  ) |>
+    bind_rows(
+      tibble(
+        model = "Only BTS",
+        source = "RTMB",
+        year = years,
+        quantity = "Recruitment",
+        value = as.numeric(only_bts_report$N[, 1])
+      )
+    )
+}
+
+admb_ts <- tibble()
+if (exists("pm") && !is.null(pm)) {
+  admb_ts <- bind_rows(
+    if (!is.null(pm$SSB)) tibble(model = "ADMB bridge", source = "ADMB", year = years[seq_along(pm$SSB)], quantity = "SSB", value = as.numeric(pm$SSB)) else tibble(),
+    if (!is.null(pm$pred_rec)) tibble(model = "ADMB bridge", source = "ADMB", year = years[seq_along(pm$pred_rec)], quantity = "Recruitment", value = as.numeric(pm$pred_rec)) else tibble()
+  )
+}
+
+catch_df <- tibble(
+  year = years,
+  observed = as.numeric(rtmb_report$obs_catch),
+  expected = as.numeric(rtmb_report$pred_catch)
+)
+
+index_df <- bind_rows(
+  tibble(series = "BTS", year = data$yrs_bts_data, observed = data$ob_bts, expected = rtmb_report$eb_bts, sd = data$ob_bts_std),
+  tibble(series = "ATS", year = data$yrs_ats_data, observed = data$ob_ats, expected = rtmb_report$eb_ats, sd = data$ob_ats_std),
+  tibble(series = "CPUE", year = data$yrs_cpue, observed = data$obs_cpue, expected = rtmb_report$pred_cpue, sd = data$obs_cpue_std),
+  tibble(series = "AVO", year = data$yrs_avo, observed = data$ob_avo, expected = rtmb_report$pred_avo, sd = data$ob_avo_std)
+) |>
+  mutate(
+    std_residual = ifelse(
+      observed > 0 & expected > 0 & is.finite(sd) & sd > 0,
+      (log(observed) - log(expected)) / sd,
+      NA_real_
+    )
+  )
+
+agecomp_df <- bind_rows(
+  make_agecomp_fit(data$oac_fsh, rtmb_report$phat_fsh, data$yrs_fsh_data, "Fishery"),
+  make_agecomp_fit(data$oac_bts, rtmb_report$phat_bts, data$yrs_bts_data, "BTS"),
+  make_agecomp_fit(
+    data$oac_ats[, data$mina_ats:data$nages, drop = FALSE],
+    rtmb_report$phat_ats[, data$mina_ats:data$nages, drop = FALSE],
+    data$yrs_ats_data,
+    "ATS",
+    age_values = data$mina_ats:data$nages
+  )
+) |>
+  filter(!(fleet %in% c("BTS", "ATS") & age == 1))
+
+sample_size_df <- bind_rows(
+  tibble(fleet = "Fishery", year = data$yrs_fsh_data, n_eff = as.numeric(data$sam_fsh)),
+  tibble(fleet = "BTS", year = data$yrs_bts_data, n_eff = as.numeric(data$sam_bts)),
+  tibble(fleet = "ATS", year = data$yrs_ats_data, n_eff = as.numeric(data$sam_ats))
+)
+
+weighted_aggregate_agecomp_df <- make_weighted_aggregate_agecomp(agecomp_df, sample_size_df)
+
+composition_residual_df <- make_comp_residuals(agecomp_df, sample_size_df)
+composition_sdnr_df <- composition_residual_df |>
+  group_by(fleet) |>
+  summarize(
+    sdnr = sd(residual, na.rm = TRUE),
+    n = sum(is.finite(residual)),
+    .groups = "drop"
+  )
+
+diagnostic_residual_df <- if (isTRUE(osa_precomputed_available)) {
+  osa_residual_df
+} else {
+  composition_residual_df
+}
+
+diagnostic_sdnr_df <- diagnostic_residual_df |>
+  group_by(fleet) |>
+  summarize(
+    mean_residual = mean(residual, na.rm = TRUE),
+    sdnr = sd(residual, na.rm = TRUE),
+    min_residual = min(residual, na.rm = TRUE),
+    max_residual = max(residual, na.rm = TRUE),
+    outliers_abs_gt_3 = sum(abs(residual) > 3, na.rm = TRUE),
+    n = sum(is.finite(residual)),
+    .groups = "drop"
+  )
+```
+
+```{r}
+#| label: fig-ssb
+#| fig-cap: "Estimated spawning biomass from the saved EBS pollock RTMB-ADMB base model, with the ADMB bridge output overlaid when available."
+ssb_overlay <- bind_rows(
+  ts_df |>
+    transmute(model = "RTMB-ADMB base", source = "RTMB", year, value = ssb),
+  admb_ts |>
+    filter(quantity == "SSB") |>
+    transmute(model, source, year, value)
+)
+
+ggplot(ssb_overlay, aes(x = year, y = value, color = model, linetype = source)) +
+  geom_line(linewidth = 0.8) +
+  scale_y_continuous(limits = c(0, NA), labels = scales::label_comma()) +
+  scale_color_manual(values = c("RTMB-ADMB base" = "#1b9e77", "ADMB bridge" = "#1f78b4")) +
+  scale_linetype_manual(values = c("RTMB" = "solid", "ADMB" = "22")) +
+  labs(x = "Year", y = "SSB", color = "Model", linetype = "Source", title = "Spawning Biomass")
+```
+
+### Catch Fit
+
+```{r}
+#| label: fig-catch-fit
+#| fig-cap: "Observed fishery catch and predicted catch from the saved RTMB-ADMB model."
+ggplot(catch_df, aes(x = year)) +
+  geom_line(aes(y = expected), color = "#377eb8", linewidth = 0.8) +
+  geom_point(aes(y = observed), color = "#377eb8", size = 1.2, alpha = 0.7) +
+  scale_y_continuous(limits = c(0, NA), labels = scales::label_comma()) +
+  labs(x = "Year", y = "Catch", title = "Fishery Catch: Observed vs Expected")
+```
+
+### Fits by Fleet
+
+```{r}
+#| label: fig-fits-by-fleet
+#| fig-cap: "Observed and predicted index series from the saved RTMB-ADMB model, shown on arithmetic scales with separate facet axes."
+ggplot(index_df, aes(x = year)) +
+  geom_line(aes(y = expected), color = "#377eb8", linewidth = 0.8) +
+  geom_point(aes(y = observed), color = "#377eb8", size = 1.1, alpha = 0.7, na.rm = TRUE) +
+  facet_wrap(~series, scales = "free_y") +
+  scale_y_continuous(limits = c(0, NA), labels = scales::label_comma()) +
+  labs(x = "Year", y = "Index", title = "Survey, CPUE, and AVO Fits on Arithmetic Scale")
+```
+
+### Residuals
+
+```{r}
+#| label: fig-residuals
+#| fig-cap: "Approximate standardized log residuals for RTMB-ADMB index observations. Residuals are divided by the input log standard deviation."
+ggplot(index_df, aes(x = year, y = std_residual)) +
+  geom_hline(yintercept = 0, color = "gray50", linewidth = 0.4) +
+  geom_point(size = 1.1, alpha = 0.7) +
+  facet_wrap(~series, scales = "free_y") +
+  labs(x = "Year", y = "Standardized residual", title = "Survey, CPUE, and AVO Standardized Residuals")
+```
+
+### Age Composition Fits
+
+```{r}
+#| label: fig-agecomp-fishery
+#| fig-cap: "Observed and expected fishery age-composition patterns from the saved RTMB-ADMB model, faceted by year."
+#| fig-width: 8
+#| fig-height: 11
+#| out-width: "100%"
+plot_agecomp_fit(agecomp_df, "Fishery", ncol = 5)
+```
+
+```{r}
+#| label: fig-agecomp-bts
+#| fig-cap: "Observed and expected BTS age-composition patterns from the saved RTMB-ADMB model, faceted by year."
+#| fig-width: 8
+#| fig-height: 11
+#| out-width: "100%"
+plot_agecomp_fit(agecomp_df, "BTS", ncol = 4)
+```
+
+```{r}
+#| label: fig-agecomp-ats
+#| fig-cap: "Observed and expected ATS age-composition patterns from the saved RTMB-ADMB model, faceted by year."
+#| fig-width: 8
+#| fig-height: 11
+#| out-width: "100%"
+plot_agecomp_fit(agecomp_df, "ATS", ncol = 3)
+```
+
+### OSA Residual Diagnostics
+
+The report now uses saved `afscOSA::run_osa()` output when available, generated under R 4.6 from the current RTMB composition inputs. In this render, the residual method is `r osa_residual_method`. When saved OSA output is unavailable, the same chunks fall back to the workspace helper `R/plot_osa_comps.R` if its dependencies are available, then to Pearson residual bubble diagnostics.
+
+```{r}
+#| label: tbl-osa-residual-status
+#| tbl-cap: "Composition residual diagnostic status for the RTMB-ADMB report."
+tibble(
+  item = c(
+    "Saved OSA output",
+    "OSA R version",
+    "Helper sourceable",
+    "afscOSA installed in render R",
+    "resMulti loaded",
+    "Residual method",
+    "Fleets",
+    "Residual rows"
+  ),
+  value = c(
+    as.character(osa_precomputed_available),
+    if (isTRUE(osa_precomputed_available)) osa_output$r_version else NA_character_,
+    as.character(osa_helper_loaded),
+    as.character(requireNamespace("afscOSA", quietly = TRUE)),
+    as.character(osa_res_multi_loaded),
+    osa_residual_method,
+    paste(sort(unique(diagnostic_residual_df$fleet)), collapse = ", "),
+    as.character(nrow(diagnostic_residual_df))
+  )
+) |>
+  gt_report() |>
+  tab_header(title = "OSA Residual Diagnostic Status")
+```
+
+```{r}
+#| label: tbl-osa-sdnr-summary
+#| tbl-cap: "Summary statistics for RTMB-ADMB composition residual diagnostics. SDNR is the standard deviation of normalized residuals by fleet."
+diagnostic_sdnr_df |>
+  arrange(fleet) |>
+  select(
+    Fleet = fleet,
+    `Residual rows` = n,
+    `Mean residual` = mean_residual,
+    SDNR = sdnr,
+    `Minimum residual` = min_residual,
+    `Maximum residual` = max_residual,
+    `|residual| > 3` = outliers_abs_gt_3
+  ) |>
+  gt_report() |>
+  fmt_number(
+    columns = c(`Mean residual`, SDNR, `Minimum residual`, `Maximum residual`),
+    decimals = 3
+  ) |>
+  fmt_number(columns = c(`Residual rows`, `|residual| > 3`), decimals = 0) |>
+  tab_header(title = "OSA Residual SDNR Summary")
+```
+
+```{r}
+#| label: fig-osa-aggregate
+#| fig-cap: "Aggregate afscOSA age-composition diagnostics for Fishery, BTS, and ATS. The panel shows QQ diagnostics with SDNR annotations and sample-size weighted aggregate observed and expected composition fits."
+#| fig-width: 12
+#| fig-height: 6
+#| out-width: "100%"
+plot_osa_aggregate_panel(
+  residual_data = diagnostic_residual_df,
+  aggregate_data = weighted_aggregate_agecomp_df,
+  osa_output = osa_output
+)
+```
+
+```{r}
+#| label: fig-osa-residual-fishery
+#| fig-cap: "Composition residual diagnostics for the fishery age-composition fit. Saved afscOSA OSA residuals are used when available; otherwise the report falls back to Pearson residual bubbles."
+#| fig-width: 10
+#| fig-height: 4
+plot_osa_comps_for_fleet("Fishery")
+```
+
+```{r}
+#| label: fig-osa-residual-bts
+#| fig-cap: "Composition residual diagnostics for the BTS age-composition fit. Saved afscOSA OSA residuals are used when available; otherwise the report falls back to Pearson residual bubbles."
+#| fig-width: 10
+#| fig-height: 4
+plot_osa_comps_for_fleet("BTS")
+```
+
+```{r}
+#| label: fig-osa-residual-ats
+#| fig-cap: "Composition residual diagnostics for the ATS age-composition fit. Saved afscOSA OSA residuals are used when available; otherwise the report falls back to Pearson residual bubbles."
+#| fig-width: 10
+#| fig-height: 4
+plot_osa_comps_for_fleet("ATS")
+```
+
+### Selectivity Curves
+
+```{r}
+#| label: fig-selectivity-curves
+#| fig-cap: "Estimated RTMB-ADMB selectivity-at-age curves by fleet in selected years."
+selected_years <- c(first_year, years[ceiling(length(years) / 2)], terminal_year)
+sel_df <- bind_rows(
+  as_year_age_df(rtmb_report$sel_fsh, years, "Fishery", "selectivity"),
+  as_year_age_df(rtmb_report$sel_bts, data$styr_bts:data$endyr, "BTS", "selectivity"),
+  as_year_age_df(rtmb_report$sel_ats, data$styr_ats:data$endyr, "ATS", "selectivity")
+) |>
+  filter(year %in% selected_years | year == min(year) | year == max(year)) |>
+  group_by(fleet, year) |>
+  mutate(selectivity = selectivity / max(selectivity, na.rm = TRUE)) |>
+  ungroup()
+
+ggplot(sel_df, aes(x = age, y = selectivity, color = factor(year))) +
+  geom_line(linewidth = 0.8) +
+  facet_wrap(~fleet, ncol = 1) +
+  scale_y_continuous(limits = c(0, NA)) +
+  labs(x = "Age", y = "Relative selectivity", color = "Year", title = "Selectivity at Age")
+```
+
+### Selectivity Ridge Plots
+
+```{r}
+#| label: fig-selectivity-ridge-fishery
+#| fig-cap: "Relative fishery selectivity over time from the RTMB-ADMB model. Ridge heights are normalized within year."
+#| fig-width: 8
+#| fig-height: 10
+#| out-width: "100%"
+ridge_df <- bind_rows(
+  as_year_age_df(rtmb_report$sel_fsh, years, "Fishery", "selectivity"),
+  as_year_age_df(rtmb_report$sel_bts, data$styr_bts:data$endyr, "BTS", "selectivity"),
+  as_year_age_df(rtmb_report$sel_ats, data$styr_ats:data$endyr, "ATS", "selectivity")
+) |>
+  filter(age >= 2, age <= 10) |>
+  group_by(fleet, year) |>
+  mutate(relative_selectivity = selectivity / max(selectivity, na.rm = TRUE)) |>
+  ungroup() |>
+  mutate(year_factor = factor(year, levels = rev(sort(unique(year)))))
+
+ggplot(ridge_df |> filter(fleet == "Fishery"), aes(x = age, y = year_factor, height = relative_selectivity)) +
+  ggridges::geom_density_ridges(
+    stat = "identity",
+    scale = 3.8,
+    alpha = 0.22,
+    fill = "#7b3294",
+    color = "black",
+    linewidth = 0.25
+  ) +
+  scale_x_continuous(limits = c(2, 10), breaks = 2:10) +
+  labs(x = "Age", y = "Year", title = "Fishery Selectivity")
+```
+
+```{r}
+#| label: fig-selectivity-ridge-bts
+#| fig-cap: "Relative BTS selectivity over time from the RTMB-ADMB model. Ridge heights are normalized within year."
+#| fig-width: 8
+#| fig-height: 10
+#| out-width: "100%"
+ggplot(ridge_df |> filter(fleet == "BTS"), aes(x = age, y = year_factor, height = relative_selectivity)) +
+  ggridges::geom_density_ridges(
+    stat = "identity",
+    scale = 3.8,
+    alpha = 0.22,
+    fill = "#1b9e77",
+    color = "black",
+    linewidth = 0.25
+  ) +
+  scale_x_continuous(limits = c(2, 10), breaks = 2:10) +
+  labs(x = "Age", y = "Year", title = "BTS Selectivity")
+```
+
+```{r}
+#| label: fig-selectivity-ridge-ats
+#| fig-cap: "Relative ATS selectivity over time from the RTMB-ADMB model. Ridge heights are normalized within year."
+#| fig-width: 8
+#| fig-height: 10
+#| out-width: "100%"
+ggplot(ridge_df |> filter(fleet == "ATS"), aes(x = age, y = year_factor, height = relative_selectivity)) +
+  ggridges::geom_density_ridges(
+    stat = "identity",
+    scale = 3.8,
+    alpha = 0.22,
+    fill = "#d95f02",
+    color = "black",
+    linewidth = 0.25
+  ) +
+  scale_x_continuous(limits = c(2, 10), breaks = 2:10) +
+  labs(x = "Age", y = "Year", title = "ATS Selectivity")
+```
+
+# Projections
+
+The RTMB bridge can now write a Standard Projection Model input directory for use with `spmR`. This report writes the current saved RTMB output to `r projection_dir`, using the same SPM setup structure as the ADMB bridge projection directory while replacing the species assessment input file with an RTMB-derived `pm.prj`.
+
+```{r}
+#| label: spmr-projection-inputs
+#| include: false
+spmr_writer_env <- new.env(parent = globalenv())
+sys.source(rtmb_file("R", "write_spmr_projection_inputs.R"), envir = spmr_writer_env)
+spmr_projection <- spmr_writer_env$write_spmr_projection_inputs(
+  model_file = params$model_file,
+  output_dir = params$projection_dir,
+  config_path = rtmb_file("R", "config.R")
+)
+spmr_manifest <- as_tibble(spmr_projection$manifest)
+spmr_detail_file <- file.path(spmr_projection$output_dir, "spm_detail.csv")
+spmr_summary_file <- file.path(spmr_projection$output_dir, "spm_summary.csv")
+spmr_detail <- if (file.exists(spmr_detail_file)) {
+  as_tibble(utils::read.csv(spmr_detail_file, check.names = FALSE))
+} else {
+  tibble()
+}
+spmr_summary <- if (file.exists(spmr_summary_file)) {
+  as_tibble(utils::read.csv(spmr_summary_file, check.names = FALSE))
+} else {
+  tibble()
+}
+spmr_input <- if (file.exists(file.path(spmr_projection$output_dir, "spm.dat")) &&
+                  requireNamespace("spmR", quietly = TRUE)) {
+  tryCatch(
+    spmR::dat2list(file.path(spmr_projection$output_dir, "spm.dat")),
+    error = function(e) NULL
+  )
+} else {
+  NULL
+}
+```
+
+```{r}
+#| label: tbl-spmr-projection-files
+#| tbl-cap: "Projection input files written for the spmR/SPM workflow."
+spmr_manifest |>
+  mutate(
+    file = basename(file),
+    exists = as.character(exists)
+  ) |>
+  gt_report() |>
+  tab_header(title = "spmR Projection Input Files")
+```
+
+```{r}
+#| label: tbl-spmr-projection-settings
+#| tbl-cap: "Key settings in the generated SPM projection setup file."
+if (!is.null(spmr_input)) {
+  tibble(
+    item = c(
+      "Projection directory",
+      "Projection begin year",
+      "Projection years",
+      "Simulations",
+      "Alternatives",
+      "Species input file"
+    ),
+    value = c(
+      spmr_projection$output_dir,
+      as.character(spmr_input$beg_yr %||% spmr_input$styr),
+      as.character(spmr_input$nprj_yrs %||% spmr_input$npro),
+      as.character(spmr_input$nsims),
+      paste(as.integer(spmr_input$alts %||% spmr_input$alt_list), collapse = ", "),
+      as.character(spmr_input$datafile %||% spmr_input$spp_file_name)
+    )
+  ) |>
+    gt_report() |>
+    tab_header(title = "Generated SPM Setup")
+} else {
+  tibble(
+    item = c("Projection directory", "spmR parser"),
+    value = c(spmr_projection$output_dir, "spmR is not installed in the render environment")
+  ) |>
+    gt_report() |>
+    tab_header(title = "Generated SPM Setup")
+}
+```
+
+```{r}
+#| label: tbl-spmr-alternative-descriptions
+#| tbl-cap: "Text descriptions of the SPM projection alternatives included in the generated setup file."
+spmr_alt_desc <- tibble(
+  Alternative = 1:7,
+  Name = c(
+    "Maximum permissible ABC",
+    "Author-specified ABC",
+    "Average recent F",
+    "Alternative SPR rate",
+    "No fishing",
+    "OFL threshold determination",
+    "Status-determination ramp"
+  ),
+  Description = c(
+    "Projects catch using the maximum permissible Tier 3 ABC harvest rate from the SPM harvest-control rule.",
+    "Projects catch using the author-specified adjustment to the Tier 3 ABC harvest rate. In this generated RTMB setup, the author-F adjustment and ABC multiplier are both 1.0, so this alternative is currently equivalent to Alternative 1 unless those inputs are changed.",
+    "Projects catch using the recent average fishing mortality read from the assessment input file, rather than recalculating catch from the ABC harvest-control rule.",
+    "Projects catch using the user-specified Alternative 4 SPR rate. The generated setup uses SPR = 0.60, matching the SPM input convention for this alternative.",
+    "Projects the stock forward with F = 0, so catch is zero after any fixed catch years specified in the setup file.",
+    "Projects catch at the OFL harvest rate. This alternative is used for threshold/status-determination calculations and is not constrained by the TAC-equals-ABC rule in the same way as the ABC alternatives.",
+    "Applies maximum permissible ABC catch for the first three projection years in the SPM implementation, then switches to the OFL harvest-rate calculation used for status determination."
+  )
+)
+
+spmr_alt_desc |>
+  gt_report() |>
+  tab_header(title = "SPM Projection Alternatives")
+```
+
+```{r}
+#| label: tbl-spmr-projection-age-schedules
+#| tbl-cap: "Key age-specific schedules used in the generated SPM projection input files."
+projection_age_schedules <- tibble(
+  Age = ages,
+  `Spawning wt-at-age` = as.numeric(data$wt_ssb[length(years), ]),
+  `Fishery wt-at-age` = as.numeric(data$wt_fut %||% data$wt_fsh[length(years), ]),
+  Maturity = as.numeric(data$p_mature / max(data$p_mature, na.rm = TRUE)),
+  Selectivity = as.numeric(rtmb_report$sel_fsh[length(years), ])
+)
+
+projection_age_schedules |>
+  gt_report() |>
+  fmt_number(
+    columns = c(`Spawning wt-at-age`, `Fishery wt-at-age`, Maturity, Selectivity),
+    decimals = 3
+  ) |>
+  tab_header(title = "Projection Age-Specific Schedules")
+```
+
+## Alternative 2 Fixed-Catch Projection
+
+This additional projection run uses only Alternative 2 and fixes catch at 1,300 thousand t for each year from 2025 through 2032. The projection horizon is set to 2025--2032 so the generated run includes every requested fixed-catch year.
+
+```{r}
+#| label: spmr-alt2-fixed-inputs
+#| include: false
+alt2_fixed_catches <- stats::setNames(rep(1300, length(2025:2032)), 2025:2032)
+spmr_alt2_projection <- spmr_writer_env$write_spmr_projection_inputs(
+  model_file = params$model_file,
+  output_dir = params$projection_alt2_dir,
+  config_path = rtmb_file("R", "config.R"),
+  alt_list = 2,
+  fixed_catches = alt2_fixed_catches,
+  nproj_years = length(alt2_fixed_catches),
+  run_name = "rtmb_alt2_fixed1300"
+)
+spmr_alt2_detail_file <- file.path(spmr_alt2_projection$output_dir, "spm_detail.csv")
+spmr_alt2_detail <- if (file.exists(spmr_alt2_detail_file)) {
+  as_tibble(utils::read.csv(spmr_alt2_detail_file, check.names = FALSE))
+} else {
+  tibble()
+}
+```
+
+```{r}
+#| label: tbl-spmr-alt2-fixed-results
+#| tbl-cap: 'Candidate ABC projection given assumed future catches. Catch represents the estimate or expectation. $B/B_{35\\%}$ is mean biomass divided by $B_{35\\%}$, where $B_{35\\%}$ is the proxy for $B_{MSY}$. ABC is the maximum permissible ABC from the SPM Alternative 2 projection.'
+if (nrow(spmr_alt2_detail) > 0) {
+  spmr_alt2_detail |>
+    filter(Alt == 2) |>
+    group_by(Year) |>
+    summarize(
+      Catch = mean(Catch, na.rm = TRUE),
+      ABC = mean(ABC, na.rm = TRUE),
+      OFL = mean(OFL, na.rm = TRUE),
+      `Mean B` = mean(SSB, na.rm = TRUE),
+      `B/B35%` = 100 * mean(SSB / B35, na.rm = TRUE),
+      .groups = "drop"
+    ) |>
+    gt_report() |>
+    fmt_number(columns = c(Catch, ABC, OFL, `Mean B`), decimals = 0) |>
+    fmt_number(columns = `B/B35%`, decimals = 0, pattern = "{x}%") |>
+    cols_label(
+      `Mean B` = md("Mean $B$"),
+      `B/B35%` = md("$B/B_{35\\%}$")
+    ) |>
+    tab_header(title = "Candidate ABC Projection Given Assumed Future Catches")
+} else {
+  tibble(note = paste("No Alternative 2 fixed-catch SPM output found at", spmr_alt2_detail_file)) |>
+    gt_report()
+}
+```
+
+```{r}
+#| label: tbl-spmr-projection-results
+#| tbl-cap: 'Mean SPM projection results by alternative and year, read from spm_detail.csv when available. The table initially filters to Alternative 1 and includes all projection years; use the column filters to show other alternatives. $B/B_{35\\%}$ is mean biomass divided by $B_{35\\%}$, where $B_{35\\%}$ is the proxy for $B_{MSY}$.'
+if (nrow(spmr_detail) > 0) {
+  spmr_projection_means <- spmr_detail |>
+    group_by(Alt, Year) |>
+    summarize(
+      B = mean(SSB, na.rm = TRUE),
+      Catch = mean(Catch, na.rm = TRUE),
+      ABC = mean(ABC, na.rm = TRUE),
+      OFL = mean(OFL, na.rm = TRUE),
+      F = mean(F, na.rm = TRUE),
+      `B/B35%` = 100 * mean(SSB / B35, na.rm = TRUE),
+      .groups = "drop"
+    ) |>
+    mutate(Alt = as.character(Alt)) |>
+    arrange(as.integer(Alt), Year)
+
+  if (requireNamespace("reactable", quietly = TRUE)) {
+    alt_filter_options <- paste(
+      sprintf(
+        "React.createElement('option', { value: '%s' }, '%s')",
+        sort(unique(spmr_projection_means$Alt)),
+        sort(unique(spmr_projection_means$Alt))
+      ),
+      collapse = ", "
+    )
+    year_filter_options <- paste(
+      sprintf(
+        "React.createElement('option', { value: '%s' }, '%s')",
+        sort(unique(spmr_projection_means$Year)),
+        sort(unique(spmr_projection_means$Year))
+      ),
+      collapse = ", "
+    )
+    exact_filter_method <- reactable::JS(
+      "function(rows, columnId, filterValue) {
+        if (!filterValue) return rows;
+        return rows.filter(function(row) {
+          return String(row.values[columnId]) === String(filterValue);
+        });
+      }"
+    )
+
+    spmr_projection_table <- reactable::reactable(
+      spmr_projection_means,
+      filterable = FALSE,
+      searchable = TRUE,
+      defaultPageSize = 14,
+      elementId = "spmr-projection-results-table",
+      columns = list(
+        Alt = reactable::colDef(
+          name = "Alt",
+          filterable = TRUE,
+          filterMethod = exact_filter_method,
+          filterInput = reactable::JS(paste0(
+            "function(column) {
+              return React.createElement('select', {
+                value: column.filterValue || '',
+                onChange: function(event) { column.setFilter(event.target.value || undefined); },
+                style: { width: '100%' }
+              }, [
+                React.createElement('option', { value: '' }, 'All'),
+                ", alt_filter_options, "
+              ]);
+            }"
+          ))
+        ),
+        Year = reactable::colDef(
+          filterable = TRUE,
+          filterMethod = exact_filter_method,
+          filterInput = reactable::JS(paste0(
+            "function(column) {
+              return React.createElement('select', {
+                value: column.filterValue || '',
+                onChange: function(event) { column.setFilter(event.target.value || undefined); },
+                style: { width: '100%' }
+              }, [
+                React.createElement('option', { value: '' }, 'All'),
+                ", year_filter_options, "
+              ]);
+            }"
+          )),
+          format = reactable::colFormat(digits = 0, separators = FALSE)
+        ),
+        B = reactable::colDef(name = "B", filterable = FALSE, format = reactable::colFormat(digits = 0, separators = TRUE)),
+        Catch = reactable::colDef(filterable = FALSE, format = reactable::colFormat(digits = 0, separators = TRUE)),
+        ABC = reactable::colDef(filterable = FALSE, format = reactable::colFormat(digits = 0, separators = TRUE)),
+        OFL = reactable::colDef(filterable = FALSE, format = reactable::colFormat(digits = 0, separators = TRUE)),
+        F = reactable::colDef(filterable = FALSE, format = reactable::colFormat(digits = 3)),
+        `B/B35%` = reactable::colDef(
+          name = "B/B35%",
+          filterable = FALSE,
+          format = reactable::colFormat(digits = 0, suffix = "%")
+        )
+      )
+    )
+    if (requireNamespace("htmlwidgets", quietly = TRUE)) {
+      htmlwidgets::onRender(
+        spmr_projection_table,
+        "function(el, x) {
+          setTimeout(function() {
+            if (window.Reactable && Reactable.setFilter) {
+              Reactable.setFilter(el.id, 'Alt', '1');
+            }
+          }, 0);
+        }"
+      )
+    } else {
+      spmr_projection_table
+    }
+  } else {
+    spmr_projection_means |>
+      filter(Alt == "1") |>
+      gt_report() |>
+      fmt_number(columns = c(B, Catch, ABC, OFL), decimals = 0) |>
+      fmt_number(columns = `B/B35%`, decimals = 0, pattern = "{x}%") |>
+      fmt_number(columns = F, decimals = 3) |>
+      cols_label(`B/B35%` = md("$B/B_{35\\%}$")) |>
+      tab_header(title = "SPM Projection Means")
+  }
+} else {
+  tibble(note = paste("No SPM projection detail output found at", spmr_detail_file)) |>
+    gt_report()
+}
+```
+
+```{r}
+#| label: fig-spmr-projection-ssb-catch
+#| fig-cap: "Mean SPM projected spawning biomass and catch by alternative, read from spm_detail.csv when available."
+#| fig-width: 9
+#| fig-height: 5
+if (nrow(spmr_detail) > 0) {
+  spmr_detail |>
+    group_by(Alt, Year) |>
+    summarize(
+      SSB = mean(SSB, na.rm = TRUE),
+      Catch = mean(Catch, na.rm = TRUE),
+      .groups = "drop"
+    ) |>
+    pivot_longer(c(SSB, Catch), names_to = "quantity", values_to = "value") |>
+    ggplot(aes(x = Year, y = value, color = factor(Alt))) +
+    geom_line(linewidth = 0.8) +
+    facet_wrap(~quantity, scales = "free_y", ncol = 1) +
+    scale_y_continuous(limits = c(0, NA), labels = scales::label_comma()) +
+    labs(x = "Year", y = "Mean value", color = "Alternative", title = "SPM Projection Means")
+} else {
+  plot.new()
+  text(0.5, 0.5, "Run SPM to create spm_detail.csv for projection plots.", cex = 0.9)
+}
+```
+
+```{r}
+#| label: fig-spmr-projection-alt2-trajectories
+#| fig-cap: "Alternative 2 SPM projected spawning biomass and catch means with 10 simulated trajectories overlaid as thin gray lines."
+#| fig-width: 9
+#| fig-height: 5
+if (nrow(spmr_detail) > 0) {
+  alt2_detail <- spmr_detail |>
+    filter(Alt == 2)
+
+  alt2_sims <- sort(unique(alt2_detail$Sim))
+  alt2_sims <- alt2_sims[seq(1, length(alt2_sims), length.out = min(10, length(alt2_sims)))] |>
+    round() |>
+    unique()
+
+  alt2_sim_plot <- alt2_detail |>
+    filter(Sim %in% alt2_sims) |>
+    select(Sim, Year, SSB, Catch) |>
+    pivot_longer(c(SSB, Catch), names_to = "quantity", values_to = "value")
+
+  alt2_mean_plot <- alt2_detail |>
+    group_by(Year) |>
+    summarize(
+      SSB = mean(SSB, na.rm = TRUE),
+      Catch = mean(Catch, na.rm = TRUE),
+      .groups = "drop"
+    ) |>
+    pivot_longer(c(SSB, Catch), names_to = "quantity", values_to = "value")
+
+  ggplot() +
+    geom_line(
+      data = alt2_sim_plot,
+      aes(x = Year, y = value, group = interaction(quantity, Sim)),
+      color = "gray65",
+      linewidth = 0.25,
+      alpha = 0.75
+    ) +
+    geom_line(
+      data = alt2_mean_plot,
+      aes(x = Year, y = value),
+      color = "#1b9e77",
+      linewidth = 0.9
+    ) +
+    facet_wrap(~quantity, scales = "free_y", ncol = 1) +
+    scale_y_continuous(limits = c(0, NA), labels = scales::label_comma()) +
+    labs(x = "Year", y = "Value", title = "Alternative 2 Projection Means and Simulated Trajectories")
+} else {
+  plot.new()
+  text(0.5, 0.5, "Run SPM to create spm_detail.csv for Alternative 2 projection plots.", cex = 0.9)
+}
+```
+
+The generated directory is intended as an input handoff. Running the projection model remains a separate step, for example `spmR::runSPM("analysis/output/spmR_projection", run = TRUE, engine = "admb")`, or `spmR::runSPM("analysis/output/spmR_projection", run = TRUE, engine = "rtmb")` for the current experimental RTMB path in `spmR`.
+
+## Diagnostics
+
+```{r}
+#| label: tbl-model-status
+#| tbl-cap: "Summary diagnostics for the current saved RTMB-ADMB base model."
+model_status_tbl <- tibble(
+  metric = c(
+    "RTMB output",
+    "Report elements",
+    "Parameters in taped object",
+    "Initial objective",
+    "Saved total likelihood",
+    "ADMB bridge report",
+    "ADMB bridge parameters",
+    "Interpretation"
+  ),
+  value = c(
+    params$model_file,
+    as.character(length(names(rtmb_report))),
+    as.character(length(obj$par)),
+    sprintf("%.3f", obj$fn(obj$par)),
+    sprintf("%.3f", as.numeric(rtmb_report$tot_like)),
+    rtmb_metadata$admb_rep,
+    rtmb_metadata$admb_par,
+    "Saved report loads and the RTMB objective tapes successfully; full convergence diagnostics require a fitted optimizer object."
+  )
+)
+
+model_status_tbl |>
+  gt_report() |>
+  tab_header(title = "Model Status Diagnostics")
+```
+
+```{r}
+#| label: bridge-series-data
+#| include: false
+rtmb_diag_series <- ts_df |>
+  transmute(model = "RTMB-ADMB base", source = "RTMB", year, SSB = ssb, Recruitment = recruitment) |>
+  pivot_longer(c(SSB, Recruitment), names_to = "quantity", values_to = "value")
+
+diag_series <- bind_rows(
+  rtmb_diag_series,
+  only_bts_ts,
+  admb_ts |>
+    filter(quantity %in% c("SSB", "Recruitment")) |>
+    select(model, source, year, quantity, value)
+)
+```
+
+```{r}
+#| label: tbl-diagnostics
+#| tbl-cap: "RTMB-ADMB likelihood diagnostics by component."
+nll_tbl <- tibble(
+  component = c(
+    "Catch",
+    "BTS index",
+    "ATS index",
+    "ATS age-1 index",
+    "CPUE",
+    "AVO",
+    "Fishery age composition",
+    "BTS age composition",
+    "ATS age composition",
+    "Recruitment",
+    "Fishing mortality penalty",
+    "Selectivity penalty",
+    "Weight-at-age",
+    "Priors",
+    "Total"
+  ),
+  value = c(
+    rtmb_report$cat_like,
+    rtmb_report$bts_like,
+    rtmb_report$ats_like,
+    rtmb_report$ats_age1_like,
+    rtmb_report$cpue_like,
+    rtmb_report$avo_like,
+    rtmb_report$age_like[1],
+    rtmb_report$age_like[2],
+    rtmb_report$age_like[3],
+    sum(rtmb_report$rec_like, na.rm = TRUE),
+    rtmb_report$Fpen_like,
+    sum(rtmb_report$sel_like, na.rm = TRUE) + sum(rtmb_report$sel_like_dev, na.rm = TRUE),
+    rtmb_report$wt_like,
+    sum(rtmb_report$Priors, na.rm = TRUE),
+    rtmb_report$tot_like
+  )
+)
+
+nll_tbl |>
+  gt_report() |>
+  fmt_number(columns = value, decimals = 3) |>
+  tab_header(title = "Likelihood Diagnostics by Component")
+```
+
+### Retrospective Peels
+
+The RTMB retrospective script was run for peels 0 through 5, where peel 0 is the full 2024 model and peels 1--5 remove terminal years through 2019. The BTS index has no 2020 observation in these inputs; the final BTS years are `r paste(data$yrs_bts_data[data$yrs_bts_data >= 2018], collapse = ", ")`. This matters for the deeper peels because peel 4 terminates in 2020 and peel 5 terminates in 2019, crossing the missing-2020 BTS data gap.
+
+```{r}
+#| label: tbl-retrospective-status
+#| tbl-cap: "RTMB retrospective peel run status. Convergence code 1 indicates that the current short optimizer run stopped before convergence; missing values indicate peels that failed before an optimizer result was available."
+if (nrow(retro_diagnostics) > 0) {
+  retro_diagnostics |>
+    mutate(
+      status = case_when(
+        is.na(convergence) ~ "failed",
+        convergence == 0 ~ "converged",
+        TRUE ~ paste0("not converged: ", convergence)
+      ),
+      error = coalesce(error, "")
+    ) |>
+    select(peel, terminal_year, status, objective, max_gradient, error) |>
+    gt_report() |>
+    fmt_number(columns = any_of(c("objective", "max_gradient")), decimals = 3) |>
+    tab_header(title = "RTMB Retrospective Peel Status")
+} else {
+  tibble(note = paste("No retrospective output found at", retro_file)) |>
+    gt_report()
+}
+```
+
+```{r}
+#| label: fig-retrospective-ssb-recruitment
+#| fig-cap: "RTMB retrospective spawning biomass and recruitment trajectories for peels with extractable report series."
+if (nrow(retro_series) > 0) {
+  retro_series |>
+    pivot_longer(c(SSB, Recruitment), names_to = "quantity", values_to = "value") |>
+    mutate(peel = paste0("Peel ", peel)) |>
+    ggplot(aes(x = year, y = value, color = peel, group = peel)) +
+    geom_line(linewidth = 0.85) +
+    facet_wrap(~quantity, scales = "free_y", ncol = 1) +
+    scale_y_continuous(limits = c(0, NA), labels = scales::label_comma()) +
+    labs(x = "Year", y = "Value", color = "Run", title = "RTMB Retrospective Peels")
+} else {
+  plot.new()
+  text(
+    0.5, 0.5,
+    "No retrospective trajectory series was extractable from the current RTMB peel run.",
+    cex = 0.9
+  )
+}
+```
+
+The current retrospective output should be treated as a failed/partial diagnostic rather than an interpretable retrospective pattern. Peels 0--3 produced optimizer results but did not converge under the current `eval.max = 300` and `iter.max = 300` settings, and peels 4--5 failed during RTMB taping with an invalid `advector` error after the data and parameter dimensions were peeled. The missing 2020 BTS observation is a likely contributor to the deeper-peel edge case and should be handled explicitly before using Mohn's rho or retrospective trajectories for inference.
+
+# Bridge Comparison With ADMB
+
+The bridge comparison uses shared numeric objects from the saved RTMB report and the ADMB report loaded by `R/config.R`. The `Only BTS` curve is a separate RTMB fit from the same bridge configuration with the ATS biomass index, ATS age-1 index, and AVO index likelihood components excluded; BTS, CPUE, catch, composition, recruitment, selectivity, and weight-at-age components remain active. Differences should be interpreted as implementation diagnostics rather than assessment conclusions.
+
+```{r}
+#| label: tbl-only-bts-status
+#| tbl-cap: "Status for the Only BTS RTMB sensitivity model used in the bridge-comparison plot."
+tibble(
+  item = c("Only BTS output", "Excluded likelihoods", "Convergence", "Objective", "Maximum gradient"),
+  value = c(
+    only_bts_file,
+    if (!is.null(only_bts_metadata$excluded_likelihoods)) paste(only_bts_metadata$excluded_likelihoods, collapse = ", ") else NA_character_,
+    if (!is.null(only_bts_saved$fit$convergence)) as.character(only_bts_saved$fit$convergence) else NA_character_,
+    if (!is.null(only_bts_saved$fit$objective)) sprintf("%.3f", only_bts_saved$fit$objective) else NA_character_,
+    if (!is.null(only_bts_metadata$max_gradient)) sprintf("%.6f", only_bts_metadata$max_gradient) else NA_character_
+  )
+) |>
+  gt_report() |>
+  tab_header(title = "Only BTS Sensitivity Run")
+```
+
+```{r}
+#| label: tbl-admb-bridge
+#| tbl-cap: "Maximum absolute percent difference between the RTMB-ADMB base model and the ADMB bridge report for shared quantities."
+if (exists("pm") && !is.null(pm)) {
+  bridge_tbl <- compare_max_pct(rtmb_report, pm, tolerance = 1e-6) |>
+    arrange(desc(max_abs_pct_diff))
+} else {
+  bridge_tbl <- tibble(note = "ADMB bridge report was not available.")
+}
+
+bridge_tbl |>
+  gt_report() |>
+  fmt_number(columns = any_of(c("max_abs_diff", "max_abs_pct_diff", "cor")), decimals = 6) |>
+  tab_header(title = "RTMB vs ADMB Bridge Comparison")
+```
+
+```{r}
+#| label: fig-admb-bridge
+#| fig-cap: "Shared RTMB and ADMB bridge time series for spawning biomass and recruitment, including the Only BTS RTMB sensitivity model with ATS and AVO survey index likelihoods excluded."
+if (nrow(admb_ts) > 0) {
+  ggplot(diag_series, aes(x = year, y = value, color = model, linetype = source, group = model)) +
+    geom_line(linewidth = 0.9) +
+    facet_wrap(~quantity, scales = "free_y", ncol = 1) +
+    scale_y_continuous(limits = c(0, NA), labels = scales::label_comma()) +
+    scale_color_manual(values = c("RTMB-ADMB base" = "#1b9e77", "Only BTS" = "#d95f02", "ADMB bridge" = "#1f78b4")) +
+    scale_linetype_manual(values = c("RTMB" = "solid", "ADMB" = "22")) +
+    labs(x = "Year", y = "Value", color = "Model", linetype = "Source", title = "RTMB and ADMB Bridge Time Series")
+} else {
+  plot.new()
+  text(0.5, 0.5, "ADMB bridge report not available.", cex = 1)
+}
+```
+
+# Reproducibility
+
+```{r}
+#| label: tbl-reproducibility
+#| tbl-cap: "Files and commands needed to reproduce the saved RTMB-ADMB output."
+repro_tbl <- tibble(
+  item = c(
+    "Working directory",
+    "Write output command",
+    "Render command",
+    "Default SparseNUTS command",
+    "RTMB report object",
+    "Default SparseNUTS output",
+    "ADMB bridge run",
+    "RTMB source"
+  ),
+  value = c(
+    pollock_root,
+    "Rscript R/write_output.R",
+    "quarto render reporting/ebs_pollock_rtmb_admb_assessment.qmd",
+    "quarto render reporting/ebs_pollock_rtmb_admb_assessment.qmd -P run_sparsenuts:true",
+    model_file,
+    sparsenuts_file,
+    pollock_file("admb", "runs", "for_rtmb"),
+    rtmb_root
+  )
+)
+
+repro_tbl |>
+  gt_report() |>
+  tab_header(title = "Reproducibility Checklist")
+```
+
+# Tables
+
+```{r}
+#| label: tbl-key-results
+#| tbl-cap: "Key terminal-year values from the saved base RTMB-ADMB model."
+terminal_tbl <- tibble(
+  metric = c("Total biomass", "Spawning biomass", "Recruitment", "Mean F", "Total F"),
+  year = terminal_year,
+  value = c(
+    tail(ts_df$biomass, 1),
+    tail(ts_df$ssb, 1),
+    tail(ts_df$recruitment, 1),
+    tail(ts_df$mean_f, 1),
+    tail(ts_df$total_f, 1)
+  )
+)
+
+terminal_tbl |>
+  gt_report() |>
+  fmt_number(columns = value, decimals = 3) |>
+  tab_header(title = "Terminal-Year RTMB-ADMB Estimates")
+```
+
+```{r}
+#| label: tbl-q
+#| tbl-cap: "Index catchability and stock-recruitment scalars reported by the RTMB-ADMB model."
+scalar_tbl <- tibble(
+  quantity = c("Bzero", "phizero", "steepness"),
+  value = c(rtmb_report$Bzero, rtmb_report$phizero, rtmb_report$steepness)
+)
+
+scalar_tbl |>
+  gt_report() |>
+  fmt_number(columns = value, decimals = 6) |>
+  tab_header(title = "Reported Scalar Quantities")
+```
+
+```{r}
+#| label: tbl-naa-comparison
+#| tbl-cap: "Initial and terminal estimated numbers-at-age from the saved RTMB-ADMB model."
+naa_tbl <- bind_rows(
+  tibble(year = first_year, age = ages, numbers = as.numeric(rtmb_report$N[1, ])),
+  tibble(year = terminal_year, age = ages, numbers = as.numeric(rtmb_report$N[nrow(rtmb_report$N), ]))
+)
+
+naa_tbl |>
+  gt_report() |>
+  fmt_number(columns = numbers, decimals = 3) |>
+  tab_header(title = "Numbers at Age")
+```
+
+```{r}
+#| label: tbl-f-at-age
+#| tbl-cap: "Estimated terminal-year fishery F-at-age from the saved RTMB-ADMB model."
+f_at_age_tbl <- tibble(
+  year = terminal_year,
+  age = ages,
+  f_at_age = as.numeric(rtmb_report$F[nrow(rtmb_report$F), ])
+)
+
+f_at_age_tbl |>
+  gt_report() |>
+  fmt_number(columns = f_at_age, decimals = 6) |>
+  tab_header(title = "Terminal-Year Fishery F at Age")
+```
+
+# Appendix
+
+## Model Assumptions
+
+```{r}
+#| label: tbl-model-assumptions
+#| tbl-cap: "Key model assumptions and fixed settings in the current RTMB-ADMB implementation."
+assumptions_tbl <- tibble(
+  topic = c(
+    "Bridge source",
+    "Template",
+    "Natural mortality",
+    "BTS start year",
+    "ATS start year",
+    "Recruitment age",
+    "Age-1 ATS index",
+    "BTS biology likelihood",
+    "ATS biology likelihood"
+  ),
+  setting = c(
+    "ADMB bridge run in admb/runs/for_rtmb",
+    "Physical bridge pm.tpl copy that intentionally differs from admb/source/pm.tpl",
+    paste(round(data$natmort, 4), collapse = ", "),
+    as.character(data$styr_bts),
+    as.character(data$styr_ats),
+    as.character(data$recage),
+    as.character(data$use_age1_ats),
+    as.character(data$do_bts_bio),
+    as.character(data$do_ats_bio)
+  )
+)
+
+assumptions_tbl |>
+  gt_report() |>
+  tab_header(title = "RTMB-ADMB Model Assumptions")
+```
+
+## SparseNUTS MCMC
+
+The RTMB object can be passed directly to `SparseNUTS`. This appendix uses the library defaults for chains, iterations, warmup, metric selection, initialization, and sampler control. The RTMB parallel worker setup requires explicit globals; on this model the parallel default fails during worker setup, so the saved run is executed as serial chains with `cores = 1` and `globals = list(data = data)`. Because this run can be computationally expensive, the document reads a saved default run when available and only launches the sampler when rendered with `run_sparsenuts: true`. To regenerate the saved run, render with both `run_sparsenuts: true` and `force_sparsenuts: true`.
+
+```{r}
+#| label: sparsenuts-default-run
+#| include: false
+sparsenuts_available <- requireNamespace("SparseNUTS", quietly = TRUE)
+sparsenuts_fit <- NULL
+sparsenuts_error <- NULL
+
+if (file.exists(sparsenuts_file) && !param_is_true(params$force_sparsenuts)) {
+  sparsenuts_fit <- readRDS(sparsenuts_file)
+} else if (param_is_true(params$run_sparsenuts)) {
+  if (!sparsenuts_available) {
+    sparsenuts_error <- "SparseNUTS is not installed."
+  } else {
+    dir.create(dirname(sparsenuts_file), showWarnings = FALSE, recursive = TRUE)
+    sparsenuts_fit <- tryCatch(
+      SparseNUTS::sample_snuts(
+        obj,
+        cores = 1,
+        globals = list(data = data)
+      ),
+      error = function(e) {
+        sparsenuts_error <<- conditionMessage(e)
+        NULL
+      }
+    )
+    if (!is.null(sparsenuts_fit)) {
+      saveRDS(sparsenuts_fit, sparsenuts_file)
+    }
+  }
+}
+
+sparsenuts_diagnostics <- NULL
+if (!is.null(sparsenuts_fit) && sparsenuts_available) {
+  sparsenuts_diagnostics <- tryCatch(
+    SparseNUTS::check_snuts_diagnostics(sparsenuts_fit, print = FALSE),
+    error = function(e) {
+      sparsenuts_error <<- conditionMessage(e)
+      NULL
+    }
+  )
+}
+```
+
+```{r}
+#| label: tbl-sparsenuts-status
+#| tbl-cap: "SparseNUTS default-run status for the RTMB-ADMB base model."
+sample_dims <- if (!is.null(sparsenuts_fit$samples)) dim(sparsenuts_fit$samples) else NULL
+draws_per_chain <- if (!is.null(sample_dims) && length(sample_dims) >= 2) sample_dims[1] else NA_integer_
+chains <- if (!is.null(sample_dims) && length(sample_dims) >= 2) sample_dims[2] else NA_integer_
+warmup <- sparsenuts_fit$warmup %||% NA_integer_
+post_warmup <- if (is.finite(draws_per_chain) && is.finite(warmup)) draws_per_chain - warmup else NA_integer_
+sparsenuts_run_metadata <- attr(sparsenuts_fit, "rtmb_admb_sparsenuts") %||% list()
+
+sparsenuts_status <- tibble(
+  metric = c(
+    "SparseNUTS installed",
+    "Default call",
+    "Run enabled for this render",
+    "Force rerun for this render",
+    "Saved default output",
+    "Output path",
+    "Algorithm",
+    "Metric",
+    "Chains",
+    "Configured cores",
+    "Execution mode",
+    "Warmup iterations per chain",
+    "Post-warmup samples per chain",
+    "Diagnostic object available",
+    "Error"
+  ),
+  value = c(
+    as.character(sparsenuts_available),
+    "SparseNUTS::sample_snuts(obj)",
+    as.character(param_is_true(params$run_sparsenuts)),
+    as.character(param_is_true(params$force_sparsenuts)),
+    as.character(file.exists(sparsenuts_file)),
+    sparsenuts_file,
+    as.character(sparsenuts_fit$algorithm %||% NA_character_),
+    as.character(sparsenuts_fit$metric %||% NA_character_),
+    as.character(chains),
+    "1",
+    sparsenuts_run_metadata$execution %||% "serial chains requested with cores = 1 for RTMB worker compatibility",
+    as.character(warmup),
+    as.character(post_warmup),
+    as.character(!is.null(sparsenuts_diagnostics)),
+    sparsenuts_error %||% ""
+  )
+)
+
+sparsenuts_status |>
+  gt_report() |>
+  tab_header(title = "SparseNUTS Default-Run Status")
+```
+
+```{r}
+#| label: tbl-sparsenuts-diagnostics
+#| tbl-cap: "SparseNUTS diagnostic summary returned by the package default diagnostic checker."
+if (!is.null(sparsenuts_diagnostics)) {
+  diag_tbl <- tibble(
+    diagnostic = names(sparsenuts_diagnostics),
+    value = vapply(sparsenuts_diagnostics, function(x) paste(capture.output(str(x, max.level = 1)), collapse = " "), character(1))
+  )
+} else {
+  diag_tbl <- tibble(
+    diagnostic = "status",
+    value = "No SparseNUTS diagnostics are available. Render with run_sparsenuts: true to create the default run."
+  )
+}
+
+diag_tbl |>
+  gt_report() |>
+  tab_header(title = "SparseNUTS Diagnostics")
+```
+
+```{r}
+#| label: sparsenuts-plot-data
+#| include: false
+sparsenuts_fig_dir <- rtmb_file("analysis", "output", "figures")
+dir.create(sparsenuts_fig_dir, showWarnings = FALSE, recursive = TRUE)
+
+slow_parameter_names <- character()
+slow_parameter_indices <- integer()
+if (!is.null(sparsenuts_fit) && !is.null(sparsenuts_fit$monitor)) {
+  slow_parameter_names <- sparsenuts_fit$monitor |>
+    arrange(desc(rhat), ess_bulk) |>
+    filter(is.finite(rhat)) |>
+    slice_head(n = 12) |>
+    pull(variable)
+  available_parameter_names <- dimnames(sparsenuts_fit$samples)[[3]]
+  slow_parameter_indices <- match(slow_parameter_names, available_parameter_names)
+  slow_parameter_indices <- slow_parameter_indices[is.finite(slow_parameter_indices)]
+}
+
+make_sparsenuts_pairs_plot <- function(fit, pars, file) {
+  if (length(pars) == 0 || is.null(fit$samples)) return(FALSE)
+  pars <- pars[seq_len(min(length(pars), 6))]
+  png(file, width = 1800, height = 1800, res = 180)
+  on.exit(dev.off(), add = TRUE)
+  pairs(
+    fit,
+    pars = pars,
+    order = "slow",
+    diag = "hist",
+    plot = TRUE
+  )
+  TRUE
+}
+
+sparsenuts_figures <- list(
+  pairs_slow = file.path(sparsenuts_fig_dir, "rtmb_admb_sparsenuts_pairs_slow.png"),
+  marginals_slow = file.path(sparsenuts_fig_dir, "rtmb_admb_sparsenuts_marginals_slow.png"),
+  sampler = file.path(sparsenuts_fig_dir, "rtmb_admb_sparsenuts_sampler_params.png"),
+  q = file.path(sparsenuts_fig_dir, "rtmb_admb_sparsenuts_Q.png"),
+  uncertainties = file.path(sparsenuts_fig_dir, "rtmb_admb_sparsenuts_uncertainties.png")
+)
+
+if (!is.null(sparsenuts_fit) && sparsenuts_available) {
+  make_sparsenuts_pairs_plot(sparsenuts_fit, slow_parameter_indices, sparsenuts_figures$pairs_slow)
+
+  png(sparsenuts_figures$marginals_slow, width = 1800, height = 1400, res = 180)
+  try(
+    SparseNUTS::plot_marginals(
+      sparsenuts_fit,
+      pars = slow_parameter_indices,
+      order = "slow",
+      mfrow = c(3, 4)
+    ),
+    silent = TRUE
+  )
+  dev.off()
+
+  png(sparsenuts_figures$sampler, width = 1600, height = 1200, res = 180)
+  try(SparseNUTS::plot_sampler_params(sparsenuts_fit, plot = TRUE), silent = TRUE)
+  dev.off()
+
+  png(sparsenuts_figures$q, width = 1600, height = 1200, res = 180)
+  q_plot <- try(
+    {
+      if (!is.null(sparsenuts_fit$mle$Qinv)) {
+        SparseNUTS::plot_Q(sparsenuts_fit, Q = solve(sparsenuts_fit$mle$Qinv))
+      } else {
+        SparseNUTS::plot_Q(sparsenuts_fit)
+      }
+    },
+    silent = TRUE
+  )
+  if (inherits(q_plot, "try-error")) {
+    plot.new()
+    text(0.5, 0.5, paste("plot_Q unavailable:", conditionMessage(attr(q_plot, "condition"))), cex = 0.8)
+  }
+  dev.off()
+
+  png(sparsenuts_figures$uncertainties, width = 1600, height = 1200, res = 180)
+  try(SparseNUTS::plot_uncertainties(sparsenuts_fit, plot = TRUE), silent = TRUE)
+  dev.off()
+}
+```
+
+```{r}
+#| label: tbl-sparsenuts-slow-parameters
+#| tbl-cap: "SparseNUTS parameters selected for slow-order MCMC diagnostic plots."
+if (length(slow_parameter_names) > 0) {
+  sparsenuts_fit$monitor |>
+    filter(variable %in% slow_parameter_names) |>
+    mutate(variable = factor(variable, levels = slow_parameter_names)) |>
+    arrange(variable) |>
+    select(variable, mean, sd, rhat, ess_bulk, ess_tail) |>
+    gt_report() |>
+    fmt_number(columns = c(mean, sd, rhat, ess_bulk, ess_tail), decimals = 3) |>
+    tab_header(title = "Slow-Order Diagnostic Parameters")
+} else {
+  tibble(note = "No SparseNUTS parameter diagnostics available.") |>
+    gt_report() |>
+    tab_header(title = "Slow-Order Diagnostic Parameters")
+}
+```
+
+```{r}
+#| label: fig-sparsenuts-pairs-slow
+#| fig-cap: "SparseNUTS package pairs plot for the six slowest RTMB-ADMB parameters by Rhat/ESS ranking, generated through the package S3 method `pairs.tmbfit` via `pairs(sparsenuts_fit, order = 'slow')`."
+if (file.exists(sparsenuts_figures$pairs_slow)) {
+  knitr::include_graphics(sparsenuts_figures$pairs_slow)
+}
+```
+
+```{r}
+#| label: fig-sparsenuts-marginals-slow
+#| fig-cap: "SparseNUTS::plot_marginals output from the default RTMB-ADMB SparseNUTS run using `order = 'slow'` for the selected parameter set."
+if (file.exists(sparsenuts_figures$marginals_slow)) {
+  knitr::include_graphics(sparsenuts_figures$marginals_slow)
+}
+```
+
+```{r}
+#| label: fig-sparsenuts-sampler
+#| fig-cap: "SparseNUTS sampler-parameter diagnostics from the default RTMB-ADMB run."
+if (file.exists(sparsenuts_figures$sampler)) {
+  knitr::include_graphics(sparsenuts_figures$sampler)
+}
+```
+
+```{r}
+#| label: fig-sparsenuts-q
+#| fig-cap: "SparseNUTS::plot_Q output from the default RTMB-ADMB run."
+if (file.exists(sparsenuts_figures$q)) {
+  knitr::include_graphics(sparsenuts_figures$q)
+}
+```
+
+```{r}
+#| label: fig-sparsenuts-uncertainties
+#| fig-cap: "SparseNUTS::plot_uncertainties output from the default RTMB-ADMB run."
+if (file.exists(sparsenuts_figures$uncertainties)) {
+  knitr::include_graphics(sparsenuts_figures$uncertainties)
+}
+```
+
+## Data Tables
+
+```{r}
+#| label: tbl-weight-at-age
+#| tbl-cap: "Input spawning weight-at-age values used in the terminal model year."
+waa_tbl <- tibble(
+  year = terminal_year,
+  age = ages,
+  weight = as.numeric(data$wt_ssb[nrow(data$wt_ssb), ])
+)
+
+waa_tbl |>
+  gt_report() |>
+  fmt_number(columns = weight, decimals = 5) |>
+  tab_header(title = "Terminal-Year Spawning Weight at Age")
+```
+
+```{r}
+#| label: tbl-maturity
+#| tbl-cap: "Input maturity-at-age schedule used in the RTMB-ADMB model."
+maturity_tbl <- tibble(
+  age = ages,
+  maturity = as.numeric(data$p_mature)
+)
+
+maturity_tbl |>
+  gt_report() |>
+  fmt_number(columns = maturity, decimals = 5) |>
+  tab_header(title = "Maturity at Age")
+```
+
+## Report Inventory
+
+```{r}
+#| label: tbl-report-inventory
+#| tbl-cap: "Inventory of named elements in the saved RTMB report object."
+report_inventory <- tibble(
+  element = names(rtmb_report),
+  class = vapply(rtmb_report, function(x) paste(class(x), collapse = "/"), character(1)),
+  length = vapply(rtmb_report, length, integer(1)),
+  dimensions = vapply(rtmb_report, function(x) {
+    d <- dim(x)
+    if (is.null(d)) "" else paste(d, collapse = " x ")
+  }, character(1))
+)
+
+report_inventory |>
+  gt_report() |>
+  tab_header(title = "Saved RTMB Report Inventory")
+```
+
+# Notes
+
+This report is intended to support model-port debugging and bridge diagnostics. It does not replace the parent cross-platform comparison documents in `doc/`, and it should not be interpreted as a final assessment report without additional convergence, estimability, retrospective, and sensitivity diagnostics.

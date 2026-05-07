@@ -1,0 +1,23 @@
+.DS_Store
+.quarto/
+.Rproj.user/
+.Rhistory
+.RData
+.Ruserdata
+.vscode/
+*.Rproj
+*.code-workspace
+
+# Generated RTMB outputs
+analysis/output/
+analysis/outputs/
+output/
+reporting/*.html
+reporting/*_files/
+*.log
+*.tmp
+
+# Local/private inputs
+data/private/
+admb/
+runs/

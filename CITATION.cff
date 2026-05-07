@@ -1,0 +1,9 @@
+cff-version: 1.2.0
+message: "If you use this repository, please cite it as below."
+title: "EBS Pollock RTMB-ADMB Bridge"
+authors:
+  - family-names: "Ianelli"
+    given-names: "Jim"
+date-released: 2026-05-07
+license: MIT
+abstract: "Standalone RTMB reimplementation and diagnostic bridge for the ADMB EBS pollock model."
