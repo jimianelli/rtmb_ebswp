@@ -1,0 +1,102 @@
+---
+title: "Worklog: Fishery selectivity documentation (rtmb_ebswp)"
+execute:
+  echo: true
+  warning: false
+  message: false
+format:
+  html:
+    toc: true
+    toc-depth: 3
+    number-sections: true
+    embed-resources: true
+    lightbox: true
+    code-fold: true
+    code-summary: "Show code"
+    code-tools: true
+---
+
+# Goal
+
+Create a new report in `rtmb_ebswp/reporting/` documenting:
+
+- what selectivity forms are documented in `selex`, and
+- what selectivity forms are actually implemented for the **fishery** (and related fleets) in `rtmb_ebswp`,
+- including **time-varying** aspects,
+- including **ggridges** plots for each selectivity option.
+
+This file is a running worklog of what was examined and changed.
+
+# Repositories examined
+
+## `selex`
+
+Location:
+
+- `/Users/murphy/.openclaw/workspace/selex`
+
+Key files checked:
+
+- `README.md` — lists selectivity families documented.
+- `R/selectivity_functions.R` — contains:
+  - `logistic_sel()`
+  - `dbl_logistic_sel()`
+  - `spline_sel()`
+- `R/selectivity.R` — contains `get_selectivity()` and `get_selectivity_prior()` using RTMB `dseparable` + `dautoreg` (separable 2D AR1 over year×age).
+- `index.qmd` — includes a Richards (generalized logistic) section embedded directly.
+- `timevarying_selectivity.qmd` — documents separable 2D AR1 time-varying selectivity.
+
+Conclusion:
+
+- `selex` documents a broader menu of *generic* selectivity forms than are currently wired into `rtmb_ebswp` as user-selectable options.
+
+## `rtmb_ebswp`
+
+Location:
+
+- `/Users/murphy/.openclaw/workspace/rtmb_ebswp`
+
+Key files checked:
+
+- `R/Rpm.R` — where fleet selectivity is computed in the RTMB objective.
+- `R/model_funs.R` — implementations and penalties:
+  - `compute_selectivity_fsh()` + `selectivity_like_fsh()`
+  - `compute_selectivity_ind()` + `selectivity_like_bts()`
+  - `compute_selectivity_ats_devs()` + `selectivity_like_ats()`
+- `R/config.R` — confirms which parameters are mapped/fixed (notably dormant fishery logistic parameters are fixed; fishery currently uses age-coefficient form + deviations).
+- `reporting/ebs_pollock_rtmb_ebswp_assessment.qmd` — existing layout/style patterns and existing ridge plots for selectivity.
+
+Conclusion:
+
+- There is not currently a “switch” among multiple fishery selectivity functional forms inside `rtmb_ebswp`.
+- Fishery selectivity is implemented as age coefficients + change-year deviations (blocked time variation) with penalties.
+- BTS uses annual logistic slope/a50 deviations (time-varying) plus an annual age-1 term.
+- ATS uses an age-coefficient + change-year deviations form similar to fishery.
+
+# Deliverables created/modified
+
+## New report
+
+Created:
+
+- `reporting/fishery_selectivity_forms.qmd`
+
+Contents:
+
+- Tables mapping `selex` forms and `rtmb_ebswp` implemented forms to source files.
+- Self-contained simulated examples for:
+  - Fishery coefficient + change-year deviations
+  - BTS annual logistic + age-1 effect
+  - ATS coefficient + change-year deviations
+- Explicit equations describing each mechanism.
+- **Added ggridges ridge plots** for Fishery, BTS, ATS (normalized within year), matching the style used in the main assessment report.
+
+## Notes on render
+
+- The report is designed to be renderable without external pollock workspace data (uses simulated inputs).
+- The existing full assessment report still requires `POLLOCK_ROOT` and bridge files.
+
+# TODO / next improvements
+
+- If you want the report to literally replicate *exact* aesthetics (colors, breaks, labels) from `ebs_pollock_rtmb_ebswp_assessment.qmd`, we can refactor those plotting helpers into a shared `reporting/_report_helpers.R` and source it from both reports.
+- If you later add additional fishery selectivity forms (e.g., Richards, spline, 2D AR1) into `rtmb_ebswp` proper (not just documentation), we can extend this report to exercise those code paths rather than simulating stand-alone shapes.

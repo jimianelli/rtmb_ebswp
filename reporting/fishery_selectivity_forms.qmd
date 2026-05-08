@@ -1,0 +1,786 @@
+---
+title: "Fishery Selectivity Forms in the RTMB EBS Pollock Model"
+execute:
+  echo: true
+  warning: false
+  message: false
+format:
+  html:
+    toc: true
+    toc-depth: 3
+    number-sections: true
+    embed-resources: true
+    html-math-method: katex
+    lightbox: true
+    code-fold: true
+    code-summary: "Show code"
+    code-tools: true
+---
+
+```{r setup}
+#| include: false
+suppressPackageStartupMessages({
+  library(dplyr)
+  library(tidyr)
+  library(ggplot2)
+  library(ggthemes)
+  library(gt)
+  library(knitr)
+  library(tibble)
+  library(ggridges)
+})
+
+theme_set(ggthemes::theme_few())
+
+qmd_file <- tryCatch(knitr::current_input(dir = TRUE), error = function(e) NULL)
+if (is.null(qmd_file)) {
+  qmd_dir <- normalizePath(file.path(getwd(), "reporting"), mustWork = FALSE)
+} else {
+  qmd_dir <- dirname(normalizePath(qmd_file, mustWork = TRUE))
+}
+rtmb_root <- normalizePath(file.path(qmd_dir, ".."), mustWork = TRUE)
+workspace_root <- normalizePath(file.path(rtmb_root, ".."), mustWork = TRUE)
+selex_root <- normalizePath(file.path(workspace_root, "selex"), mustWork = FALSE)
+
+repo_path <- function(...) file.path(rtmb_root, ...)
+selex_path <- function(...) file.path(selex_root, ...)
+
+gt_report <- function(data, ...) {
+  gt(data, ...) |>
+    tab_options(table.font.size = px(13))
+}
+
+ages <- 1:15
+plot_ages <- seq(1, 15, by = 0.1)
+
+mean_normalize <- function(log_sel) {
+  log_sel - log(mean(exp(log_sel)))
+}
+
+second_difference <- function(x) diff(x, differences = 2)
+first_difference <- function(x) diff(x)
+```
+
+# Purpose
+
+This report documents the selectivity forms that are visible in two local
+repositories:
+
+1. `/Users/murphy/.openclaw/workspace/selex`, a Quarto documentation project
+   comparing generic selectivity families.
+2. `/Users/murphy/.openclaw/workspace/rtmb_ebswp`, the RTMB implementation of the
+   eastern Bering Sea pollock model.
+
+The code examples below are self-contained. They use simulated ages, years, and
+parameters so the report can render from the `rtmb_ebswp` repository root without
+the external pollock ADMB workspace.
+
+# `selex` Coverage
+
+The `selex` repository covers five selectivity families. Four have standalone
+Quarto component pages and reusable R helpers; the generalized logistic
+(Richards) example is embedded in the manuscript index.
+
+```{r}
+#| label: tbl-selex-coverage
+#| tbl-cap: "Selectivity forms documented in the local selex repository."
+selex_tbl <- tribble(
+  ~form, ~description, ~source_files,
+  "Standard logistic",
+  "Two-parameter ascending logistic with age at 50% selectivity and 50-to-95% width.",
+  "logistic_selectivity.qmd; R/selectivity_functions.R::logistic_sel()",
+  "Double logistic",
+  "Three-parameter dome-shaped curve with ascending and descending logistic limbs.",
+  "double_logistic_selectivity.qmd; double_logistic_selectivity_body.qmd; R/selectivity_functions.R::dbl_logistic_sel()",
+  "Generalized logistic (Richards)",
+  "Double-Richards curve for asymmetric transitions and plateau-like domes.",
+  "index.qmd, section 'Generalized Logistic (Richards)'",
+  "Spline-based",
+  "Penalized B-spline log-selectivity with second-difference smoothing.",
+  "spline_selectivity.qmd; R/selectivity_functions.R::spline_sel()",
+  "Time-varying 2D AR1",
+  "Mean-normalized log-selectivity deviations with separable AR1 structure in year and age.",
+  "timevarying_selectivity.qmd; R/selectivity.R::get_selectivity(); R/selectivity.R::get_selectivity_prior()"
+)
+
+selex_tbl |>
+  gt_report() |>
+  tab_header(title = "selex Selectivity Documentation")
+```
+
+The generic forms in `selex` are broader than the current `rtmb_ebswp` model.
+The RTMB model does not currently expose a user switch among logistic, double
+logistic, Richards, spline, or 2D AR1 fishery forms. Instead, each fleet has a
+hard-coded selectivity structure in `R/Rpm.R` and helper functions in
+`R/model_funs.R`.
+
+# RTMB Implementation Map
+
+The current RTMB model implements three fleet-specific selectivity mechanisms:
+
+```{r}
+#| label: tbl-rtmb-forms
+#| tbl-cap: "Selectivity forms implemented in rtmb_ebswp."
+rtmb_tbl <- tribble(
+  ~fleet, ~implemented_form, ~time_variation, ~main_code, ~configuration,
+  "Fishery",
+  "Nonparametric age coefficients on log scale, mean-normalized each year, with terminal-age extension.",
+  "Change-year random-walk deviations in `sel_devs_fsh`; current call uses `yrs_ch_fsh <- 1965:min(2023, endyr)`.",
+  "R/Rpm.R; R/model_funs.R::compute_selectivity_fsh(); R/model_funs.R::selectivity_like_fsh()",
+  "`sel_coffs_fsh`, `sel_devs_fsh`, `n_selages_fsh`, `last_age_sel_fsh`; logistic fishery parameters are fixed in `R/config.R`.",
+  "BTS",
+  "Annual ascending logistic for ages 2+, with a separate annual age-1 log-selectivity term.",
+  "Annual vectors `sel_slp_bts_dev`, `sel_a50_bts_dev`, and `sel_age_one_bts_dev`; regularized by first differences of implied log-selectivity.",
+  "R/Rpm.R BTS loop; R/model_funs.R::compute_selectivity_ind(); R/model_funs.R::selectivity_like_bts()",
+  "Base BTS logistic terms and coefficient/deviation alternatives are fixed in `R/config.R`; active annual deviation vectors are not fixed.",
+  "ATS",
+  "Nonparametric age coefficients on log scale from a minimum age, mean-normalized each year, with terminal-age extension.",
+  "Change-year random-walk deviations in `sel_devs_ats`; current call uses `yrs_ch_ats <- 1995:min(2024, endyr)`.",
+  "R/Rpm.R; R/model_funs.R::compute_selectivity_ats_devs(); R/model_funs.R::selectivity_like_ats()",
+  "`sel_coffs_ats`, `sel_devs_ats`, `n_selages_ats`, `last_age_sel_ats`, `mina_ats`; phases and constants originate in `R/utilities.R`."
+)
+
+rtmb_tbl |>
+  gt_report() |>
+  tab_header(title = "RTMB Selectivity Forms and Configuration")
+```
+
+User configuration is therefore indirect. A user changes the active behavior by
+editing parameter maps in `R/config.R`, constants and phases in `R/utilities.R`,
+or the hard-coded calls in `R/Rpm.R`. The current `fixed_params` vector in
+`R/config.R` fixes the dormant fishery logistic parameters
+`sel_trm2_fsh`, `sel_dif1_fsh`, `sel_a501_fsh`, `sel_trm1_fsh`,
+`sel_dif2_fsh`, `sel_dif1_fsh_dev`, `sel_a501_fsh_dev`, and
+`sel_trm2_fsh_dev`. Fishery selectivity is currently the age-coefficient form,
+not a logistic form.
+
+# Fishery Age-Coefficient Form
+
+The fishery form is implemented by `compute_selectivity_fsh()` and used near the
+top of `R/Rpm.R`.
+
+For year \(y\) and age \(a\), let \(\ell_{y,a}\) be log-selectivity before
+exponentiation. In the first model year,
+
+$$
+\ell_{1,a} =
+\begin{cases}
+c_a, & a \le A_{\mathrm{sel}} \\
+c_{A_{\mathrm{sel}}}, & a > A_{\mathrm{sel}},
+\end{cases}
+$$
+
+where \(c_a\) are `sel_coffs_fsh` and \(A_{\mathrm{sel}}\) is
+`n_selages_fsh`. The vector is centered so mean selectivity equals 1:
+
+$$
+\ell_{y,a}^{*} =
+\ell_{y,a} -
+\log\left[
+\frac{1}{A}\sum_{a'=1}^{A}\exp(\ell_{y,a'})
+\right],
+\qquad
+s_{y,a} = \exp(\ell_{y,a}^{*}).
+$$
+
+At a change year, the implemented update adds a row of deviations to the
+previous curve:
+
+$$
+\ell_{y,a} =
+\ell_{y-1,a} + \delta_{k,a},
+\qquad a \le A_{\mathrm{sel}},
+$$
+
+then extends the terminal selectivity coefficient across older ages and
+renormalizes. Non-change years carry the previous curve forward.
+
+```{r fishery-functions}
+compute_fishery_demo <- function(nsel, years, nages, coffs, sel_devs, yrs_ch_fsh) {
+  log_sel <- matrix(0, nrow = length(years), ncol = nages,
+                    dimnames = list(years, seq_len(nages)))
+  log_sel[1, 1:nsel] <- coffs
+  log_sel[1, (nsel + 1):nages] <- coffs[nsel]
+  log_sel[1, ] <- mean_normalize(log_sel[1, ])
+
+  ii <- 1
+  for (i in seq_len(length(years) - 1)) {
+    year <- years[i]
+    if (ii <= nrow(sel_devs) && year == yrs_ch_fsh[ii]) {
+      log_sel[i + 1, 1:nsel] <- log_sel[i, 1:nsel] + sel_devs[ii, ]
+      log_sel[i + 1, (nsel + 1):nages] <- log_sel[i + 1, nsel]
+      ii <- ii + 1
+    } else {
+      log_sel[i + 1, ] <- log_sel[i, ]
+    }
+    log_sel[i + 1, ] <- mean_normalize(log_sel[i + 1, ])
+  }
+
+  exp(log_sel)
+}
+
+fishery_years <- 2000:2024
+fishery_nsel <- 12
+fishery_coffs <- c(-2.6, -1.8, -0.8, -0.1, 0.25, 0.35, 0.32, 0.28, 0.24, 0.20, 0.16, 0.12)
+fishery_change_years <- c(2004, 2010, 2017, 2021)
+fishery_devs <- rbind(
+  c(-0.20, -0.12, 0.02, 0.08, 0.10, 0.04, 0.00, -0.02, -0.04, -0.06, -0.08, -0.10),
+  c(0.05, 0.08, 0.12, 0.08, 0.00, -0.04, -0.08, -0.08, -0.06, -0.04, -0.02, 0.00),
+  c(-0.08, -0.04, 0.02, 0.05, 0.08, 0.06, 0.02, -0.02, -0.06, -0.10, -0.12, -0.14),
+  c(0.10, 0.06, 0.02, -0.02, -0.04, -0.04, -0.02, 0.00, 0.02, 0.04, 0.06, 0.08)
+)
+
+sel_fishery <- compute_fishery_demo(
+  nsel = fishery_nsel,
+  years = fishery_years,
+  nages = length(ages),
+  coffs = fishery_coffs,
+  sel_devs = fishery_devs,
+  yrs_ch_fsh = fishery_change_years
+)
+```
+
+```{r}
+#| label: fig-fishery-coefficients
+#| fig-cap: "Simulated fishery selectivity from the RTMB age-coefficient plus change-year deviation form."
+fishery_df <- as_tibble(sel_fishery, rownames = "year") |>
+  mutate(year = as.integer(year)) |>
+  pivot_longer(-year, names_to = "age", values_to = "selectivity") |>
+  mutate(age = as.integer(age))
+
+ggplot(fishery_df |> filter(year %in% c(2000, 2005, 2011, 2018, 2022, 2024)),
+       aes(x = age, y = selectivity, color = factor(year))) +
+  geom_line(linewidth = 1) +
+  geom_vline(xintercept = fishery_nsel, linetype = "dashed", color = "gray55") +
+  scale_x_continuous(breaks = ages) +
+  scale_y_continuous(limits = c(0, NA)) +
+  labs(x = "Age", y = "Mean-normalized selectivity", color = "Year")
+```
+
+```{r}
+#| label: fig-fishery-time-heatmap
+#| fig-cap: "Time-varying fishery selectivity surface from simulated change-year deviations."
+ggplot(fishery_df, aes(x = age, y = year, fill = selectivity)) +
+  geom_tile() +
+  geom_hline(yintercept = fishery_change_years + 0.5, color = "white", linewidth = 0.4) +
+  scale_x_continuous(breaks = ages) +
+  scale_y_reverse(breaks = seq(2000, 2024, by = 4)) +
+  scale_fill_viridis_c(name = "Selectivity") +
+  labs(x = "Age", y = "Year")
+```
+
+```{r}
+#| label: fig-fishery-selectivity-ridge
+#| fig-cap: "Fishery selectivity through time shown as ggridges (normalized within year)."
+fishery_ridge_df <- fishery_df |>
+  group_by(year) |>
+  mutate(relative_selectivity = selectivity / max(selectivity, na.rm = TRUE)) |>
+  ungroup() |>
+  mutate(year_factor = factor(year, levels = rev(sort(unique(year)))))
+
+ggplot(fishery_ridge_df, aes(x = age, y = year_factor, height = relative_selectivity, group = year_factor)) +
+  geom_density_ridges(stat = "identity", fill = "#1f78b4", alpha = 0.65, rel_min_height = 0.01) +
+  scale_x_continuous(breaks = ages) +
+  labs(x = "Age", y = "Year", title = "Fishery selectivity (relative, within-year)") +
+  theme(axis.text.y = element_text(size = 7))
+```
+
+The fishery penalty is defined in `selectivity_like_fsh()`. It combines:
+
+$$
+P_{\mathrm{shape}} =
+\lambda_{\mathrm{dome}}
+\sum_y \sum_{a=6}^{A_{\mathrm{sel}}-1}
+\left(\ell_{y,a} - \ell_{y,a+1}\right)^2,
+$$
+
+which penalizes decreasing log-selectivity over older selected ages, plus
+deviation, curvature, and random-walk penalties:
+
+$$
+P_{\mathrm{dev}} =
+\|\boldsymbol{\delta}\|^2
++ \frac{\lambda_C}{K}\left\|\Delta_a^2 \ell_{1,\cdot}\right\|^2
++ \sum_{k=1}^{K}
+\left[
+\frac{\lambda_C}{K}\left\|\Delta_a^2 \ell_{y_k,\cdot}\right\|^2
++ \frac{\left\|\ell_{y_k-1,\cdot} - \ell_{y_k,\cdot}\right\|^2}
+{2\sigma_k^2}
+\right].
+$$
+
+In `R/Rpm.R`, `sel_ch_sig_fsh` is set to 0.5 for most fishery change years, with
+larger values for two late-period changes.
+
+```{r}
+#| label: tbl-fishery-likelihood-compare
+#| tbl-cap: "Fishery selectivity penalty components under alternative time-variation scenarios (simulated)."
+
+norm2 <- function(x) sum(x^2, na.rm = TRUE)
+second_difference <- function(x) diff(x, differences = 2)
+
+fishery_penalty <- function(log_sel_fsh, n_selages_fsh, yrs_ch_fsh, sel_devs_fsh,
+                            domFish = 3, selCFsh = 1, sel_ch_sig_fsh = NULL) {
+  years <- as.integer(rownames(log_sel_fsh))
+  nyrs <- nrow(log_sel_fsh)
+  nch <- length(yrs_ch_fsh)
+  if (is.null(sel_ch_sig_fsh)) sel_ch_sig_fsh <- rep(0.5, nch)
+
+  year_index <- setNames(seq_along(years), as.character(years))
+
+  # shape penalty
+  shape_pen <- 0
+  for (i in seq_len(nyrs)) {
+    for (j in 6:(n_selages_fsh - 1)) {
+      d <- log_sel_fsh[i, j] - log_sel_fsh[i, j + 1]
+      shape_pen <- shape_pen + domFish * d * d
+    }
+  }
+
+  # dev penalty
+  dev_pen <- norm2(sel_devs_fsh)
+  dev_pen <- dev_pen + selCFsh / nch * norm2(second_difference(log_sel_fsh[1, ]))
+
+  for (k in seq_len(nch)) {
+    yy <- yrs_ch_fsh[k]
+    ik <- unname(year_index[as.character(yy)])
+    ip <- unname(year_index[as.character(yy - 1)])
+    if (is.na(ik) || is.na(ip)) next
+
+    dev_pen <- dev_pen + selCFsh / nch * norm2(second_difference(log_sel_fsh[ik, ]))
+    sigma <- sel_ch_sig_fsh[k]
+    dev_pen <- dev_pen + norm2(log_sel_fsh[ip, ] - log_sel_fsh[ik, ]) / (2 * sigma^2)
+  }
+
+  tibble(shape = shape_pen, dev = dev_pen, total = shape_pen + dev_pen)
+}
+
+# Build three fishery scenarios using the same baseline coefficients.
+make_fishery_scenario <- function(label, change_years) {
+  if (length(change_years) == 0) {
+    devs <- matrix(0, nrow = 0, ncol = fishery_nsel)
+  } else {
+    # reuse the same deviation rows cyclically for comparability
+    idx <- rep(seq_len(nrow(fishery_devs)), length.out = length(change_years))
+    devs <- fishery_devs[idx, , drop = FALSE]
+  }
+
+  sel <- compute_fishery_demo(
+    nsel = fishery_nsel,
+    years = fishery_years,
+    nages = length(ages),
+    coffs = fishery_coffs,
+    sel_devs = devs,
+    yrs_ch_fsh = change_years
+  )
+
+  log_sel <- log(sel)
+  rownames(log_sel) <- fishery_years
+
+  penalty <- fishery_penalty(
+    log_sel_fsh = log_sel,
+    n_selages_fsh = fishery_nsel,
+    yrs_ch_fsh = change_years,
+    sel_devs_fsh = devs,
+    domFish = 3,
+    selCFsh = 1,
+    sel_ch_sig_fsh = rep(0.5, length(change_years))
+  )
+
+  penalty |>
+    mutate(
+      scenario = label,
+      n_change_years = length(change_years)
+    )
+}
+
+fishery_like_tbl <- bind_rows(
+  make_fishery_scenario("No time-variation (carry-forward)", integer(0)),
+  make_fishery_scenario("Few change years", fishery_change_years),
+  make_fishery_scenario("Change every year (max flexibility)", fishery_years[-length(fishery_years)])
+) |>
+  select(scenario, n_change_years, shape, dev, total)
+
+fishery_like_tbl |>
+  mutate(across(c(shape, dev, total), ~round(.x, 3))) |>
+  gt_report() |>
+  tab_header(title = "Fishery selectivity penalties")
+```
+
+# BTS Logistic Form
+
+The BTS selectivity form is annual logistic selectivity for ages 2 and older,
+with age 1 overwritten by a separate estimated annual term. `R/Rpm.R` computes
+
+$$
+\log s_{t,a}^{\mathrm{BTS}} =
+-\log\left[
+1 + \exp\left\{-\exp(\gamma_t)
+\left(x_a - \exp(\alpha_t)\right)\right\}
+\right],
+$$
+
+where \(x_a = a + 0.5\), \(\gamma_t\) is `sel_slp_bts_dev[t]`, and \(\alpha_t\)
+is `sel_a50_bts_dev[t]`. Then
+
+$$
+\log s_{t,1}^{\mathrm{BTS}} = \eta_t,
+$$
+
+where \(\eta_t\) is `sel_age_one_bts_dev[t]`.
+
+```{r bts-functions}
+compute_bts_demo <- function(years, ages, log_slope, log_a50, log_age1) {
+  age_vector <- ages + 0.5
+  log_sel <- matrix(0, nrow = length(years), ncol = length(ages),
+                    dimnames = list(years, ages))
+  for (i in seq_along(years)) {
+    log_sel[i, ] <- -log(1 + exp(-exp(log_slope[i]) * (age_vector - exp(log_a50[i]))))
+  }
+  log_sel[, 1] <- log_age1
+  exp(log_sel)
+}
+
+bts_years <- 2000:2024
+t_index <- seq_along(bts_years)
+bts_log_slope <- log(1.25) + 0.18 * sin(t_index / 4)
+bts_log_a50 <- log(4.8) + 0.10 * cos(t_index / 5)
+bts_log_age1 <- log(0.08) + 0.25 * sin(t_index / 3)
+
+sel_bts <- compute_bts_demo(
+  years = bts_years,
+  ages = ages,
+  log_slope = bts_log_slope,
+  log_a50 = bts_log_a50,
+  log_age1 = bts_log_age1
+)
+```
+
+```{r}
+#| label: fig-bts-logistic
+#| fig-cap: "Simulated BTS annual logistic selectivity with a separate age-1 effect."
+bts_df <- as_tibble(sel_bts, rownames = "year") |>
+  mutate(year = as.integer(year)) |>
+  pivot_longer(-year, names_to = "age", values_to = "selectivity") |>
+  mutate(age = as.integer(age))
+
+ggplot(bts_df |> filter(year %in% c(2000, 2005, 2010, 2015, 2020, 2024)),
+       aes(x = age, y = selectivity, color = factor(year))) +
+  geom_line(linewidth = 1) +
+  geom_point(data = bts_df |> filter(age == 1, year %in% c(2000, 2005, 2010, 2015, 2020, 2024)),
+             size = 1.6) +
+  scale_x_continuous(breaks = ages) +
+  scale_y_continuous(limits = c(0, 1.05)) +
+  labs(x = "Age", y = "Selectivity", color = "Year")
+```
+
+The active BTS regularization in `selectivity_like_bts()` is applied to
+first differences in the implied log-selectivity surface:
+
+$$
+P_{\mathrm{BTS,time}} =
+\lambda_{\mathrm{BTS}}
+\sum_{a=q_{\min}}^{q_{\max}-1}
+\left\|\Delta_t \tilde{\ell}_{\cdot,a}\right\|^2,
+$$
+
+where \(\tilde{\ell}\) prepends a zero row for the year before the BTS series.
+The age-1 term is regularized separately:
+
+$$
+P_{\mathrm{BTS,age1}} =
+8 \left\|\Delta_t(\eta_t - \bar{\eta})\right\|^2.
+$$
+
+```{r}
+#| label: fig-bts-time-surface
+#| fig-cap: "Simulated BTS selectivity surface under annual slope, age-at-50, and age-1 variation."
+ggplot(bts_df, aes(x = age, y = year, fill = selectivity)) +
+  geom_tile() +
+  scale_x_continuous(breaks = ages) +
+  scale_y_reverse(breaks = seq(2000, 2024, by = 4)) +
+  scale_fill_viridis_c(name = "Selectivity", limits = c(0, 1)) +
+  labs(x = "Age", y = "Year")
+```
+
+```{r}
+#| label: fig-bts-selectivity-ridge
+#| fig-cap: "BTS selectivity through time shown as ggridges (normalized within year)."
+bts_ridge_df <- bts_df |>
+  group_by(year) |>
+  mutate(relative_selectivity = selectivity / max(selectivity, na.rm = TRUE)) |>
+  ungroup() |>
+  mutate(year_factor = factor(year, levels = rev(sort(unique(year)))))
+
+ggplot(bts_ridge_df, aes(x = age, y = year_factor, height = relative_selectivity, group = year_factor)) +
+  geom_density_ridges(stat = "identity", fill = "#4daf4a", alpha = 0.65, rel_min_height = 0.01) +
+  scale_x_continuous(breaks = ages) +
+  labs(x = "Age", y = "Year", title = "BTS selectivity (relative, within-year)") +
+  theme(axis.text.y = element_text(size = 7))
+```
+
+# ATS Age-Coefficient Form
+
+The ATS form is similar to the fishery coefficient form, but it begins at
+`mina_ats` and uses ATS-specific change years and penalties. In
+`compute_selectivity_ats_devs()`,
+
+$$
+\ell_{1,a} =
+\begin{cases}
+0, & a < a_{\min}^{\mathrm{ATS}} \\
+c_a, & a_{\min}^{\mathrm{ATS}} \le a \le A_{\mathrm{sel}}^{\mathrm{ATS}} \\
+c_{A_{\mathrm{sel}}^{\mathrm{ATS}}}, & a > A_{\mathrm{sel}}^{\mathrm{ATS}}.
+\end{cases}
+$$
+
+Change-year deviations are added to the modeled age range, the terminal age is
+extended, and each annual curve is mean-normalized.
+
+```{r ats-functions}
+compute_ats_demo <- function(nsel, nages, years, mina_ats, coffs, sel_devs, yrs_ch_ats) {
+  log_sel <- matrix(0, nrow = length(years), ncol = nages,
+                    dimnames = list(years, seq_len(nages)))
+  log_sel[1, mina_ats:nsel] <- coffs
+  log_sel[1, (nsel + 1):nages] <- log_sel[1, nsel]
+  log_sel[1, ] <- mean_normalize(log_sel[1, ])
+
+  ii <- 1
+  for (i in seq_len(length(years) - 1)) {
+    yr_next <- years[i + 1]
+    if (ii <= length(yrs_ch_ats) && yr_next == yrs_ch_ats[ii]) {
+      log_sel[i + 1, mina_ats:nsel] <- log_sel[i, mina_ats:nsel] + sel_devs[ii, ]
+      log_sel[i + 1, (nsel + 1):nages] <- log_sel[i + 1, nsel]
+      ii <- ii + 1
+    } else {
+      log_sel[i + 1, ] <- log_sel[i, ]
+    }
+    log_sel[i + 1, ] <- mean_normalize(log_sel[i + 1, ])
+  }
+
+  exp(log_sel)
+}
+
+ats_years <- 2000:2024
+ats_mina <- 2
+ats_nsel <- 12
+ats_coffs <- c(-1.0, -0.30, 0.20, 0.36, 0.28, 0.08, -0.16, -0.42, -0.65, -0.82, -0.95)
+ats_change_years <- c(2006, 2013, 2019, 2023)
+ats_devs <- rbind(
+  c(0.04, 0.06, 0.04, 0.00, -0.03, -0.05, -0.06, -0.06, -0.04, -0.02, 0.00),
+  c(-0.05, -0.02, 0.03, 0.06, 0.05, 0.02, -0.02, -0.05, -0.08, -0.08, -0.08),
+  c(0.02, 0.04, 0.06, 0.04, 0.00, -0.04, -0.06, -0.08, -0.08, -0.06, -0.04),
+  c(-0.03, -0.01, 0.02, 0.04, 0.04, 0.01, -0.02, -0.04, -0.04, -0.02, 0.00)
+)
+
+sel_ats <- compute_ats_demo(
+  nsel = ats_nsel,
+  nages = length(ages),
+  years = ats_years,
+  mina_ats = ats_mina,
+  coffs = ats_coffs,
+  sel_devs = ats_devs,
+  yrs_ch_ats = ats_change_years
+)
+```
+
+```{r}
+#| label: fig-ats-coefficients
+#| fig-cap: "Simulated ATS selectivity from the RTMB coefficient plus change-year deviation form."
+ats_df <- as_tibble(sel_ats, rownames = "year") |>
+  mutate(year = as.integer(year)) |>
+  pivot_longer(-year, names_to = "age", values_to = "selectivity") |>
+  mutate(age = as.integer(age))
+
+ggplot(ats_df |> filter(year %in% c(2000, 2007, 2014, 2020, 2024)),
+       aes(x = age, y = selectivity, color = factor(year))) +
+  geom_line(linewidth = 1) +
+  geom_vline(xintercept = c(ats_mina, ats_nsel), linetype = "dashed", color = "gray55") +
+  scale_x_continuous(breaks = ages) +
+  scale_y_continuous(limits = c(0, NA)) +
+  labs(x = "Age", y = "Mean-normalized selectivity", color = "Year")
+```
+
+```{r}
+#| label: fig-ats-selectivity-ridge
+#| fig-cap: "ATS selectivity through time shown as ggridges (normalized within year)."
+ats_ridge_df <- ats_df |>
+  group_by(year) |>
+  mutate(relative_selectivity = selectivity / max(selectivity, na.rm = TRUE)) |>
+  ungroup() |>
+  mutate(year_factor = factor(year, levels = rev(sort(unique(year)))))
+
+ggplot(ats_ridge_df, aes(x = age, y = year_factor, height = relative_selectivity, group = year_factor)) +
+  geom_density_ridges(stat = "identity", fill = "#984ea3", alpha = 0.65, rel_min_height = 0.01) +
+  scale_x_continuous(breaks = ages) +
+  labs(x = "Age", y = "Year", title = "ATS selectivity (relative, within-year)") +
+  theme(axis.text.y = element_text(size = 7))
+```
+
+The ATS penalty in `selectivity_like_ats()` combines a shape penalty over older
+ages, curvature penalties at change years, and a random-walk penalty between the
+change year and the preceding year:
+
+$$
+P_{\mathrm{ATS,RW}} =
+\sum_{k=1}^{K}
+\frac{\left\|\ell_{y_k-1,\cdot} - \ell_{y_k,\cdot}\right\|^2}
+{2\sigma_k^2}.
+$$
+
+In `R/Rpm.R`, `sel_ch_sig_ats` is set to 0.138 for each ATS change year.
+
+```{r}
+#| label: tbl-ats-likelihood-compare
+#| tbl-cap: "ATS selectivity penalty components under alternative time-variation scenarios (simulated)."
+
+ats_penalty <- function(log_sel_ats, n_selages_ats, yrs_ch_ats, sel_ch_sig_ats,
+                        selATS = 1, selTATS = 1) {
+  years <- as.integer(rownames(log_sel_ats))
+  year_index <- setNames(seq_along(years), as.character(years))
+
+  # shape penalty
+  shape_pen <- 0
+  for (yy in years) {
+    i <- unname(year_index[as.character(yy)])
+    for (j in 5:(n_selages_ats - 1)) {
+      d <- log_sel_ats[i, j] - log_sel_ats[i, j + 1]
+      shape_pen <- shape_pen + selATS * d * d
+    }
+  }
+
+  # curvature + RW
+  curv <- 0
+  rw <- 0
+  for (k in seq_along(yrs_ch_ats)) {
+    yy <- yrs_ch_ats[k]
+    ik <- unname(year_index[as.character(yy)])
+    ip <- unname(year_index[as.character(yy - 1)])
+    if (is.na(ik) || is.na(ip)) next
+
+    curv <- curv + selTATS * norm2(second_difference(log_sel_ats[ik, ]))
+    sigma <- sel_ch_sig_ats[k]
+    rw <- rw + norm2(log_sel_ats[ip, ] - log_sel_ats[ik, ]) / (2 * sigma^2)
+  }
+
+  tibble(shape = shape_pen, curvature = curv, random_walk = rw, total = shape_pen + curv + rw)
+}
+
+make_ats_scenario <- function(label, change_years) {
+  if (length(change_years) == 0) {
+    devs <- matrix(0, nrow = 0, ncol = length(ats_coffs))
+  } else {
+    idx <- rep(seq_len(nrow(ats_devs)), length.out = length(change_years))
+    devs <- ats_devs[idx, , drop = FALSE]
+  }
+
+  sel <- compute_ats_demo(
+    nsel = ats_nsel,
+    nages = length(ages),
+    years = ats_years,
+    mina_ats = ats_mina,
+    coffs = ats_coffs,
+    sel_devs = devs,
+    yrs_ch_ats = change_years
+  )
+
+  log_sel <- log(sel)
+  rownames(log_sel) <- ats_years
+
+  pen <- ats_penalty(
+    log_sel_ats = log_sel,
+    n_selages_ats = ats_nsel,
+    yrs_ch_ats = change_years,
+    sel_ch_sig_ats = rep(0.138, length(change_years)),
+    selATS = 1,
+    selTATS = 1
+  )
+
+  pen |>
+    mutate(scenario = label, n_change_years = length(change_years))
+}
+
+ats_like_tbl <- bind_rows(
+  make_ats_scenario("No time-variation (carry-forward)", integer(0)),
+  make_ats_scenario("Few change years", ats_change_years),
+  make_ats_scenario("Change every year (max flexibility)", ats_years[-length(ats_years)])
+) |>
+  select(scenario, n_change_years, shape, curvature, random_walk, total)
+
+ats_like_tbl |>
+  mutate(across(c(shape, curvature, random_walk, total), ~round(.x, 3))) |>
+  gt_report() |>
+  tab_header(title = "ATS selectivity penalties")
+```
+
+# Comparison to `selex` Forms
+
+The RTMB coefficient forms are closest to the nonparametric, mean-normalized
+selectivity construction in `selex/R/selectivity.R`, but they use deterministic
+change-year random-walk penalties rather than the separable 2D AR1 prior shown
+in `selex/timevarying_selectivity.qmd`.
+
+The BTS form is closest to `selex` standard logistic selectivity, although the
+parameterization differs. `selex` uses an \(a_{50}\) and a 50-to-95 width
+\(\delta\):
+
+$$
+s(a) = \frac{1}{1 + \exp\left[-\log(19)\frac{a-a_{50}}{\delta}\right]}.
+$$
+
+The RTMB BTS code uses a log slope \(\gamma_t\), where
+\(\mathrm{slope}_t = \exp(\gamma_t)\). These are equivalent if
+\(\mathrm{slope} = \log(19) / \delta\).
+
+```{r}
+#| label: fig-selex-comparison
+#| fig-cap: "Generic selex forms compared with RTMB-style coefficient and BTS logistic examples."
+logistic_sel <- function(age, a50, delta) {
+  1 / (1 + exp(-log(19) * (age - a50) / delta))
+}
+
+dbl_logistic_sel <- function(age, p1, p2, p3) {
+  gamma1 <- p1 + p2
+  gamma2 <- 2 * p1 + p2 + p3
+  asc <- 1 / (1 + exp(-log(19) * (age - gamma1) / p1))
+  desc <- 1 - 1 / (1 + exp(-log(19) * (age - gamma2) / p3))
+  pmin(asc * desc * 0.95^(-2), 1)
+}
+
+compare_df <- bind_rows(
+  tibble(form = "selex logistic", age = plot_ages,
+         selectivity = logistic_sel(plot_ages, a50 = 5, delta = 1.4)),
+  tibble(form = "selex double logistic", age = plot_ages,
+         selectivity = dbl_logistic_sel(plot_ages, p1 = 1.2, p2 = 3.6, p3 = 2.4)),
+  fishery_df |>
+    filter(year == 2024) |>
+    transmute(form = "RTMB fishery coefficient", age = as.numeric(age),
+              selectivity = selectivity / max(selectivity)),
+  bts_df |>
+    filter(year == 2024) |>
+    transmute(form = "RTMB BTS logistic", age = as.numeric(age),
+              selectivity = selectivity)
+)
+
+ggplot(compare_df, aes(x = age, y = selectivity, color = form)) +
+  geom_line(linewidth = 1) +
+  scale_y_continuous(limits = c(0, 1.05)) +
+  labs(x = "Age", y = "Relative selectivity", color = NULL)
+```
+
+# Takeaways
+
+The current RTMB model implements selectivity as fleet-specific code paths rather
+than as a selectable family of forms.
+
+- Fishery selectivity is a flexible age-coefficient curve with annual
+  change-year deviations, mean normalization, terminal-age extension, and
+  curvature/random-walk/shape penalties.
+- BTS selectivity is the only active parametric logistic form: annual slope and
+  age-at-50 parameters define ages 2+, and age 1 has its own annual parameter.
+- ATS selectivity is another flexible age-coefficient curve, starting at
+  `mina_ats`, with change-year deviations and ATS-specific penalties.
+- The `selex` repository documents additional candidate forms: double logistic,
+  Richards, splines, and separable 2D AR1 time variation. Those are useful
+  reference implementations, but they are not currently wired as selectable
+  alternatives inside `rtmb_ebswp`.
