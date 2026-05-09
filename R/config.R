@@ -135,6 +135,7 @@ data <- Get_Data()
 if (!is.null(pm)) {
   data$sam_bts <- floor(pm$sam_bts)  # Avoid non-integer sample sizes
 }
+parms <- add_fishery_selectivity_parameters(parms, data)
 
 # --- Parameter Mapping ---
 # Fix parameters that are not being estimated in this configuration
@@ -157,6 +158,7 @@ fixed_params <- c(
   # Fishery selectivity (using coefficients, not logistic)
   "sel_trm2_fsh", "sel_dif1_fsh", "sel_a501_fsh", "sel_trm1_fsh",
   "sel_dif2_fsh", "sel_dif1_fsh_dev", "sel_a501_fsh_dev", "sel_trm2_fsh_dev",
+  inactive_fishery_selectivity_parameters(data$fishery_sel_form),
   # Temperature effects
   "resid_temp_x1", "resid_temp_x2",
   # Other fixed

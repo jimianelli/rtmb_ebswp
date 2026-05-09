@@ -6,9 +6,32 @@ rpm <- function(parms) {
   getAll(parms, data, warn = FALSE)
   ## Initialize joint negative log likelihood
   nll <- 0
+  if (!exists("fishery_sel_form", inherits = FALSE)) fishery_sel_form <- 0L
+  if (!exists("fishery_sel_spline_basis", inherits = FALSE)) {
+    fishery_sel_spline_basis <- diag(nages)
+  }
+  if (!exists("sel_logistic_fsh", inherits = FALSE)) sel_logistic_fsh <- c(log(5), log(1.5))
+  if (!exists("sel_double_logistic_fsh", inherits = FALSE)) sel_double_logistic_fsh <- log(c(1.5, 3, 2.5))
+  if (!exists("sel_richards_fsh", inherits = FALSE)) sel_richards_fsh <- c(log(4), log(1), log(1), log(5), log(0.75), log(1))
+  if (!exists("sel_spline_fsh", inherits = FALSE)) sel_spline_fsh <- rep(0, ncol(fishery_sel_spline_basis))
+  if (!exists("sel_tv_ar1_fsh", inherits = FALSE)) sel_tv_ar1_fsh <- matrix(0, nrow = endyr - styr + 1, ncol = nages)
+  if (!exists("sel_tv_ar1_rho_fsh", inherits = FALSE)) sel_tv_ar1_rho_fsh <- c(0, 0)
+  if (!exists("log_sel_tv_ar1_sigma_fsh", inherits = FALSE)) log_sel_tv_ar1_sigma_fsh <- log(0.2)
+
   # sel_devs_fsh <- sel_devs_fsh - mean(sel_devs_fsh) # Centering selectivity deviations
-  tmp <- compute_selectivity_fsh( nsel = n_selages_fsh, stsel = styr, endyr = endyr,
-    nages = nages, coffs = sel_coffs_fsh, sel_devs = sel_devs_fsh, yrs_ch_fsh = 1965:2023 )
+  yrs_ch_fsh_model <- 1965:min(2023, endyr)
+  tmp <- compute_selectivity_fsh_forms(
+    fishery_sel_form = fishery_sel_form,
+    nsel = n_selages_fsh, stsel = styr, endyr = endyr,
+    nages = nages, coffs = sel_coffs_fsh, sel_devs = sel_devs_fsh,
+    yrs_ch_fsh = yrs_ch_fsh_model,
+    sel_logistic_fsh = sel_logistic_fsh,
+    sel_double_logistic_fsh = sel_double_logistic_fsh,
+    sel_richards_fsh = sel_richards_fsh,
+    sel_spline_fsh = sel_spline_fsh,
+    fishery_sel_spline_basis = fishery_sel_spline_basis,
+    sel_tv_ar1_fsh = sel_tv_ar1_fsh
+  )
   log_sel_fsh <- tmp$log_sel
   avgsel_fsh <- tmp$avgsel
   sel_fsh <- exp(log_sel_fsh)
@@ -246,7 +269,7 @@ rpm <- function(parms) {
   obs_avo_var <- ob_avo_std^2
 
   # Surv_Likelihood()
-  yrs_ch_fsh <- 1965:min(2023, endyr) # length 59 in the full model
+  yrs_ch_fsh <- yrs_ch_fsh_model # length 59 in the full model
   nch_fsh <- length(yrs_ch_fsh) # length 59
   sel_ch_sig_fsh <- rep(0.5, nch_fsh) # length 59, all 0.5
   sel_ch_sig_fsh[55:56] <- 1.9 # length 59, all 0.5
@@ -254,11 +277,21 @@ rpm <- function(parms) {
   year_index <- setNames(seq_along(years), years)
 
   nyrs <- length(years)
-  pen_fsh <- selectivity_like_fsh(
-    log_sel_fsh, styr=styr, endyr=endyr, n_selages_fsh,
-    yrs_ch_fsh, nch_fsh, nyrs = length(years),
-    domFish, selTFsh, selCFsh, selCurv,
-    sel_devs_fsh, sel_ch_sig_fsh, year_index )
+  pen_fsh <- selectivity_like_fsh_forms(
+    fishery_sel_form = fishery_sel_form,
+    log_sel_fsh = log_sel_fsh, styr=styr, endyr=endyr,
+    n_selages_fsh = n_selages_fsh,
+    yrs_ch_fsh = yrs_ch_fsh, nch_fsh = nch_fsh, nyrs = length(years),
+    domFish = domFish, selTFsh = selTFsh, selCFsh = selCFsh,
+    selCurv = selCurv, sel_devs_fsh = sel_devs_fsh,
+    sel_ch_sig_fsh = sel_ch_sig_fsh, year_index = year_index,
+    sel_logistic_fsh = sel_logistic_fsh,
+    sel_double_logistic_fsh = sel_double_logistic_fsh,
+    sel_richards_fsh = sel_richards_fsh,
+    sel_spline_fsh = sel_spline_fsh,
+    sel_tv_ar1_fsh = sel_tv_ar1_fsh,
+    sel_tv_ar1_rho_fsh = sel_tv_ar1_rho_fsh,
+    log_sel_tv_ar1_sigma_fsh = log_sel_tv_ar1_sigma_fsh )
   
    pen_bts <- selectivity_like_bts(
      styr=styr, endyr=endyr,
@@ -405,6 +438,11 @@ rpm <- function(parms) {
   ADREPORT(sel_coffs_ats)
   ADREPORT(sel_coffs_fsh)
   ADREPORT(sel_devs_fsh)
+  ADREPORT(sel_logistic_fsh)
+  ADREPORT(sel_double_logistic_fsh)
+  ADREPORT(sel_richards_fsh)
+  ADREPORT(sel_spline_fsh)
+  ADREPORT(sel_tv_ar1_fsh)
   ADREPORT(sel_slp_bts_dev)
   ADREPORT(sel_a50_bts_dev)
   ADREPORT(sel_age_one_bts_dev)

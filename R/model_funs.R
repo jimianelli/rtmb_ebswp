@@ -61,6 +61,94 @@ compute_selectivity_fsh <- function(nsel, stsel, endyr, nages, coffs, sel_devs, 
   return(list(avgsel = avgsel, log_sel = log_sel))
 }
 
+center_log_selectivity <- function(log_sel) {
+  log_sel - log(mean(exp(log_sel)))
+}
+
+safe_logit_rho <- function(x) {
+  2 / (1 + exp(-x)) - 1
+}
+
+#' Compute fishery selectivity from selectable forms
+#'
+#' @description
+#' Dispatches fishery selectivity generation across the default coefficient form
+#' and optional logistic, double-logistic, double-Richards, spline, and 2D AR1
+#' forms. All returned log-selectivities are centered within year so mean
+#' selectivity equals 1.
+#'
+#' @export
+compute_selectivity_fsh_forms <- function(fishery_sel_form, nsel, stsel, endyr, nages,
+                                          coffs, sel_devs, yrs_ch_fsh,
+                                          sel_logistic_fsh,
+                                          sel_double_logistic_fsh,
+                                          sel_richards_fsh,
+                                          sel_spline_fsh,
+                                          fishery_sel_spline_basis,
+                                          sel_tv_ar1_fsh) {
+  "c" <- ADoverload("c")
+  "[<-" <- ADoverload("[<-")
+
+  form <- as.integer(fishery_sel_form)[1]
+  nyrs <- endyr - stsel + 1
+  age_vector <- 0.5 + 1:nages
+
+  if (form == 0L) {
+    return(compute_selectivity_fsh(
+      nsel = nsel, stsel = stsel, endyr = endyr, nages = nages,
+      coffs = coffs, sel_devs = sel_devs, yrs_ch_fsh = yrs_ch_fsh
+    ))
+  }
+
+  log_sel <- matrix(0, nrow = nyrs, ncol = nages)
+  rownames(log_sel) <- as.character(stsel:endyr)
+  avgsel <- 0
+
+  if (form == 1L) {
+    a50 <- exp(sel_logistic_fsh[1])
+    delta <- exp(sel_logistic_fsh[2])
+    base <- -log(1 + exp(-log(19) * (age_vector - a50) / delta))
+    base <- center_log_selectivity(base)
+    for (i in 1:nyrs) log_sel[i, ] <- base
+  } else if (form == 2L) {
+    p1 <- exp(sel_double_logistic_fsh[1])
+    p2 <- exp(sel_double_logistic_fsh[2])
+    p3 <- exp(sel_double_logistic_fsh[3])
+    gamma1 <- p1 + p2
+    gamma2 <- 2 * p1 + p2 + p3
+    asc <- 1 / (1 + exp(-log(19) * (age_vector - gamma1) / p1))
+    desc <- 1 - 1 / (1 + exp(-log(19) * (age_vector - gamma2) / p3))
+    base <- log(asc * desc * 0.95^(-2) + 1e-12)
+    base <- base - max(base)
+    base <- center_log_selectivity(base)
+    for (i in 1:nyrs) log_sel[i, ] <- base
+  } else if (form == 3L) {
+    a501 <- exp(sel_richards_fsh[1])
+    k1 <- exp(sel_richards_fsh[2])
+    nu1 <- exp(sel_richards_fsh[3])
+    a502 <- a501 + exp(sel_richards_fsh[4])
+    k2 <- exp(sel_richards_fsh[5])
+    nu2 <- exp(sel_richards_fsh[6])
+    asc <- (1 + exp(-k1 * (age_vector - a501)))^(-1 / nu1)
+    desc <- 1 - (1 + exp(-k2 * (age_vector - a502)))^(-1 / nu2)
+    base <- log(asc * desc + 1e-12)
+    base <- base - max(base)
+    base <- center_log_selectivity(base)
+    for (i in 1:nyrs) log_sel[i, ] <- base
+  } else if (form == 4L) {
+    base <- as.vector(fishery_sel_spline_basis %*% sel_spline_fsh)
+    base <- base - max(base)
+    base <- center_log_selectivity(base)
+    for (i in 1:nyrs) log_sel[i, ] <- base
+  } else if (form == 5L) {
+    for (i in 1:nyrs) log_sel[i, ] <- center_log_selectivity(sel_tv_ar1_fsh[i, ])
+  } else {
+    stop("Unsupported fishery_sel_form: ", form)
+  }
+
+  list(avgsel = avgsel, log_sel = log_sel)
+}
+
 #' Compute survey selectivity using logistic function
 #'
 #' @description
@@ -634,6 +722,77 @@ selectivity_like_fsh <- function(log_sel_fsh, styr, endyr, n_selages_fsh, yrs_ch
   }
 
   return(list(shape = shape_pen, dev = dev, total = shape_pen + dev))
+}
+
+#' Fishery selectivity penalties for selectable forms
+#'
+#' @description
+#' Keeps the existing fishery coefficient penalty unchanged for form 0 and adds
+#' weak parameter, smoothness, or AR1 process penalties for the optional forms.
+#'
+#' @export
+selectivity_like_fsh_forms <- function(fishery_sel_form, log_sel_fsh, styr, endyr,
+                                       n_selages_fsh, yrs_ch_fsh, nch_fsh, nyrs,
+                                       domFish, selTFsh, selCFsh, selCurv,
+                                       sel_devs_fsh, sel_ch_sig_fsh, year_index,
+                                       sel_logistic_fsh,
+                                       sel_double_logistic_fsh,
+                                       sel_richards_fsh,
+                                       sel_spline_fsh,
+                                       sel_tv_ar1_fsh,
+                                       sel_tv_ar1_rho_fsh,
+                                       log_sel_tv_ar1_sigma_fsh) {
+  "c" <- ADoverload("c")
+  "[<-" <- ADoverload("[<-")
+
+  form <- as.integer(fishery_sel_form)[1]
+  if (form == 0L) {
+    return(selectivity_like_fsh(
+      log_sel_fsh, styr = styr, endyr = endyr,
+      n_selages_fsh = n_selages_fsh, yrs_ch_fsh = yrs_ch_fsh,
+      nch_fsh = nch_fsh, nyrs = nyrs,
+      domFish = domFish, selTFsh = selTFsh, selCFsh = selCFsh,
+      selCurv = selCurv, sel_devs_fsh = sel_devs_fsh,
+      sel_ch_sig_fsh = sel_ch_sig_fsh, year_index = year_index
+    ))
+  }
+
+  shape_pen <- 0
+  dev <- 0
+
+  if (form %in% c(1L, 2L, 3L, 4L)) {
+    for (i in 1:nyrs) {
+      dev <- dev + selCFsh / nyrs * norm2(sdiff(log_sel_fsh[i, ]))
+    }
+  }
+
+  if (form == 1L) {
+    target <- c(log(5), log(1.5))
+    scale <- c(2, 1)
+    dev <- dev + sum(((sel_logistic_fsh - target) / scale)^2)
+  } else if (form == 2L) {
+    target <- log(c(1.5, 3, 2.5))
+    dev <- dev + sum(((sel_double_logistic_fsh - target) / 1.5)^2)
+    shape_pen <- shape_pen + domFish * norm2(log_sel_fsh[, ncol(log_sel_fsh)] - max(log_sel_fsh[1, ]))
+  } else if (form == 3L) {
+    target <- c(log(4), log(1), log(1), log(5), log(0.75), log(1))
+    dev <- dev + sum(((sel_richards_fsh - target) / 2)^2)
+    shape_pen <- shape_pen + domFish * norm2(log_sel_fsh[, ncol(log_sel_fsh)] - max(log_sel_fsh[1, ]))
+  } else if (form == 4L) {
+    dev <- dev + selCFsh * norm2(sdiff(sel_spline_fsh))
+    dev <- dev + 0.01 * norm2(sel_spline_fsh)
+  } else if (form == 5L) {
+    rho_y <- safe_logit_rho(sel_tv_ar1_rho_fsh[1])
+    rho_a <- safe_logit_rho(sel_tv_ar1_rho_fsh[2])
+    scale <- exp(log_sel_tv_ar1_sigma_fsh) /
+      sqrt(1 - rho_y^2 + 1e-12) / sqrt(1 - rho_a^2 + 1e-12)
+    f_year <- function(x) dautoreg(x, phi = rho_y, log = TRUE)
+    f_age <- function(x) dautoreg(x, phi = rho_a, log = TRUE)
+    dev <- dev - dseparable(f_year, f_age)(sel_tv_ar1_fsh, scale = scale)
+    dev <- dev + 0.01 * norm2(sel_tv_ar1_rho_fsh) + 0.01 * log_sel_tv_ar1_sigma_fsh^2
+  }
+
+  list(shape = shape_pen, dev = dev, total = shape_pen + dev)
 }
 
 #' ATS selectivity likelihood

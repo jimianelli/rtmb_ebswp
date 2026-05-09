@@ -768,19 +768,64 @@ ggplot(compare_df, aes(x = age, y = selectivity, color = form)) +
   labs(x = "Age", y = "Relative selectivity", color = NULL)
 ```
 
+# Selectable Fishery Alternatives
+
+The RTMB fishery path now has a form flag carried in model data:
+`fishery_sel_form`. The default is `0`, which preserves the existing
+age-coefficient plus change-year deviation behavior. Optional alternatives are:
+
+```{r}
+#| label: tbl-fishery-form-flags
+#| tbl-cap: "Fishery selectivity forms available through `fishery_sel_form`."
+tibble::tribble(
+  ~fishery_sel_form, ~form, ~main_parameters, ~regularization,
+  0, "existing coefficient/change-year form", "`sel_coffs_fsh`, `sel_devs_fsh`", "existing shape, curvature, and random-walk penalties",
+  1, "standard logistic", "`sel_logistic_fsh = log(a50, delta)`", "weak priors on `a50` and `delta` plus age smoothness",
+  2, "3-parameter double logistic dome", "`sel_double_logistic_fsh = log(p1, p2, p3)`", "weak parameter priors plus age smoothness and dome penalty",
+  3, "double Richards", "`sel_richards_fsh` for ascending and descending limbs", "weak parameter priors plus age smoothness and dome penalty",
+  4, "penalized B-spline", "`sel_spline_fsh`, `fishery_sel_spline_basis`", "second-difference penalty on spline coefficients and implied log-selectivity",
+  5, "2D AR1 year x age surface", "`sel_tv_ar1_fsh`, `sel_tv_ar1_rho_fsh`, `log_sel_tv_ar1_sigma_fsh`", "separable AR1 prior over year and age"
+) |>
+  gt_report()
+```
+
+All forms return `log_sel_fsh` and `sel_fsh = exp(log_sel_fsh)` on the same
+year-by-age shape used by the rest of `R/Rpm.R`. Each year is centered so
+mean selectivity equals 1, matching the identifiability convention in
+`compute_selectivity_fsh()`.
+
+Activation is data-driven. Set `fishery_sel_form` in the data list before
+calling `MakeADFun()`, or add a `# fishery_sel_form` block to an input reader
+path that uses `build_model_inputs()` or `read_model_inputs()`. `R/config.R`
+adds default parameter blocks for every optional form and fixes inactive blocks
+through `inactive_fishery_selectivity_parameters()`, so only the selected
+selectivity parameter set is estimated.
+
+The implementation lives in:
+
+- `R/model_funs.R::compute_selectivity_fsh_forms()` for generators.
+- `R/model_funs.R::selectivity_like_fsh_forms()` for penalties and priors.
+- `R/utilities.R` and `R/utils-rtmb.R` for data defaults, spline basis
+  construction, and parameter initialization.
+- `scripts/check_fishery_selectivity_forms.R` for a fake-data generator check
+  that does not require `POLLOCK_ROOT`.
+
+The logistic and double-logistic equations follow `selex/R/selectivity_functions.R`.
+The double-Richards form follows the generalized logistic section of
+`selex/index.qmd`, and the 2D AR1 penalty follows
+`selex/timevarying_selectivity.qmd` / `selex/R/selectivity.R`.
+
 # Takeaways
 
-The current RTMB model implements selectivity as fleet-specific code paths rather
-than as a selectable family of forms.
+The RTMB model still implements selectivity as fleet-specific code paths, but
+fishery selectivity now has selectable alternatives controlled by
+`fishery_sel_form`.
 
 - Fishery selectivity is a flexible age-coefficient curve with annual
-  change-year deviations, mean normalization, terminal-age extension, and
-  curvature/random-walk/shape penalties.
+  change-year deviations by default, preserving the historical behavior.
+- Optional fishery forms include standard logistic, double logistic, double
+  Richards, penalized spline, and separable 2D AR1 surfaces from `selex`.
 - BTS selectivity is the only active parametric logistic form: annual slope and
   age-at-50 parameters define ages 2+, and age 1 has its own annual parameter.
 - ATS selectivity is another flexible age-coefficient curve, starting at
   `mina_ats`, with change-year deviations and ATS-specific penalties.
-- The `selex` repository documents additional candidate forms: double logistic,
-  Richards, splines, and separable 2D AR1 time variation. Those are useful
-  reference implementations, but they are not currently wired as selectable
-  alternatives inside `rtmb_ebswp`.

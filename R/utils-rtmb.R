@@ -202,6 +202,63 @@ read_pars_simple <- function(file) {
   result
 }
 
+#' @title Build fishery selectivity B-spline basis
+#' @param nages number of age classes
+#' @param nbasis number of basis columns
+#' @param degree spline degree
+#' @return numeric matrix [age x basis]
+#' @export
+make_fishery_sel_spline_basis <- function(nages, nbasis = 6L, degree = 3L) {
+  ages <- 0.5 + seq_len(nages)
+  nbasis <- max(as.integer(nbasis), degree + 1L)
+  as.matrix(splines::bs(ages, df = nbasis, degree = degree, intercept = TRUE))
+}
+
+#' @title Add optional fishery selectivity parameters
+#' @description Adds default parameter blocks for all selectable fishery forms.
+#' @param parameters parameter list
+#' @param data model data list
+#' @return parameter list
+#' @export
+add_fishery_selectivity_parameters <- function(parameters, data) {
+  nyrs <- as.integer(data$endyr - data$styr + 1L)
+  nages <- as.integer(data$nages)
+  nbasis <- if (!is.null(data$fishery_sel_spline_basis)) ncol(data$fishery_sel_spline_basis) else 6L
+  defaults <- list(
+    sel_logistic_fsh = c(log(5), log(1.5)),
+    sel_double_logistic_fsh = log(c(1.5, 3, 2.5)),
+    sel_richards_fsh = c(log(4), log(1), log(1), log(5), log(0.75), log(1)),
+    sel_spline_fsh = rep(0, nbasis),
+    sel_tv_ar1_fsh = matrix(0, nrow = nyrs, ncol = nages),
+    sel_tv_ar1_rho_fsh = c(0, 0),
+    log_sel_tv_ar1_sigma_fsh = log(0.2)
+  )
+  for (nm in names(defaults)) {
+    if (is.null(parameters[[nm]])) parameters[[nm]] <- defaults[[nm]]
+  }
+  parameters
+}
+
+#' @title Names of inactive fishery selectivity parameter blocks
+#' @param fishery_sel_form integer form flag
+#' @return character vector
+#' @export
+inactive_fishery_selectivity_parameters <- function(fishery_sel_form = 0L) {
+  form <- as.integer(fishery_sel_form)[1]
+  all_sets <- list(
+    coeff = c("sel_coffs_fsh", "sel_devs_fsh"),
+    logistic = "sel_logistic_fsh",
+    double_logistic = "sel_double_logistic_fsh",
+    richards = "sel_richards_fsh",
+    spline = "sel_spline_fsh",
+    tv_ar1 = c("sel_tv_ar1_fsh", "sel_tv_ar1_rho_fsh", "log_sel_tv_ar1_sigma_fsh")
+  )
+  active <- switch(as.character(form), "0" = "coeff", "1" = "logistic",
+                   "2" = "double_logistic", "3" = "richards",
+                   "4" = "spline", "5" = "tv_ar1", "coeff")
+  unname(unlist(all_sets[names(all_sets) != active], use.names = FALSE))
+}
+
 #' @title Read file list from control path
 #' @param filepath path to a text file listing model filenames line-by-line
 #' @return named list of filenames
@@ -281,7 +338,8 @@ build_model_inputs <- function(data_fn,
     nyrs_future = 5L, next_yrs_catch = 1350,
     nscen = 8L, fixed_catch_fut2 = 1400, fixed_catch_fut3 = 1200,
     phase_F40 = 6, robust_phase = 1350, ats_robust_phase = 1350,
-    ats_like_type = 0, phase_logist_fsh = -1, phase_logist_bts = 2,
+    ats_like_type = 0, fishery_sel_form = 0L, n_fishery_sel_spline_basis = 6L,
+    phase_logist_fsh = -1, phase_logist_bts = 2,
     phase_seldevs_fsh = 4, phase_seldevs_bts = 5, phase_age1devs_bts = 3,
     phase_selcoffs_ats = 3, phase_sel_ats_dev = 5,
     phase_natmort = -6, phase_q_bts = 3, phase_q_std_area = -4,
@@ -296,6 +354,12 @@ build_model_inputs <- function(data_fn,
   )
 
   retroYr <- if (!is.null(data_tmp$retroYr)) as.integer(data_tmp$retroYr) else 0L
+  if (!is.null(data_tmp$fishery_sel_form)) {
+    const$fishery_sel_form <- as.integer(data_tmp$fishery_sel_form[1])
+  }
+  if (!is.null(data_tmp$n_fishery_sel_spline_basis)) {
+    const$n_fishery_sel_spline_basis <- as.integer(data_tmp$n_fishery_sel_spline_basis[1])
+  }
   endyr   <- as.integer(data_tmp$endyr)
   nages   <- as.integer(data_tmp$nages)
 
@@ -306,6 +370,10 @@ build_model_inputs <- function(data_fn,
   n_selages_fsh <- nages - const$last_age_sel_fsh + 1L
   n_selages_bts <- nages - const$last_age_sel_bts + 1L
   n_selages_ats <- nages - const$last_age_sel_ats + 1L
+  fishery_sel_spline_basis <- make_fishery_sel_spline_basis(
+    nages,
+    nbasis = const$n_fishery_sel_spline_basis
+  )
 
   data <- c(
     data_tmp,
@@ -315,6 +383,7 @@ build_model_inputs <- function(data_fn,
       n_selages_fsh = n_selages_fsh,
       n_selages_bts = n_selages_bts,
       n_selages_ats = n_selages_ats,
+      fishery_sel_spline_basis = fishery_sel_spline_basis,
       endyr_r = endyr_r,
       endyr_est = endyr_est
     )
