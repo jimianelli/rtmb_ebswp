@@ -1,0 +1,4 @@
+fishery_sel_form,label,objective,convergence,max_gradient,seconds
+0,Base (coefficients + change-year deviations),7940.942380278839,0,0.001118960883319975,2.1974380016326904
+2,Double logistic (3-parm dome),7940.942730056,0,3.8143417057969674e-4,0.4126138687133789
+5,2D AR1 year×age (all years),7940.942730341896,0,4.34323984110474e-4,1.5752801895141602
