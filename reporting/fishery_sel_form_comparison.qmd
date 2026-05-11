@@ -196,7 +196,7 @@ plot_df <- sel_df |>
 
 ggplot(plot_df, aes(x = age, y = relative, color = factor(year))) +
   geom_line(linewidth = 0.9) +
-  facet_wrap(~label, ncol = 1, scales = "fixed") +
+  facet_wrap(~label, ncol = 3, scales = "fixed") +
   scale_y_continuous(limits = c(0, 1.05)) +
   labs(x = "Age", y = "Relative selectivity", color = "Year")
 ```
@@ -215,7 +215,7 @@ ridge_df <- sel_df |>
 
 ggplot(ridge_df, aes(x = age, y = year_factor, height = relative, group = year_factor)) +
   geom_density_ridges(stat = "identity", fill = "#1f78b4", alpha = 0.65, rel_min_height = 0.01) +
-  facet_wrap(~label, ncol = 1) +
+  facet_wrap(~label, ncol = 3) +
   labs(x = "Age", y = "Year") +
   theme(axis.text.y = element_text(size = 6))
 ```
