@@ -380,52 +380,138 @@ comp_tbl |>
 
 # Fishery Selectivity Surfaces
 
-## Form 5 (2D AR1 time-varying) model statement
+## Form 5 (2D AR1 time-varying) implementation (code references)
 
-For `fishery_sel_form = 5`, the fishery selectivity is constructed from a **year×age latent field** `sel_tv_ar1_fsh[y, a]`.
+Equations aren’t rendering reliably on Pages right now, so here is the **actual code path** for `fishery_sel_form = 5`, with **file + line numbers** so you can confirm exactly how it is applied.
 
-Let years be indexed by \(y = 1,\dots,n_{yr}\) and ages by \(a = 1,\dots,n_{age}\). Define the (unnormalized) log-selectivity field:
+### 1) Parameter blocks (defaults / shapes)
 
-\[
-\tilde\ell_{y,a} = u_{y,a}, \quad u_{y,a} \equiv \texttt{sel\_tv\_ar1\_fsh}[y,a].
-\]
+These parameters exist (or are created) as:
 
-The model then applies the same centering used elsewhere to enforce an identifiability constraint (roughly, remove an age-average so the scale is anchored):
+- `sel_tv_ar1_fsh`: year×age latent field (matrix)
+- `sel_tv_ar1_rho_fsh`: length-2 vector (year rho, age rho)
+- `log_sel_tv_ar1_sigma_fsh`: scalar
+- `sel_tv_ar1_weight_fsh`: scalar weight on the AR1×AR1 penalty
 
-\[
-\ell_{y,\cdot} = \text{center}(\tilde\ell_{y,\cdot})
-\]
+Defaults are added when building parameters (and/or in `rpm()` if absent):
 
-and the selectivity-at-age is
+**R/utils-rtmb.R** (defaults in parameter builder):
+```text
+R/utils-rtmb.R:223-235
+```
+```r
+# R/utils-rtmb.R:223-235
+add_fishery_selectivity_parameters <- function(parameters, data) {
+  nyrs <- as.integer(data$endyr - data$styr + 1L)
+  nages <- as.integer(data$nages)
+  nbasis <- if (!is.null(data$fishery_sel_spline_basis)) ncol(data$fishery_sel_spline_basis) else 6L
+  defaults <- list(
+    sel_logistic_fsh = c(log(5), log(1.5)),
+    sel_double_logistic_fsh = log(c(1.5, 3, 2.5)),
+    sel_richards_fsh = c(log(4), log(1), log(1), log(5), log(0.75), log(1)),
+    sel_spline_fsh = rep(0, nbasis),
+    sel_tv_ar1_fsh = matrix(0, nrow = nyrs, ncol = nages),
+    sel_tv_ar1_rho_fsh = c(0, 0),
+    log_sel_tv_ar1_sigma_fsh = log(0.2)
+  )
+  ...
+}
+```
 
-\[
-s_{y,a} = \exp(\ell_{y,a}).
-\]
+**R/Rpm.R** (safety defaults inside the model function):
+```text
+R/Rpm.R:9-20
+```
+```r
+# R/Rpm.R:9-20
+if (!exists("fishery_sel_form", inherits = FALSE)) fishery_sel_form <- 0L
+...
+if (!exists("sel_tv_ar1_fsh", inherits = FALSE)) sel_tv_ar1_fsh <- matrix(0, nrow = endyr - styr + 1, ncol = nages)
+if (!exists("sel_tv_ar1_rho_fsh", inherits = FALSE)) sel_tv_ar1_rho_fsh <- c(0, 0)
+if (!exists("log_sel_tv_ar1_sigma_fsh", inherits = FALSE)) log_sel_tv_ar1_sigma_fsh <- log(0.2)
+if (!exists("sel_tv_ar1_weight_fsh", inherits = FALSE)) sel_tv_ar1_weight_fsh <- 1.0
+```
 
-### Which parameters are time-varying?
+### 2) Selectivity construction (how `sel_tv_ar1_fsh` becomes `sel_fsh[year,age]`)
 
-- **Time-varying:** \(u_{y,a}\) (the full \(n_{yr}\times n_{age}\) matrix `sel_tv_ar1_fsh`). This is what can generate year-to-year changes in selectivity.
-- **Static (not time-varying):**
-  - `sel_tv_ar1_rho_fsh = (rho_year, rho_age)` (2 parameters controlling AR1 correlation across years and across ages)
-  - `log_sel_tv_ar1_sigma_fsh` (1 parameter controlling the marginal scale of the field)
-  - `sel_tv_ar1_weight_fsh` (1 scalar multiplier we introduced to relax/strengthen the AR1 penalty; default 1.0)
+**R/model_funs.R** (dispatch for form 5):
+```text
+R/model_funs.R:81-150 (form 5 at lines 143-145)
+```
+```r
+# R/model_funs.R:81-150
+compute_selectivity_fsh_forms <- function(..., sel_tv_ar1_fsh) {
+  ...
+  if (form == 5L) {
+    for (i in 1:nyrs) log_sel[i, ] <- center_log_selectivity(sel_tv_ar1_fsh[i, ])
+  } else {
+    ...
+  }
+  list(avgsel = avgsel, log_sel = log_sel)
+}
+```
 
-### Penalty / prior (process model)
+And then `rpm()` turns that into selectivity and applies it to fishing mortality:
 
-The time-varying field is regularized with a **separable AR1×AR1 Gaussian process penalty**:
+**R/Rpm.R** (compute sel + apply to F-at-age):
+```text
+R/Rpm.R:24-38 and R/Rpm.R:80-82
+```
+```r
+# R/Rpm.R:24-38
+tmp <- compute_selectivity_fsh_forms(
+  fishery_sel_form = fishery_sel_form,
+  ...
+  sel_tv_ar1_fsh = sel_tv_ar1_fsh
+)
+log_sel_fsh <- tmp$log_sel
+sel_fsh <- exp(log_sel_fsh)
 
-\[
--\;w\;\log p(u) \;=\; -\;w\;\log\Big( \text{AR1}_y(\rho_y) \otimes \text{AR1}_a(\rho_a) \Big) + \text{const},
-\]
+# R/Rpm.R:80-82
+F[i, ] <- Fmort[i] * sel_fsh[i, ]
+Z[i, ] <- F[i, ] + M[i, ]
+```
 
-implemented as:
+So for form 5, **the full year×age field** is centered *within each year-row* and exponentiated to get `sel_fsh`, and then it multiplies `Fmort[i]` to produce `F[i,age]`.
 
-- \(\rho_y = \text{logit}^{-1}(\texttt{sel\_tv\_ar1\_rho\_fsh}[1])\)
-- \(\rho_a = \text{logit}^{-1}(\texttt{sel\_tv\_ar1\_rho\_fsh}[2])\)
-- \(\sigma = \exp(\texttt{log\_sel\_tv\_ar1\_sigma\_fsh})\)
-- penalty term: `dseparable(dautoreg, dautoreg)(sel_tv_ar1_fsh, scale = scale)` multiplied by `sel_tv_ar1_weight_fsh = w`.
+### 3) Penalty / prior on the time-varying field (AR1×AR1)
 
-So if the reported `sel_fsh` still looks nearly constant over time, it means the optimizer is finding that the likelihood gain from moving \(u_{y,a}\) away from 0 is small relative to the AR1 penalty (or the best fit uses only a small amount of variation).
+**R/model_funs.R** (form 5 penalty):
+```text
+R/model_funs.R:734-798 (form 5 at lines 785-795)
+```
+```r
+# R/model_funs.R:785-795
+rho_y <- safe_logit_rho(sel_tv_ar1_rho_fsh[1])
+rho_a <- safe_logit_rho(sel_tv_ar1_rho_fsh[2])
+scale <- exp(log_sel_tv_ar1_sigma_fsh) /
+  sqrt(1 - rho_y^2 + 1e-12) / sqrt(1 - rho_a^2 + 1e-12)
+f_year <- function(x) dautoreg(x, phi = rho_y, log = TRUE)
+f_age <- function(x) dautoreg(x, phi = rho_a, log = TRUE)
+# Weight < 1.0 relaxes the AR1 process penalty (encourages more time variation)
+dev <- dev - sel_tv_ar1_weight_fsh * dseparable(f_year, f_age)(sel_tv_ar1_fsh, scale = scale)
+dev <- dev + 0.01 * norm2(sel_tv_ar1_rho_fsh) + 0.01 * log_sel_tv_ar1_sigma_fsh^2
+```
+
+And `rpm()` calls that penalty function with the same parameter objects:
+
+**R/Rpm.R**:
+```text
+R/Rpm.R:281-296
+```
+```r
+# R/Rpm.R:281-296
+pen_fsh <- selectivity_like_fsh_forms(
+  fishery_sel_form = fishery_sel_form,
+  ...
+  sel_tv_ar1_fsh = sel_tv_ar1_fsh,
+  sel_tv_ar1_rho_fsh = sel_tv_ar1_rho_fsh,
+  log_sel_tv_ar1_sigma_fsh = log_sel_tv_ar1_sigma_fsh,
+  sel_tv_ar1_weight_fsh = sel_tv_ar1_weight_fsh
+)
+```
+
+If you want, I can also add a short snippet here showing the **dimensions** of `sel_tv_ar1_fsh` used (nyrs × nages) as computed in `rpm()` so there’s no ambiguity about what “year” index is being used.
 
 ## Selectivity curves (selected years)
 
