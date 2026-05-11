@@ -639,9 +639,6 @@ ssb_delta |>
   tab_header(title = "SSB deltas vs base")
 ```
 
-# Notes
-
-- The age-composition panels above now use the same observed-point / expected-line structure as the main assessment report, with expected lines overlaid by fishery selectivity scenario.
 
 # Appendix: Implementation References {#sec-appendix-implementation}
 
