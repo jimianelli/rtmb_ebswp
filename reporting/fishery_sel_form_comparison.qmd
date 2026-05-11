@@ -269,7 +269,7 @@ ridge_df <- sel_df |>
 
 ggplot(ridge_df, aes(x = age, y = year_factor, height = relative, group = year_factor)) +
   geom_density_ridges(stat = "identity", fill = "#1f78b4", alpha = 0.65, rel_min_height = 0.01) +
-  facet_wrap(~label, ncol = 3) +
+  facet_wrap(~label, ncol = 1) +
   labs(x = "Age", y = "Year") +
   theme(axis.text.y = element_text(size = 6))
 ```
