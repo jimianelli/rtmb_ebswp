@@ -574,31 +574,6 @@ $$
 
 with fitted correlations reported in the caption for @fig-sel-ridges. The scenario recipe down-weights the AR1 penalty relative to the default, allowing more interannual variation while still borrowing strength across neighboring years and ages.
 
-## Selectivity curves (selected years)
-
-```{r}
-#| label: fig-sel-curves
-#| fig-cap: "Fishery selectivity-at-age curves for selected years, by fishery selectivity form."
-
-years_to_show <- sort(unique(sel_df$year))
-years_to_show <- years_to_show[years_to_show %in% c(min(years_to_show), 1980, 1995, 2010, 2024)]
-if (length(years_to_show) == 0) years_to_show <- head(sort(unique(sel_df$year)), 5)
-
-plot_df <- sel_df |>
-  filter(year %in% years_to_show) |>
-  group_by(fishery_sel_form, label, year) |>
-  mutate(relative = selectivity / max(selectivity, na.rm = TRUE)) |>
-  ungroup()
-
-ggplot(plot_df, aes(x = age, y = relative, color = factor(year))) +
-  geom_line(linewidth = 0.9) +
-  facet_wrap(~label_short, ncol = 1, scales = "fixed") +
-  scale_y_continuous(limits = c(0, 1.05)) +
-  labs(x = "Age", y = "Relative selectivity", color = "Year")
-```
-
-## ggridges (all years)
-
 ```{r}
 #| label: fig-sel-ridges
 #| fig-cap: !expr paste0("Fishery selectivity through time (ggridges), normalized within year.", rho_ar1_caption)
