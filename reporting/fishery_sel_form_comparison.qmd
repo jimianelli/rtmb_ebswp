@@ -306,22 +306,50 @@ ggplot(agecomp_df, aes(x = year, y = age)) +
 ```
 
 ```{r}
-#| label: fig-agecomp-fitlines
-#| fig-cap: "Observed vs expected age-composition at a few representative ages (proportions), by fleet and scenario."
+#| label: fig-agecomp-fitlines-fsh
+#| fig-cap: "Fishery: observed vs expected age-composition at selected ages (proportions), by scenario."
 
 ages_to_show <- sort(unique(agecomp_df$age))
 ages_to_show <- ages_to_show[ages_to_show %in% c(1, 3, 5, 7, 9, 11, 13, 15)]
 if (length(ages_to_show) == 0) ages_to_show <- head(sort(unique(agecomp_df$age)), 6)
 
 plot_age_df <- agecomp_df |>
-  filter(age %in% ages_to_show)
+  filter(fleet == "Fishery", age %in% ages_to_show)
 
-# expected = black line; observed = points
-# facet by fleet x scenario (rows) and age (cols)
 ggplot(plot_age_df, aes(x = year)) +
   geom_line(aes(y = exp), linewidth = 0.6, color = "black") +
   geom_point(aes(y = obs), size = 0.5, alpha = 0.7) +
-  facet_grid(fleet + label_short ~ age, scales = "free_y") +
+  facet_grid(label_short ~ age, scales = "free_y") +
+  labs(x = "Year", y = "Proportion", caption = "Black line = expected; points = observed") +
+  theme(axis.text.x = element_text(angle = 45, hjust = 1))
+```
+
+```{r}
+#| label: fig-agecomp-fitlines-bts
+#| fig-cap: "BTS: observed vs expected age-composition at selected ages (proportions), by scenario."
+
+plot_age_df <- agecomp_df |>
+  filter(fleet == "BTS", age %in% ages_to_show)
+
+ggplot(plot_age_df, aes(x = year)) +
+  geom_line(aes(y = exp), linewidth = 0.6, color = "black") +
+  geom_point(aes(y = obs), size = 0.5, alpha = 0.7) +
+  facet_grid(label_short ~ age, scales = "free_y") +
+  labs(x = "Year", y = "Proportion", caption = "Black line = expected; points = observed") +
+  theme(axis.text.x = element_text(angle = 45, hjust = 1))
+```
+
+```{r}
+#| label: fig-agecomp-fitlines-ats
+#| fig-cap: "ATS: observed vs expected age-composition at selected ages (proportions), by scenario."
+
+plot_age_df <- agecomp_df |>
+  filter(fleet == "ATS", age %in% ages_to_show)
+
+ggplot(plot_age_df, aes(x = year)) +
+  geom_line(aes(y = exp), linewidth = 0.6, color = "black") +
+  geom_point(aes(y = obs), size = 0.5, alpha = 0.7) +
+  facet_grid(label_short ~ age, scales = "free_y") +
   labs(x = "Year", y = "Proportion", caption = "Black line = expected; points = observed") +
   theme(axis.text.x = element_text(angle = 45, hjust = 1))
 ```
