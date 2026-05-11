@@ -47,6 +47,7 @@ fit_one <- function(form_id, label) {
   # Overwrite the selectivity form flag and rebuild the objective so mapping reflects it.
   data <- e$data
   data$fishery_sel_form <- form_id
+  data$return_nll_only <- 1
   if (is.null(data$fishery_sel_spline_basis)) {
     data$fishery_sel_spline_basis <- e$make_fishery_sel_spline_basis(
       nages = as.integer(data$nages),
@@ -66,8 +67,9 @@ fit_one <- function(form_id, label) {
     set.seed(123)
     # Larger starting sigma encourages non-zero time-varying field
     parms$log_sel_tv_ar1_sigma_fsh <- log(1.2)
-    # Relax the AR1 penalty weight (default is 1.0 inside the model)
-    parms$sel_tv_ar1_weight_fsh <- 0.25
+    # Relax the AR1 penalty weight (default is 1.0 inside the model).
+    # This is model data, not an estimated parameter.
+    data$sel_tv_ar1_weight_fsh <- 0.25
     # Keep rho near 0 initially (on working scale)
     parms$sel_tv_ar1_rho_fsh <- c(0, 0)
     # Seed a small non-zero AR1 field (year x age)
@@ -75,6 +77,10 @@ fit_one <- function(form_id, label) {
     nages <- as.integer(data$nages)
     parms$sel_tv_ar1_fsh <- matrix(rnorm(nyrs * nages, sd = 0.05), nrow = nyrs, ncol = nages)
   }
+
+  # rpm() reads `data` from its function environment via getAll(); make the
+  # scenario data visible before taping, optimization, and reporting.
+  e$data <- data
 
   fixed_params <- c(
     # Weight-at-age parameters
@@ -99,6 +105,7 @@ fit_one <- function(form_id, label) {
     # Other fixed
     "log_q_std_area", "bt_slope", "sigr", "steepness",
     "sel_coffs_bts",
+    "sel_tv_ar1_weight_fsh",
     "M_dev",
     "log_a_II", "log_b_II", "log_a_II_vec", "log_b_II_vec",
     "log_rho", "log_resid_M",
@@ -120,18 +127,20 @@ fit_one <- function(form_id, label) {
   t1 <- Sys.time()
 
   fitted_parms <- obj$env$parList(fit$par)
-  e$data <- data
   e$data$return_nll_only <- 0
   report <- rpm(fitted_parms)
+  evaluated_total <- report$tot_like %||% NA_real_
 
   res <- list(
     form = form_id,
     label = label,
     objective = fit$objective,
+    evaluated_total = evaluated_total,
     convergence = fit$convergence,
     message = fit$message,
     max_gradient = max(abs(obj$gr(fit$par)), na.rm = TRUE),
     seconds = as.numeric(difftime(t1, t0, units = "secs")),
+    fixed_parameters = fitted_parms,
     report = report
   )
 
@@ -151,6 +160,7 @@ summary_tbl <- tibble(
   fishery_sel_form = purrr::map_int(results, "form"),
   label = purrr::map_chr(results, "label"),
   objective = purrr::map_dbl(results, "objective"),
+  evaluated_total = purrr::map_dbl(results, "evaluated_total"),
   convergence = purrr::map_int(results, "convergence"),
   max_gradient = purrr::map_dbl(results, "max_gradient"),
   seconds = purrr::map_dbl(results, "seconds")

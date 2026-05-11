@@ -20,11 +20,37 @@
 #   - This assumes you have already set up rtmb_ebswp dependencies.
 #   - This script does not modify model code; it only runs and validates outputs.
 
+preferred_rscript <- Sys.getenv(
+  "RTMB_RSCRIPT",
+  unset = "/Library/Frameworks/R.framework/Resources/bin/Rscript"
+)
+if (file.exists(preferred_rscript) &&
+    normalizePath(R.home(), mustWork = TRUE) !=
+      normalizePath("/Library/Frameworks/R.framework/Resources", mustWork = TRUE) &&
+    Sys.getenv("RTMB_REEXECED", unset = "0") != "1") {
+  this_file <- sub("^--file=", "", grep("^--file=", commandArgs(FALSE), value = TRUE)[1])
+  if (is.na(this_file) || !nzchar(this_file)) {
+    stop("Cannot re-exec recipe because the script path was not available.")
+  }
+  env <- c(
+    paste0("RTMB_REEXECED=1"),
+    paste0("RTMB_RSCRIPT=", preferred_rscript),
+    paste0("POLLOCK_ROOT=", Sys.getenv("POLLOCK_ROOT", unset = ""))
+  )
+  status <- system2(preferred_rscript, c(normalizePath(this_file, mustWork = TRUE), commandArgs(TRUE)), env = env)
+  quit(save = "no", status = status)
+}
+
+rtmb_rscript <- if (file.exists(preferred_rscript)) preferred_rscript else file.path(R.home("bin"), "Rscript")
+
 suppressPackageStartupMessages({
   library(dplyr)
   library(readr)
   library(stringr)
 })
+
+# helper
+`%||%` <- function(x, y) if (is.null(x) || length(x) == 0) y else x
 
 repo_root <- normalizePath(file.path(getwd()), mustWork = TRUE)
 if (!file.exists(file.path(repo_root, "R", "run_fishery_selectivity_forms.R"))) {
@@ -59,7 +85,11 @@ if (length(missing)) {
 
 # ---- 1) Run scenarios ----
 cat("\n== Running scenario fits ==\n")
-cmd <- sprintf("POLLOCK_ROOT=%s Rscript R/run_fishery_selectivity_forms.R", shQuote(pollock_root))
+cmd <- sprintf(
+  "POLLOCK_ROOT=%s %s R/run_fishery_selectivity_forms.R",
+  shQuote(pollock_root),
+  shQuote(rtmb_rscript)
+)
 status <- system(cmd)
 if (!identical(status, 0L)) stop("Scenario fit script failed with status=", status)
 
@@ -74,7 +104,7 @@ if (any(!file.exists(paths))) {
 runs <- lapply(seq_along(forms), function(i) {
   x <- readRDS(paths[i])
   list(
-    form = forms[i],
+    form = as.integer(forms[i]),
     path = paths[i],
     label = x$label %||% paste0("form ", forms[i]),
     objective = x$objective,
@@ -84,9 +114,6 @@ runs <- lapply(seq_along(forms), function(i) {
     report = x$report
   )
 })
-
-# helper
-`%||%` <- function(x, y) if (is.null(x) || length(x) == 0) y else x
 
 summary_tbl <- tibble(
   fishery_sel_form = vapply(runs, `[[`, integer(1), "form"),
@@ -179,7 +206,16 @@ cat("\n== Render comparison report ==\n")
 qmd <- file.path("reporting", "fishery_sel_form_comparison.qmd")
 if (!file.exists(qmd)) stop("Missing: ", qmd)
 
-status <- system(sprintf("quarto render %s --no-cache", shQuote(qmd)))
+rtmb_r <- file.path(dirname(rtmb_rscript), "R")
+quarto_home <- file.path(tempdir(), "rtmb_ebswp_quarto_home")
+dir.create(quarto_home, recursive = TRUE, showWarnings = FALSE)
+status <- system(sprintf(
+  "HOME=%s R_LIBS_USER=%s QUARTO_R=%s quarto render %s --no-cache",
+  shQuote(quarto_home),
+  shQuote(Sys.getenv("R_LIBS_USER", unset = file.path(Sys.getenv("HOME"), "Library", "R", "4.6", "library"))),
+  shQuote(rtmb_r),
+  shQuote(qmd)
+))
 if (!identical(status, 0L)) stop("quarto render failed")
 
 # copy to docs for Pages
