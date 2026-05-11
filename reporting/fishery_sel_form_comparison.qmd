@@ -212,11 +212,18 @@ extract_agecomp_df <- function(run, fleet = c("fsh", "bts", "ats")) {
 
   ages <- seq_len(ncol(oac))
 
+  # For BTS/ATS, ignore age-1 in plotting (and renormalize proportions over ages 2+)
+  if (fleet %in% c("bts", "ats") && ncol(oac) >= 1) {
+    oac[, 1] <- 0
+    eac[, 1] <- 0
+  }
+
   grid <- tidyr::expand_grid(year = yrs, age = ages) |>
     as.data.frame()
   grid$fishery_sel_form <- run$form
   grid$label <- run$label
   grid$fleet <- fleet
+
   # Convert to proportions within each year-row to make residuals comparable
   o_prop <- sweep(oac, 1, pmax(rowSums(oac), 1e-12), "/")
   e_prop <- sweep(eac, 1, pmax(rowSums(eac), 1e-12), "/")
@@ -224,6 +231,12 @@ extract_agecomp_df <- function(run, fleet = c("fsh", "bts", "ats")) {
   grid$obs <- as.numeric(o_prop)
   grid$exp <- as.numeric(e_prop)
   grid$resid <- grid$obs - grid$exp
+
+  # Drop age-1 rows for BTS/ATS
+  if (fleet %in% c("bts", "ats")) {
+    grid <- subset(grid, age >= 2)
+  }
+
   tibble::as_tibble(grid)
 }
 
