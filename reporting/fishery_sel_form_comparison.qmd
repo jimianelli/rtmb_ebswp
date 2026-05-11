@@ -202,8 +202,13 @@ extract_agecomp_df <- function(run, fleet = c("fsh", "bts", "ats")) {
   eac <- run$report[[paste0("phat_", fleet)]]
   stopifnot(!is.null(oac), !is.null(eac))
 
-  yrs <- suppressWarnings(as.integer(rownames(oac)))
-  if (length(yrs) == 0 || anyNA(yrs)) yrs <- seq_len(nrow(oac))
+  yrs_key <- paste0("yrs_", fleet, "_data")
+  yrs <- run$report[[yrs_key]]
+  if (is.null(yrs) || length(yrs) != nrow(oac)) {
+    # Fallback if years weren't saved (shouldn't happen): use row index
+    yrs <- seq_len(nrow(oac))
+  }
+
   ages <- seq_len(ncol(oac))
 
   grid <- tidyr::expand_grid(year = yrs, age = ages) |>
