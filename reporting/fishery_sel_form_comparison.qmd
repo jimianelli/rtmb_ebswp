@@ -239,17 +239,20 @@ agecomp_df <- bind_rows(
 # scale bubble sizes within each (fleet x scenario) panel for readability
 agecomp_df <- agecomp_df |>
   group_by(fleet, label) |>
-  mutate(abs_resid = abs(resid),
-         abs_resid_scaled = abs_resid / max(abs_resid, na.rm = TRUE)) |>
+  mutate(
+    abs_resid = abs(resid),
+    # rescale to (0,1] within each panel, but keep a small floor so points always draw
+    abs_resid_scaled = pmax(abs_resid / max(abs_resid, na.rm = TRUE), 0.02)
+  ) |>
   ungroup()
 
 lim <- max(abs(agecomp_df$resid), na.rm = TRUE)
 
 ggplot(agecomp_df, aes(x = year, y = age)) +
-  geom_point(aes(size = abs_resid_scaled, color = resid), alpha = 0.8) +
+  geom_point(aes(size = abs_resid_scaled, color = resid), alpha = 0.85) +
   facet_grid(fleet ~ label) +
   scale_color_gradient2(low = "#2c7bb6", mid = "white", high = "#d7191c", limits = c(-lim, lim)) +
-  scale_size(range = c(0.2, 2.8), guide = "none") +
+  scale_size(range = c(0.6, 4.0), guide = "none") +
   labs(x = "Year", y = "Age", color = "Obs-Exp") +
   theme(axis.text.x = element_text(angle = 45, hjust = 1))
 ```
