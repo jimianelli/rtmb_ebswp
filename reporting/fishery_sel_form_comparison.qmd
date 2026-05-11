@@ -216,8 +216,12 @@ extract_agecomp_df <- function(run, fleet = c("fsh", "bts", "ats")) {
   grid$fishery_sel_form <- run$form
   grid$label <- run$label
   grid$fleet <- fleet
-  grid$obs <- as.numeric(oac)
-  grid$exp <- as.numeric(eac)
+  # Convert to proportions within each year-row to make residuals comparable
+  o_prop <- sweep(oac, 1, pmax(rowSums(oac), 1e-12), "/")
+  e_prop <- sweep(eac, 1, pmax(rowSums(eac), 1e-12), "/")
+
+  grid$obs <- as.numeric(o_prop)
+  grid$exp <- as.numeric(e_prop)
   grid$resid <- grid$obs - grid$exp
   tibble::as_tibble(grid)
 }
