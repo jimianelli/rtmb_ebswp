@@ -106,51 +106,73 @@ print(summary_tbl)
 cat("\n== Age-comp sum-to-1 checks (within year) ==\n")
 
 check_comp <- function(mat, name) {
-  if (is.null(mat)) return(tibble(component = name, ok = NA, min = NA, max = NA))
+  if (is.null(mat)) return(tibble(component = name, ok = NA, min = NA, max = NA, max_abs_dev = NA))
   rs <- rowSums(mat)
   tibble(
     component = name,
     ok = all(is.finite(rs)) && max(abs(rs - 1)) < 1e-6,
     min = min(rs),
-    max = max(rs)
+    max = max(rs),
+    max_abs_dev = max(abs(rs - 1))
   )
 }
 
-for (r in runs) {
+agecomp_diag <- bind_rows(lapply(runs, function(r) {
   rep <- r$report
-  cat("\nScenario form=", r$form, " (", r$label, ")\n", sep = "")
-
-  # Observed
-  print(bind_rows(
+  bind_rows(
+    # Observed
     check_comp(rep$oac_fsh, "oac_fsh"),
     check_comp(rep$oac_bts, "oac_bts"),
-    check_comp(rep$oac_ats, "oac_ats")
-  ))
-
-  # Expected
-  print(bind_rows(
+    check_comp(rep$oac_ats, "oac_ats"),
+    # Expected
     check_comp(rep$phat_fsh, "phat_fsh"),
     check_comp(rep$phat_bts, "phat_bts"),
     check_comp(rep$phat_ats, "phat_ats")
-  ))
+  ) |>
+    mutate(fishery_sel_form = r$form, label = r$label)
+})) |>
+  select(fishery_sel_form, label, component, ok, min, max, max_abs_dev)
+
+# Print to console
+for (r in runs) {
+  cat("\nScenario form=", r$form, " (", r$label, ")\n", sep = "")
+  print(agecomp_diag |> filter(fishery_sel_form == r$form))
 }
 
-# ---- 4) Catch fit quick check ----
+# ---- 4) Catch fit quick check (+ save diagnostics table) ----
 cat("\n== Catch fit quick check ==\n")
-for (r in runs) {
+
+catch_diag <- bind_rows(lapply(runs, function(r) {
   rep <- r$report
   obs <- rep$obs_catch
   pred <- rep$pred_catch
   if (is.null(obs) || is.null(pred)) {
-    cat("form=", r$form, ": obs_catch/pred_catch not found in report\n", sep = "")
-    next
+    return(tibble(fishery_sel_form = r$form, label = r$label,
+                  corr_obs_pred = NA_real_, mean_abs_log_ratio = NA_real_))
   }
   yrs <- as.integer(names(obs) %||% names(pred) %||% seq_along(obs))
-  df <- tibble(year = yrs, obs = as.numeric(obs), pred = as.numeric(pred))
-  df <- df |> filter(is.finite(obs), is.finite(pred))
-  cat("form=", r$form, ": corr(obs,pred)=", round(cor(df$obs, df$pred), 3),
-      ", mean(|log(obs/pred)|)=", round(mean(abs(log((df$obs + 1e-12)/(df$pred + 1e-12)))), 3), "\n", sep = "")
+  df <- tibble(year = yrs, obs = as.numeric(obs), pred = as.numeric(pred)) |>
+    filter(is.finite(obs), is.finite(pred))
+  tibble(
+    fishery_sel_form = r$form,
+    label = r$label,
+    corr_obs_pred = cor(df$obs, df$pred),
+    mean_abs_log_ratio = mean(abs(log((df$obs + 1e-12) / (df$pred + 1e-12))))
+  )
+}))
+
+for (i in seq_len(nrow(catch_diag))) {
+  cat("form=", catch_diag$fishery_sel_form[i], ": corr(obs,pred)=", round(catch_diag$corr_obs_pred[i], 3),
+      ", mean(|log(obs/pred)|)=", round(catch_diag$mean_abs_log_ratio[i], 3), "\n", sep = "")
 }
+
+# ---- 4b) Write diagnostics CSVs ----
+if (!dir.exists(results_dir)) dir.create(results_dir, recursive = TRUE)
+write_csv(agecomp_diag, file.path(results_dir, "diagnostics_agecomp_sumto1.csv"))
+write_csv(catch_diag, file.path(results_dir, "diagnostics_catch_fit.csv"))
+cat("Wrote diagnostics CSVs to ", results_dir, ":\n", sep = "")
+cat("- diagnostics_agecomp_sumto1.csv\n")
+cat("- diagnostics_catch_fit.csv\n")
 
 # ---- 5) Render report ----
 cat("\n== Render comparison report ==\n")
