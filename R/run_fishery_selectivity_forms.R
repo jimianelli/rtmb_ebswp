@@ -65,7 +65,9 @@ fit_one <- function(form_id, label) {
   if (form_id == 5L) {
     set.seed(123)
     # Larger starting sigma encourages non-zero time-varying field
-    parms$log_sel_tv_ar1_sigma_fsh <- log(0.8)
+    parms$log_sel_tv_ar1_sigma_fsh <- log(1.2)
+    # Relax the AR1 penalty weight (default is 1.0 inside the model)
+    parms$sel_tv_ar1_weight_fsh <- 0.25
     # Keep rho near 0 initially (on working scale)
     parms$sel_tv_ar1_rho_fsh <- c(0, 0)
     # Seed a small non-zero AR1 field (year x age)

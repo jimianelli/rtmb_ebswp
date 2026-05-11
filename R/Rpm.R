@@ -17,6 +17,7 @@ rpm <- function(parms) {
   if (!exists("sel_tv_ar1_fsh", inherits = FALSE)) sel_tv_ar1_fsh <- matrix(0, nrow = endyr - styr + 1, ncol = nages)
   if (!exists("sel_tv_ar1_rho_fsh", inherits = FALSE)) sel_tv_ar1_rho_fsh <- c(0, 0)
   if (!exists("log_sel_tv_ar1_sigma_fsh", inherits = FALSE)) log_sel_tv_ar1_sigma_fsh <- log(0.2)
+  if (!exists("sel_tv_ar1_weight_fsh", inherits = FALSE)) sel_tv_ar1_weight_fsh <- 1.0
 
   # sel_devs_fsh <- sel_devs_fsh - mean(sel_devs_fsh) # Centering selectivity deviations
   yrs_ch_fsh_model <- 1965:min(2023, endyr)
@@ -291,7 +292,8 @@ rpm <- function(parms) {
     sel_spline_fsh = sel_spline_fsh,
     sel_tv_ar1_fsh = sel_tv_ar1_fsh,
     sel_tv_ar1_rho_fsh = sel_tv_ar1_rho_fsh,
-    log_sel_tv_ar1_sigma_fsh = log_sel_tv_ar1_sigma_fsh )
+    log_sel_tv_ar1_sigma_fsh = log_sel_tv_ar1_sigma_fsh,
+    sel_tv_ar1_weight_fsh = sel_tv_ar1_weight_fsh )
   
    pen_bts <- selectivity_like_bts(
      styr=styr, endyr=endyr,

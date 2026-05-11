@@ -741,7 +741,8 @@ selectivity_like_fsh_forms <- function(fishery_sel_form, log_sel_fsh, styr, endy
                                        sel_spline_fsh,
                                        sel_tv_ar1_fsh,
                                        sel_tv_ar1_rho_fsh,
-                                       log_sel_tv_ar1_sigma_fsh) {
+                                       log_sel_tv_ar1_sigma_fsh,
+                                       sel_tv_ar1_weight_fsh = 1.0) {
   "c" <- ADoverload("c")
   "[<-" <- ADoverload("[<-")
 
@@ -788,7 +789,8 @@ selectivity_like_fsh_forms <- function(fishery_sel_form, log_sel_fsh, styr, endy
       sqrt(1 - rho_y^2 + 1e-12) / sqrt(1 - rho_a^2 + 1e-12)
     f_year <- function(x) dautoreg(x, phi = rho_y, log = TRUE)
     f_age <- function(x) dautoreg(x, phi = rho_a, log = TRUE)
-    dev <- dev - dseparable(f_year, f_age)(sel_tv_ar1_fsh, scale = scale)
+    # Weight < 1.0 relaxes the AR1 process penalty (encourages more time variation)
+    dev <- dev - sel_tv_ar1_weight_fsh * dseparable(f_year, f_age)(sel_tv_ar1_fsh, scale = scale)
     dev <- dev + 0.01 * norm2(sel_tv_ar1_rho_fsh) + 0.01 * log_sel_tv_ar1_sigma_fsh^2
   }
 
