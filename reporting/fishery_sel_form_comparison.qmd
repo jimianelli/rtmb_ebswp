@@ -290,49 +290,51 @@ ggplot(agecomp_df, aes(x = year, y = age)) +
 #| label: fig-agecomp-fitlines-fsh
 #| fig-cap: "Fishery: observed vs expected age-composition at selected ages (proportions), by scenario."
 
-ages_to_show <- sort(unique(agecomp_df$age))
-ages_to_show <- ages_to_show[ages_to_show %in% c(1, 3, 5, 7, 9, 11, 13, 15)]
-if (length(ages_to_show) == 0) ages_to_show <- head(sort(unique(agecomp_df$age)), 6)
+# We want to visualize the within-year age composition (proportions-at-age in each year),
+# not a time-series of each age.
 
-plot_age_df <- agecomp_df |>
-  filter(fleet == "Fishery", age %in% ages_to_show)
+years_to_show <- sort(unique(agecomp_df$year))
+# pick a small, representative set of years (first, a few interior, last)
+if (length(years_to_show) > 6) {
+  years_to_show <- unique(round(stats::quantile(years_to_show, probs = seq(0, 1, length.out = 6))))
+}
 
-ggplot(plot_age_df, aes(x = year)) +
-  geom_line(aes(y = exp), linewidth = 0.6, color = "black") +
-  geom_point(aes(y = obs), size = 0.5, alpha = 0.7) +
-  facet_grid(label_short ~ age, scales = "free_y") +
-  labs(x = "Year", y = "Proportion", caption = "Black line = expected; points = observed") +
-  theme(axis.text.x = element_text(angle = 45, hjust = 1))
+a_df <- agecomp_df |>
+  filter(fleet == "Fishery", year %in% years_to_show)
+
+ggplot(a_df, aes(x = age)) +
+  geom_line(aes(y = exp, group = year), linewidth = 0.6, color = "black") +
+  geom_point(aes(y = obs), size = 0.6, alpha = 0.7) +
+  facet_grid(label_short ~ year, scales = "free_y") +
+  labs(x = "Age", y = "Proportion", caption = "Black line = expected; points = observed")
 ```
 
 ```{r}
 #| label: fig-agecomp-fitlines-bts
 #| fig-cap: "BTS: observed vs expected age-composition at selected ages (proportions), by scenario."
 
-plot_age_df <- agecomp_df |>
-  filter(fleet == "BTS", age %in% ages_to_show)
+a_df <- agecomp_df |>
+  filter(fleet == "BTS", year %in% years_to_show)
 
-ggplot(plot_age_df, aes(x = year)) +
-  geom_line(aes(y = exp), linewidth = 0.6, color = "black") +
-  geom_point(aes(y = obs), size = 0.5, alpha = 0.7) +
-  facet_grid(label_short ~ age, scales = "free_y") +
-  labs(x = "Year", y = "Proportion", caption = "Black line = expected; points = observed") +
-  theme(axis.text.x = element_text(angle = 45, hjust = 1))
+ggplot(a_df, aes(x = age)) +
+  geom_line(aes(y = exp, group = year), linewidth = 0.6, color = "black") +
+  geom_point(aes(y = obs), size = 0.6, alpha = 0.7) +
+  facet_grid(label_short ~ year, scales = "free_y") +
+  labs(x = "Age", y = "Proportion", caption = "Black line = expected; points = observed")
 ```
 
 ```{r}
 #| label: fig-agecomp-fitlines-ats
 #| fig-cap: "ATS: observed vs expected age-composition at selected ages (proportions), by scenario."
 
-plot_age_df <- agecomp_df |>
-  filter(fleet == "ATS", age %in% ages_to_show)
+a_df <- agecomp_df |>
+  filter(fleet == "ATS", year %in% years_to_show)
 
-ggplot(plot_age_df, aes(x = year)) +
-  geom_line(aes(y = exp), linewidth = 0.6, color = "black") +
-  geom_point(aes(y = obs), size = 0.5, alpha = 0.7) +
-  facet_grid(label_short ~ age, scales = "free_y") +
-  labs(x = "Year", y = "Proportion", caption = "Black line = expected; points = observed") +
-  theme(axis.text.x = element_text(angle = 45, hjust = 1))
+ggplot(a_df, aes(x = age)) +
+  geom_line(aes(y = exp, group = year), linewidth = 0.6, color = "black") +
+  geom_point(aes(y = obs), size = 0.6, alpha = 0.7) +
+  facet_grid(label_short ~ year, scales = "free_y") +
+  labs(x = "Age", y = "Proportion", caption = "Black line = expected; points = observed")
 ```
 
 The RTMB report object stores a set of likelihood (or penalty) components. The most relevant ones for this comparison are:
