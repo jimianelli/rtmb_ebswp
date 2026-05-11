@@ -63,6 +63,8 @@ compare_forms <- as.integer(params$compare_forms)
 forms <- c(base_form, compare_forms)
 runs <- purrr::map(forms, load_run)
 
+safe_logit_rho <- function(x) 2 / (1 + exp(-x)) - 1
+
 # Short labels for plotting (full labels can get clipped in facets)
 short_label <- function(form) {
   form <- as.integer(form)
@@ -88,6 +90,30 @@ summary_tbl <- tibble(
     delta_evaluated_total = evaluated_total - evaluated_total[fishery_sel_form == base_form][1],
     objective_report_gap = evaluated_total - objective
   )
+
+rho_ar1_summary <- {
+  ar1_run <- runs[[which(purrr::map_int(runs, "form") == 5L)[1]]]
+  rho_working <- ar1_run$fixed_parameters$sel_tv_ar1_rho_fsh %||% c(NA_real_, NA_real_)
+  rho <- safe_logit_rho(as.numeric(rho_working))
+  tibble(
+    fishery_sel_form = 5L,
+    label_short = short_label(5L),
+    rho_y = rho[1],
+    rho_a = rho[2],
+    working_rho_y = as.numeric(rho_working[1]),
+    working_rho_a = as.numeric(rho_working[2])
+  )
+}
+
+rho_ar1_caption <- if (nrow(rho_ar1_summary) > 0 && all(is.finite(rho_ar1_summary$rho_y), is.finite(rho_ar1_summary$rho_a))) {
+  sprintf(
+    " For the 2D AR1 form, fitted correlations are rho_y = %.3f and rho_a = %.3f.",
+    rho_ar1_summary$rho_y,
+    rho_ar1_summary$rho_a
+  )
+} else {
+  ""
+}
 
 get_ssb_df <- function(run) {
   ssb <- run$report$SSB
@@ -143,6 +169,42 @@ catch_df <- bind_rows(purrr::map(runs, get_catch_df))
 gt_report <- function(data, ...) {
   gt(data, ...) |>
     tab_options(table.font.size = px(13))
+}
+
+plot_agecomp_fit_comparison <- function(data, fleet_name, ncol = 4) {
+  plot_data <- data |>
+    filter(fleet == fleet_name, is.finite(obs) | is.finite(exp)) |>
+    mutate(label_short = factor(label_short, levels = unique(summary_tbl$label_short)))
+
+  observed_data <- plot_data |>
+    group_by(fleet, year, age) |>
+    summarize(obs = mean(obs, na.rm = TRUE), .groups = "drop")
+
+  ggplot() +
+    geom_line(
+      data = plot_data,
+      aes(x = age, y = exp, color = label_short, group = label_short),
+      linewidth = 0.5,
+      alpha = 0.9,
+      na.rm = TRUE
+    ) +
+    geom_point(
+      data = observed_data,
+      aes(x = age, y = obs),
+      color = "#1f78b4",
+      size = 0.85,
+      alpha = 0.75,
+      na.rm = TRUE
+    ) +
+    facet_wrap(~year, ncol = ncol, dir = "v") +
+    scale_y_continuous(limits = c(0, NA)) +
+    labs(
+      x = "Age",
+      y = "Proportion",
+      color = "Scenario",
+      title = paste(fleet_name, "Age Composition Fits")
+    ) +
+    theme(legend.position = "top")
 }
 ```
 
@@ -264,9 +326,13 @@ age_like_df2 |>
   gt_report()
 ```
 
+## Age Composition Fits
+
+These figures follow the observed-versus-expected age-composition layout used for figures 5-7 in the main assessment report. Points show the observed proportions; colored lines show the expected proportions from each fishery selectivity scenario.
+
 ```{r}
-#| label: fig-agecomp-bubbles
-#| fig-cap: "Age-comp residual bubble plots (Observed − Expected) by fleet and scenario."
+#| label: agecomp-data
+#| include: false
 
 extract_agecomp_df <- function(run, fleet = c("fsh", "bts", "ats")) {
   fleet <- match.arg(fleet)
@@ -282,12 +348,19 @@ extract_agecomp_df <- function(run, fleet = c("fsh", "bts", "ats")) {
     yrs <- seq_len(nrow(oac))
   }
 
+  sample_size <- run$report[[paste0("sam_", fleet)]]
+  if (is.null(sample_size) || length(sample_size) != nrow(oac)) {
+    sample_size <- rep(NA_real_, nrow(oac))
+  }
+
   ages <- seq_len(ncol(oac))
 
-  # For BTS/ATS, ignore age-1 in plotting (and renormalize proportions over ages 2+)
-  if (fleet %in% c("bts", "ats") && ncol(oac) >= 1) {
-    oac[, 1] <- 0
-    eac[, 1] <- 0
+  # Match the main report's age-composition plots by comparing BTS/ATS over ages 2+.
+  if (fleet %in% c("bts", "ats") && ncol(oac) >= 2) {
+    keep <- 2:ncol(oac)
+    oac <- oac[, keep, drop = FALSE]
+    eac <- eac[, keep, drop = FALSE]
+    ages <- keep
   }
 
   grid <- tidyr::expand_grid(year = yrs, age = ages) |>
@@ -297,8 +370,8 @@ extract_agecomp_df <- function(run, fleet = c("fsh", "bts", "ats")) {
   grid$label_short <- short_label(run$form)
   grid$fleet <- fleet
 
-  # Convert to proportions within each year-row (sum-to-1 within year over ages)
-  # to make residuals comparable across fleets/scenarios.
+  # Convert to proportions within each year-row to make diagnostics comparable.
+  # Some ATS expected values are stored on an abundance scale before this normalization.
   o_rs <- pmax(rowSums(oac), 1e-12)
   e_rs <- pmax(rowSums(eac), 1e-12)
   o_prop <- sweep(oac, 1, o_rs, "/")
@@ -314,14 +387,10 @@ extract_agecomp_df <- function(run, fleet = c("fsh", "bts", "ats")) {
   if (is.finite(o_chk) && o_chk > 1e-6) warning("oac proportions do not sum to 1 (max abs dev = ", o_chk, ") for fleet=", fleet, ", form=", run$form)
   if (is.finite(e_chk) && e_chk > 1e-6) warning("eac proportions do not sum to 1 (max abs dev = ", e_chk, ") for fleet=", fleet, ", form=", run$form)
 
-  grid$obs <- as.numeric(o_prop)
-  grid$exp <- as.numeric(e_prop)
+  grid$obs <- as.numeric(t(o_prop))
+  grid$exp <- as.numeric(t(e_prop))
   grid$resid <- grid$obs - grid$exp
-
-  # Drop age-1 rows for BTS/ATS
-  if (fleet %in% c("bts", "ats")) {
-    grid <- subset(grid, age >= 2)
-  }
+  grid$n_eff <- rep(as.numeric(sample_size), each = length(ages))
 
   tibble::as_tibble(grid)
 }
@@ -336,77 +405,33 @@ agecomp_df <- bind_rows(
     label_short = factor(label_short, levels = unique(summary_tbl$label_short)),
     fleet = factor(fleet, levels = c("fsh", "bts", "ats"), labels = c("Fishery", "BTS", "ATS"))
   )
-
-# scale bubble sizes within each (fleet x scenario) panel for readability
-agecomp_df <- agecomp_df |>
-  group_by(fleet, label) |>
-  mutate(
-    abs_resid = abs(resid),
-    # rescale to (0,1] within each panel, but keep a small floor so points always draw
-    abs_resid_scaled = pmax(abs_resid / max(abs_resid, na.rm = TRUE), 0.02)
-  ) |>
-  ungroup()
-
-lim <- max(abs(agecomp_df$resid), na.rm = TRUE)
-
-ggplot(agecomp_df, aes(x = year, y = age)) +
-  geom_point(aes(size = abs_resid_scaled, color = resid), alpha = 0.85) +
-  facet_grid(fleet ~ label_short) +
-  scale_color_gradient2(low = "#2c7bb6", mid = "white", high = "#d7191c", limits = c(-lim, lim)) +
-  scale_size(range = c(0.6, 4.0), guide = "none") +
-  labs(x = "Year", y = "Age", color = "Obs-Exp") +
-  theme(axis.text.x = element_text(angle = 45, hjust = 1))
 ```
 
 ```{r}
-#| label: fig-agecomp-fitlines-fsh
-#| fig-cap: "Fishery: observed vs expected age-composition at selected ages (proportions), by scenario."
-
-# We want to visualize the within-year age composition (proportions-at-age in each year),
-# not a time-series of each age.
-
-years_to_show <- sort(unique(agecomp_df$year))
-# pick a small, representative set of years (first, a few interior, last)
-if (length(years_to_show) > 6) {
-  years_to_show <- unique(round(stats::quantile(years_to_show, probs = seq(0, 1, length.out = 6))))
-}
-
-a_df <- agecomp_df |>
-  filter(fleet == "Fishery", year %in% years_to_show)
-
-ggplot(a_df, aes(x = age)) +
-  geom_line(aes(y = exp, group = year), linewidth = 0.6, color = "black") +
-  geom_point(aes(y = obs), size = 0.6, alpha = 0.7) +
-  facet_grid(label_short ~ year, scales = "free_y") +
-  labs(x = "Age", y = "Proportion", caption = "Black line = expected; points = observed")
+#| label: fig-agecomp-fishery
+#| fig-cap: "Observed and expected fishery age-composition patterns by fishery selectivity scenario, faceted by year. Points are observed proportions; lines are scenario-specific expected proportions."
+#| fig-width: 8
+#| fig-height: 11
+#| out-width: "100%"
+plot_agecomp_fit_comparison(agecomp_df, "Fishery", ncol = 5)
 ```
 
 ```{r}
-#| label: fig-agecomp-fitlines-bts
-#| fig-cap: "BTS: observed vs expected age-composition at selected ages (proportions), by scenario."
-
-a_df <- agecomp_df |>
-  filter(fleet == "BTS", year %in% years_to_show)
-
-ggplot(a_df, aes(x = age)) +
-  geom_line(aes(y = exp, group = year), linewidth = 0.6, color = "black") +
-  geom_point(aes(y = obs), size = 0.6, alpha = 0.7) +
-  facet_grid(label_short ~ year, scales = "free_y") +
-  labs(x = "Age", y = "Proportion", caption = "Black line = expected; points = observed")
+#| label: fig-agecomp-bts
+#| fig-cap: "Observed and expected BTS age-composition patterns by fishery selectivity scenario, faceted by year. Points are observed proportions; lines are scenario-specific expected proportions."
+#| fig-width: 8
+#| fig-height: 11
+#| out-width: "100%"
+plot_agecomp_fit_comparison(agecomp_df, "BTS", ncol = 4)
 ```
 
 ```{r}
-#| label: fig-agecomp-fitlines-ats
-#| fig-cap: "ATS: observed vs expected age-composition at selected ages (proportions), by scenario."
-
-a_df <- agecomp_df |>
-  filter(fleet == "ATS", year %in% years_to_show)
-
-ggplot(a_df, aes(x = age)) +
-  geom_line(aes(y = exp, group = year), linewidth = 0.6, color = "black") +
-  geom_point(aes(y = obs), size = 0.6, alpha = 0.7) +
-  facet_grid(label_short ~ year, scales = "free_y") +
-  labs(x = "Age", y = "Proportion", caption = "Black line = expected; points = observed")
+#| label: fig-agecomp-ats
+#| fig-cap: "Observed and expected ATS age-composition patterns by fishery selectivity scenario, faceted by year. Points are observed proportions; lines are scenario-specific expected proportions."
+#| fig-width: 8
+#| fig-height: 11
+#| out-width: "100%"
+plot_agecomp_fit_comparison(agecomp_df, "ATS", ncol = 3)
 ```
 
 The RTMB report object stores a set of likelihood (or penalty) components. The most relevant ones for this comparison are:
@@ -602,7 +627,7 @@ pen_fsh <- selectivity_like_fsh_forms(
 )
 ```
 
-If you want, I can also add a short snippet here showing the **dimensions** of `sel_tv_ar1_fsh` used (nyrs × nages) as computed in `rpm()` so there’s no ambiguity about what “year” index is being used.
+The important implementation detail is that `sel_tv_ar1_fsh` has the same year×age shape used inside `rpm()`, so the selectivity surface is not a small set of curve parameters.
 
 ## Selectivity curves (selected years)
 
@@ -631,7 +656,7 @@ ggplot(plot_df, aes(x = age, y = relative, color = factor(year))) +
 
 ```{r}
 #| label: fig-sel-ridges
-#| fig-cap: "Fishery selectivity through time (ggridges), normalized within year."
+#| fig-cap: !expr paste0("Fishery selectivity through time (ggridges), normalized within year.", rho_ar1_caption)
 
 ridge_df <- sel_df |>
   group_by(fishery_sel_form, label, year) |>
@@ -692,4 +717,4 @@ ssb_delta |>
 
 # Notes
 
-- If you want, we can add more diagnostics: fishery age-comp fits, residual bubbles, and/or likelihood-by-fleet breakdowns.
+- The age-composition panels above now use the same observed-point / expected-line structure as the main assessment report, with expected lines overlaid by fishery selectivity scenario.

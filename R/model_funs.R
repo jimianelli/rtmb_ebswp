@@ -65,6 +65,27 @@ center_log_selectivity <- function(log_sel) {
   log_sel - log(mean(exp(log_sel)))
 }
 
+cap_old_age_log_selectivity <- function(log_sel, first_old_age = 11L, center = TRUE) {
+  "[<-" <- ADoverload("[<-")
+
+  first_old_age <- as.integer(first_old_age)[1]
+  if (is.null(dim(log_sel))) {
+    if (length(log_sel) >= first_old_age) {
+      log_sel[first_old_age:length(log_sel)] <- log_sel[first_old_age]
+    }
+    if (isTRUE(center)) log_sel <- center_log_selectivity(log_sel)
+    return(log_sel)
+  }
+
+  if (ncol(log_sel) >= first_old_age) {
+    for (i in seq_len(nrow(log_sel))) {
+      log_sel[i, first_old_age:ncol(log_sel)] <- log_sel[i, first_old_age]
+      if (isTRUE(center)) log_sel[i, ] <- center_log_selectivity(log_sel[i, ])
+    }
+  }
+  log_sel
+}
+
 safe_logit_rho <- function(x) {
   2 / (1 + exp(-x)) - 1
 }
@@ -94,10 +115,12 @@ compute_selectivity_fsh_forms <- function(fishery_sel_form, nsel, stsel, endyr, 
   age_vector <- 0.5 + 1:nages
 
   if (form == 0L) {
-    return(compute_selectivity_fsh(
+    out <- compute_selectivity_fsh(
       nsel = nsel, stsel = stsel, endyr = endyr, nages = nages,
       coffs = coffs, sel_devs = sel_devs, yrs_ch_fsh = yrs_ch_fsh
-    ))
+    )
+    out$log_sel <- cap_old_age_log_selectivity(out$log_sel, first_old_age = 11L)
+    return(out)
   }
 
   log_sel <- matrix(0, nrow = nyrs, ncol = nages)
@@ -145,6 +168,8 @@ compute_selectivity_fsh_forms <- function(fishery_sel_form, nsel, stsel, endyr, 
   } else {
     stop("Unsupported fishery_sel_form: ", form)
   }
+
+  log_sel <- cap_old_age_log_selectivity(log_sel, first_old_age = 11L)
 
   list(avgsel = avgsel, log_sel = log_sel)
 }
@@ -790,7 +815,12 @@ selectivity_like_fsh_forms <- function(fishery_sel_form, log_sel_fsh, styr, endy
     f_year <- function(x) dautoreg(x, phi = rho_y, log = TRUE)
     f_age <- function(x) dautoreg(x, phi = rho_a, log = TRUE)
     # Weight < 1.0 relaxes the AR1 process penalty (encourages more time variation)
-    dev <- dev - sel_tv_ar1_weight_fsh * dseparable(f_year, f_age)(sel_tv_ar1_fsh, scale = scale)
+    sel_tv_ar1_fsh_pen <- cap_old_age_log_selectivity(
+      sel_tv_ar1_fsh,
+      first_old_age = 11L,
+      center = FALSE
+    )
+    dev <- dev - sel_tv_ar1_weight_fsh * dseparable(f_year, f_age)(sel_tv_ar1_fsh_pen, scale = scale)
     dev <- dev + 0.01 * norm2(sel_tv_ar1_rho_fsh) + 0.01 * log_sel_tv_ar1_sigma_fsh^2
   }
 

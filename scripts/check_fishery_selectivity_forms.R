@@ -47,6 +47,9 @@ for (form in 0:5) {
   stopifnot(all(is.finite(out$log_sel)), all(is.finite(exp(out$log_sel))))
   centered <- apply(exp(out$log_sel), 1, mean)
   stopifnot(max(abs(centered - 1)) < 1e-8)
+  old_age_range <- 11:nages
+  old_age_diff <- sweep(out$log_sel[, old_age_range, drop = FALSE], 1, out$log_sel[, 11], "-")
+  stopifnot(max(abs(old_age_diff)) < 1e-8)
 }
 
-message("Fishery selectivity form generator check passed for forms 0:5.")
+message("Fishery selectivity form generator check passed for forms 0:5 with ages 11+ tied.")
