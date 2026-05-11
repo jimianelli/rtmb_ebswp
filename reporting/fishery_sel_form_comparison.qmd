@@ -233,7 +233,7 @@ patchwork::wrap_plots(p1, p2, ncol = 1, guides = "collect")
 #| tbl-cap: "Age-composition NLL contributions (and deltas vs base) by fleet and scenario."
 
 age_like_df2 |>
-  mutate(across(c(age_like, base_age_like, delta_age_like), ~round(.x, 6))) |>
+  mutate(across(c(age_like, base_age_like, delta_age_like), ~round(.x, 0))) |>
   arrange(fleet, fishery_sel_form) |>
   gt_report()
 ```
