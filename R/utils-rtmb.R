@@ -226,7 +226,7 @@ add_fishery_selectivity_parameters <- function(parameters, data) {
   nbasis <- if (!is.null(data$fishery_sel_spline_basis)) ncol(data$fishery_sel_spline_basis) else 6L
   defaults <- list(
     sel_logistic_fsh = c(log(5), log(1.5)),
-    sel_double_logistic_fsh = log(c(1.5, 3, 2.5)),
+    sel_double_logistic_fsh = matrix(log(c(1.5, 3, 4)), nrow = nyrs, ncol = 3, byrow = TRUE),
     sel_richards_fsh = c(log(4), log(1), log(1), log(5), log(0.75), log(1)),
     sel_spline_fsh = rep(0, nbasis),
     sel_tv_ar1_fsh = matrix(0, nrow = nyrs, ncol = nages),

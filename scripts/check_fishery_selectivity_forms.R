@@ -34,7 +34,7 @@ common <- list(
   sel_devs = matrix(0.01, nrow = length(yrs_ch_fsh), ncol = nsel),
   yrs_ch_fsh = yrs_ch_fsh,
   sel_logistic_fsh = c(log(5), log(1.5)),
-  sel_double_logistic_fsh = log(c(1.5, 3, 2.5)),
+  sel_double_logistic_fsh = matrix(log(c(1.5, 3, 4)), nrow = nyrs, ncol = 3, byrow = TRUE),
   sel_richards_fsh = c(log(4), log(1), log(1), log(5), log(0.75), log(1)),
   sel_spline_fsh = seq(-0.5, 0.4, length.out = ncol(basis)),
   fishery_sel_spline_basis = basis,

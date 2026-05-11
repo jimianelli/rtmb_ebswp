@@ -11,7 +11,9 @@ rpm <- function(parms) {
     fishery_sel_spline_basis <- diag(nages)
   }
   if (!exists("sel_logistic_fsh", inherits = FALSE)) sel_logistic_fsh <- c(log(5), log(1.5))
-  if (!exists("sel_double_logistic_fsh", inherits = FALSE)) sel_double_logistic_fsh <- log(c(1.5, 3, 2.5))
+  if (!exists("sel_double_logistic_fsh", inherits = FALSE)) {
+    sel_double_logistic_fsh <- matrix(log(c(1.5, 3, 4)), nrow = endyr - styr + 1, ncol = 3, byrow = TRUE)
+  }
   if (!exists("sel_richards_fsh", inherits = FALSE)) sel_richards_fsh <- c(log(4), log(1), log(1), log(5), log(0.75), log(1))
   if (!exists("sel_spline_fsh", inherits = FALSE)) sel_spline_fsh <- rep(0, ncol(fishery_sel_spline_basis))
   if (!exists("sel_tv_ar1_fsh", inherits = FALSE)) sel_tv_ar1_fsh <- matrix(0, nrow = endyr - styr + 1, ncol = nages)

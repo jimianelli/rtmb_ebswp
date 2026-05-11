@@ -278,20 +278,25 @@ It also stores fishery observed (`oac_fsh`) and expected (`eac_fsh`) age-composi
 
 ```{r}
 #| label: fig-age-like
-#| fig-cap: "Age-composition NLL contributions by fleet, across fishery selectivity scenarios."
+#| fig-cap: "Change in age-composition NLL relative to the base scenario by fleet. Negative values indicate improved fit relative to base."
+#| fig-width: 8
+#| fig-height: 4.5
+#| out-width: "100%"
 
 age_like_df <- bind_rows(purrr::map(runs, function(run) {
   al <- run$report$age_like
   tibble(
     fishery_sel_form = run$form,
     label = run$label,
+    label_short = short_label(run$form),
     fleet = names(al),
     age_like = as.numeric(al)
   )
 })) |>
   mutate(
     fleet = factor(fleet, levels = c("fsh", "bts", "ats"), labels = c("Fishery", "BTS", "ATS")),
-    label = factor(label, levels = unique(summary_tbl$label))
+    label = factor(label, levels = unique(summary_tbl$label)),
+    label_short = factor(label_short, levels = unique(summary_tbl$label_short))
   )
 
 base_vals <- age_like_df |>
@@ -302,18 +307,23 @@ age_like_df2 <- age_like_df |>
   left_join(base_vals, by = "fleet") |>
   mutate(delta_age_like = age_like - base_age_like)
 
-p1 <- ggplot(age_like_df2, aes(x = fleet, y = age_like, fill = label)) +
-  geom_col(position = position_dodge(width = 0.8), width = 0.7) +
-  labs(x = NULL, y = "Age-comp NLL", fill = NULL) +
-  theme(legend.position = "bottom")
+age_like_plot_df <- age_like_df2 |>
+  filter(fishery_sel_form != base_form)
 
-p2 <- ggplot(age_like_df2, aes(x = fleet, y = delta_age_like, fill = label)) +
+ggplot(age_like_plot_df, aes(x = label_short, y = delta_age_like, fill = label_short)) +
   geom_hline(yintercept = 0, linewidth = 0.4, color = "gray50") +
-  geom_col(position = position_dodge(width = 0.8), width = 0.7) +
-  labs(x = NULL, y = "Delta vs base", fill = NULL) +
-  theme(legend.position = "bottom")
-
-patchwork::wrap_plots(p1, p2, ncol = 1, guides = "collect")
+  geom_col(width = 0.68, alpha = 0.9) +
+  geom_text(
+    aes(
+      label = round(delta_age_like, 1),
+      vjust = ifelse(delta_age_like >= 0, -0.35, 1.25)
+    ),
+    size = 3,
+    show.legend = FALSE
+  ) +
+  facet_wrap(~fleet, nrow = 1, scales = "free_y") +
+  labs(x = NULL, y = "Delta age-comp NLL vs base", fill = NULL) +
+  theme(legend.position = "top")
 ```
 
 ```{r}
@@ -477,157 +487,92 @@ comp_tbl |>
 
 # Fishery Selectivity Surfaces
 
-## Form 5 (2D AR1 time-varying) implementation (code references)
+Fishery selectivity is represented as a relative age pattern that multiplies annual fully selected fishing mortality. Let \(t\) index years, \(a\) index ages, and \(x_a = a + 0.5\) denote the age value used in the selectivity functions. Each form is converted to log selectivity \(\ell_{t,a}\), constrained so ages 11 and older share the age-11 value, centered within year, and exponentiated:
 
-Equations aren’t rendering reliably on Pages right now, so here is the **actual code path** for `fishery_sel_form = 5`, with **file + line numbers** so you can confirm exactly how it is applied.
+$$
+\ell_{t,a} = \ell_{t,11}, \quad a \ge 11,
+$$
 
-### 1) Parameter blocks (defaults / shapes)
+$$
+\ell^*_{t,a} =
+\ell_{t,a} -
+\log \left\{ A^{-1} \sum_{a=1}^{A} \exp(\ell_{t,a}) \right\},
+\qquad
+s_{t,a} = \exp(\ell^*_{t,a}).
+$$
 
-These parameters exist (or are created) as:
+The centered selectivity \(s_{t,a}\) enters the population dynamics as \(F_{t,a} = F_t s_{t,a}\). Code references needed to reproduce the implementation are in @sec-appendix-implementation.
 
-- `sel_tv_ar1_fsh`: year×age latent field (matrix)
-- `sel_tv_ar1_rho_fsh`: length-2 vector (year rho, age rho)
-- `log_sel_tv_ar1_sigma_fsh`: scalar
-- `sel_tv_ar1_weight_fsh`: scalar weight on the AR1×AR1 penalty
+## Form 0: base coefficients with change-year deviations
 
-Defaults are added when building parameters (and/or in `rpm()` if absent):
+The base model uses estimated age coefficients plus deviations at configured fishery-selectivity change years:
 
-**R/utils-rtmb.R** (defaults in parameter builder):
-```text
-R/utils-rtmb.R:223-235
-```
-```r
-# R/utils-rtmb.R:223-235
-add_fishery_selectivity_parameters <- function(parameters, data) {
-  nyrs <- as.integer(data$endyr - data$styr + 1L)
-  nages <- as.integer(data$nages)
-  nbasis <- if (!is.null(data$fishery_sel_spline_basis)) ncol(data$fishery_sel_spline_basis) else 6L
-  defaults <- list(
-    sel_logistic_fsh = c(log(5), log(1.5)),
-    sel_double_logistic_fsh = log(c(1.5, 3, 2.5)),
-    sel_richards_fsh = c(log(4), log(1), log(1), log(5), log(0.75), log(1)),
-    sel_spline_fsh = rep(0, nbasis),
-    sel_tv_ar1_fsh = matrix(0, nrow = nyrs, ncol = nages),
-    sel_tv_ar1_rho_fsh = c(0, 0),
-    log_sel_tv_ar1_sigma_fsh = log(0.2)
-  )
-  ...
-}
-```
+$$
+\ell_{t,a} = c_a + d_{k(t),a},
+$$
 
-**R/Rpm.R** (safety defaults inside the model function):
-```text
-R/Rpm.R:9-20
-```
-```r
-# R/Rpm.R:9-20
-if (!exists("fishery_sel_form", inherits = FALSE)) fishery_sel_form <- 0L
-...
-if (!exists("sel_tv_ar1_fsh", inherits = FALSE)) sel_tv_ar1_fsh <- matrix(0, nrow = endyr - styr + 1, ncol = nages)
-if (!exists("sel_tv_ar1_rho_fsh", inherits = FALSE)) sel_tv_ar1_rho_fsh <- c(0, 0)
-if (!exists("log_sel_tv_ar1_sigma_fsh", inherits = FALSE)) log_sel_tv_ar1_sigma_fsh <- log(0.2)
-if (!exists("sel_tv_ar1_weight_fsh", inherits = FALSE)) sel_tv_ar1_weight_fsh <- 1.0
-```
+where \(c_a\) is the baseline age coefficient and \(d_{k(t),a}\) is the deviation for the change-year block \(k(t)\). This form is flexible at the configured break points but does not estimate a continuous year-to-year process for fishery selectivity.
 
-### 2) Form 5 pipeline (end-to-end)
+## Form 2: time-varying double logistic
 
-When `fishery_sel_form = 5`, the selectivity that enters the population dynamics is built and applied in this exact sequence:
+The double-logistic form estimates annual parameters \(p_{1,t}\), \(p_{2,t}\), and \(p_{3,t}\), with starting values centered on \(1.5\), \(3\), and \(4\). These parameters define the ascending and descending transition ages:
 
-1. **Latent field (parameters):** `sel_tv_ar1_fsh[year, age]` (free parameter matrix)
-2. **Row-wise centering:** `log_sel_fsh[year, ] <- center_log_selectivity(sel_tv_ar1_fsh[year, ])`
-3. **Exponentiate:** `sel_fsh <- exp(log_sel_fsh)`
-4. **Apply to fishing mortality:** `F[year, age] <- Fmort[year] * sel_fsh[year, age]`
+$$
+\gamma_{1,t} = p_{1,t} + p_{2,t},
+\qquad
+\gamma_{2,t} = 2p_{1,t} + p_{2,t} + p_{3,t}.
+$$
 
-Code locations:
+The uncentered annual curve is
 
-- Build `log_sel_fsh` from the latent field:
-  - `R/model_funs.R:143-145`
-  - `R/Rpm.R:24-37` (assignment `log_sel_fsh <- tmp$log_sel`)
-- Exponentiate:
-  - `R/Rpm.R:38` (`sel_fsh <- exp(log_sel_fsh)`)
-- Apply in dynamics:
-  - `R/Rpm.R:80` (`F[i, ] <- Fmort[i] * sel_fsh[i, ]`)
+$$
+u_{t,a} =
+\left[1 + \exp\left\{-\log(19)\frac{x_a - \gamma_{1,t}}{p_{1,t}}\right\}\right]^{-1},
+$$
 
-### 3) Selectivity construction (how `sel_tv_ar1_fsh` becomes `sel_fsh[year,age]`)
+$$
+v_{t,a} =
+1 -
+\left[1 + \exp\left\{-\log(19)\frac{x_a - \gamma_{2,t}}{p_{3,t}}\right\}\right]^{-1},
+$$
 
-**R/model_funs.R** (dispatch for form 5):
-```text
-R/model_funs.R:81-150 (form 5 at lines 143-145)
-```
-```r
-# R/model_funs.R:81-150
-compute_selectivity_fsh_forms <- function(..., sel_tv_ar1_fsh) {
-  ...
-  if (form == 5L) {
-    for (i in 1:nyrs) log_sel[i, ] <- center_log_selectivity(sel_tv_ar1_fsh[i, ])
-  } else {
-    ...
-  }
-  list(avgsel = avgsel, log_sel = log_sel)
-}
-```
+$$
+\ell_{t,a} =
+\log\left(u_{t,a} v_{t,a} 0.95^{-2} + \epsilon \right)
+- \max_a \log\left(u_{t,a} v_{t,a} 0.95^{-2} + \epsilon \right),
+$$
 
-And then `rpm()` turns that into selectivity and applies it to fishing mortality:
+followed by the age-11 plus-group constraint and within-year centering. The annual log-scale triplets \(\theta_t = \log(p_{1,t}, p_{2,t}, p_{3,t})\) are penalized with shrinkage toward \(\mu = \log(1.5, 3, 4)\) and a first-difference penalty:
 
-**R/Rpm.R** (compute sel + apply to F-at-age):
-```text
-R/Rpm.R:24-38 and R/Rpm.R:80-82
-```
-```r
-# R/Rpm.R:24-38
-tmp <- compute_selectivity_fsh_forms(
-  fishery_sel_form = fishery_sel_form,
-  ...
-  sel_tv_ar1_fsh = sel_tv_ar1_fsh
-)
-log_sel_fsh <- tmp$log_sel
-sel_fsh <- exp(log_sel_fsh)
+$$
+Q_\mathrm{DL} =
+\sum_t \sum_j
+\left(\frac{\theta_{t,j} - \mu_j}{\sigma_{p,j}}\right)^2
++
+\frac{1}{2}
+\sum_{t=2}^{T} \sum_j
+\left(\frac{\theta_{t,j} - \theta_{t-1,j}}{\sigma_{\Delta,j}}\right)^2,
+$$
 
-# R/Rpm.R:80-82
-F[i, ] <- Fmort[i] * sel_fsh[i, ]
-Z[i, ] <- F[i, ] + M[i, ]
-```
+where \(\sigma_p = (0.75, 0.75, 0.45)\) and \(\sigma_\Delta = (0.60, 0.60, 0.40)\). The smaller scales for \(p_3\) impose stronger regularization on the descending limb, which is otherwise weakly informed by older ages.
 
-So for form 5, **the full year×age field** is centered *within each year-row* and exponentiated to get `sel_fsh`, and then it multiplies `Fmort[i]` to produce `F[i,age]`.
+## Form 5: 2D AR1 time-varying surface
 
-### 3) Penalty / prior on the time-varying field (AR1×AR1)
+The 2D AR1 form estimates a full year-by-age latent field \(z_{t,a}\). Before centering, the log selectivity is
 
-**R/model_funs.R** (form 5 penalty):
-```text
-R/model_funs.R:734-798 (form 5 at lines 785-795)
-```
-```r
-# R/model_funs.R:785-795
-rho_y <- safe_logit_rho(sel_tv_ar1_rho_fsh[1])
-rho_a <- safe_logit_rho(sel_tv_ar1_rho_fsh[2])
-scale <- exp(log_sel_tv_ar1_sigma_fsh) /
-  sqrt(1 - rho_y^2 + 1e-12) / sqrt(1 - rho_a^2 + 1e-12)
-f_year <- function(x) dautoreg(x, phi = rho_y, log = TRUE)
-f_age <- function(x) dautoreg(x, phi = rho_a, log = TRUE)
-# Weight < 1.0 relaxes the AR1 process penalty (encourages more time variation)
-dev <- dev - sel_tv_ar1_weight_fsh * dseparable(f_year, f_age)(sel_tv_ar1_fsh, scale = scale)
-dev <- dev + 0.01 * norm2(sel_tv_ar1_rho_fsh) + 0.01 * log_sel_tv_ar1_sigma_fsh^2
-```
+$$
+\ell_{t,a} = z_{t,a},
+$$
 
-And `rpm()` calls that penalty function with the same parameter objects:
+with the same age-11 plus-group constraint and within-year centering used for the other forms. The latent field is penalized with a separable AR1 process over year and age:
 
-**R/Rpm.R**:
-```text
-R/Rpm.R:281-296
-```
-```r
-# R/Rpm.R:281-296
-pen_fsh <- selectivity_like_fsh_forms(
-  fishery_sel_form = fishery_sel_form,
-  ...
-  sel_tv_ar1_fsh = sel_tv_ar1_fsh,
-  sel_tv_ar1_rho_fsh = sel_tv_ar1_rho_fsh,
-  log_sel_tv_ar1_sigma_fsh = log_sel_tv_ar1_sigma_fsh,
-  sel_tv_ar1_weight_fsh = sel_tv_ar1_weight_fsh
-)
-```
+$$
+z \sim \operatorname{AR1}_{\mathrm{year}}(\rho_y)
+\otimes
+\operatorname{AR1}_{\mathrm{age}}(\rho_a),
+$$
 
-The important implementation detail is that `sel_tv_ar1_fsh` has the same year×age shape used inside `rpm()`, so the selectivity surface is not a small set of curve parameters.
+with fitted correlations reported in the caption for @fig-sel-ridges. The scenario recipe down-weights the AR1 penalty relative to the default, allowing more interannual variation while still borrowing strength across neighboring years and ages.
 
 ## Selectivity curves (selected years)
 
@@ -657,6 +602,9 @@ ggplot(plot_df, aes(x = age, y = relative, color = factor(year))) +
 ```{r}
 #| label: fig-sel-ridges
 #| fig-cap: !expr paste0("Fishery selectivity through time (ggridges), normalized within year.", rho_ar1_caption)
+#| fig-width: 9
+#| fig-height: 11
+#| out-width: "100%"
 
 ridge_df <- sel_df |>
   group_by(fishery_sel_form, label, year) |>
@@ -668,7 +616,7 @@ ggplot(ridge_df, aes(x = age, y = year_factor, height = relative, group = year_f
   geom_density_ridges(stat = "identity", fill = "#1f78b4", alpha = 0.65, rel_min_height = 0.01) +
   facet_wrap(~label_short, ncol = 3) +
   labs(x = "Age", y = "Year") +
-  theme(axis.text.y = element_text(size = 6))
+  theme(axis.text.y = element_text(size = 7))
 ```
 
 # Spawning Biomass Comparison
@@ -679,7 +627,8 @@ ggplot(ridge_df, aes(x = age, y = year_factor, height = relative, group = year_f
 
 ggplot(ssb_df, aes(x = year, y = SSB, color = label)) +
   geom_line(linewidth = 1) +
-  labs(x = "Year", y = "SSB", color = NULL)
+  labs(x = "Year", y = "SSB", color = NULL) +
+  theme(legend.position = "top")
 ```
 
 ```{r}
@@ -718,3 +667,32 @@ ssb_delta |>
 # Notes
 
 - The age-composition panels above now use the same observed-point / expected-line structure as the main assessment report, with expected lines overlaid by fishery selectivity scenario.
+
+# Appendix: Implementation References {#sec-appendix-implementation}
+
+The equations above are implemented through the RTMB parameter builder, the selectivity construction helper, and the model likelihood. These references provide traceability without repeating the methods section.
+
+## Parameter blocks
+
+Fishery selectivity parameters are initialized in `R/utils-rtmb.R::add_fishery_selectivity_parameters()`. Defaults include the annual double-logistic triplets for form 2 (`sel_double_logistic_fsh`), the year-by-age latent field for form 5 (`sel_tv_ar1_fsh`), the two AR1 correlation parameters (`sel_tv_ar1_rho_fsh`), and the AR1 process scale (`log_sel_tv_ar1_sigma_fsh`). `R/Rpm.R` includes matching safety defaults so older saved runs can still be evaluated.
+
+## Selectivity construction
+
+`R/model_funs.R::compute_selectivity_fsh_forms()` dispatches among the fishery selectivity forms and returns the year-by-age log selectivity matrix. For form 0, it combines age coefficients and change-year deviations. For form 2, it evaluates the annual double-logistic curve. For form 5, it uses the full `sel_tv_ar1_fsh` latent field directly. The helper also applies the old-age plus-group constraint before the log selectivity is centered and returned.
+
+`R/Rpm.R` then exponentiates the returned log selectivity and applies it inside the annual fishing mortality calculation:
+
+```r
+sel_fsh <- exp(log_sel_fsh)
+F[i, ] <- Fmort[i] * sel_fsh[i, ]
+```
+
+Thus, all scenario differences shown in the comparison report enter through the same population-dynamics pathway after the selectivity surface has been constructed.
+
+## Selectivity penalties
+
+`R/model_funs.R::selectivity_like_fsh_forms()` evaluates the selectivity penalties. For form 2, it applies the annual log-parameter prior and first-difference penalty on \(p_1\), \(p_2\), and \(p_3\). For form 5, it transforms the estimated AR1 correlation parameters, evaluates the separable AR1-by-AR1 density for the year-by-age field, and applies the configured penalty weight.
+
+## Scenario driver
+
+`R/run_fishery_selectivity_forms.R::run_fishery_selectivity_forms()` defines the set of fishery selectivity scenarios and maps or frees the corresponding parameters before optimization. The report reads the saved outputs from `analysis/output/fishery_sel_forms/`, so the figures and tables reflect the fitted scenario objects rather than recomputing the model inside the document.

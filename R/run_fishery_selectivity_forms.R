@@ -60,8 +60,14 @@ fit_one <- function(form_id, label) {
   # Nudge starting values for alternative selectivity forms so the optimizer
   # doesn't get stuck at the zero / no-time-variation mode.
   if (form_id == 2L) {
-    # 3-parameter double-logistic: initialize near the weak target used in the penalty
-    parms$sel_double_logistic_fsh <- log(c(1.5, 3, 2.5))
+    # 3-parameter double-logistic: one p1/p2/p3 triplet per model year.
+    nyrs <- as.integer(data$endyr - data$styr + 1)
+    parms$sel_double_logistic_fsh <- matrix(
+      log(c(1.5, 3, 4)),
+      nrow = nyrs,
+      ncol = 3,
+      byrow = TRUE
+    )
   }
   if (form_id == 5L) {
     set.seed(123)
@@ -122,8 +128,24 @@ fit_one <- function(form_id, label) {
   environment(rpm) <- e
   obj <- RTMB::MakeADFun(rpm, parms, map = map_obj, data = data)
 
+  lower <- rep(-Inf, length(obj$par))
+  upper <- rep(Inf, length(obj$par))
+  if (form_id == 2L) {
+    idx <- which(names(obj$par) == "sel_double_logistic_fsh")
+    if (length(idx) > 0) {
+      nyrs <- length(idx) / 3
+      lower[idx] <- rep(log(c(0.25, 1.0, 1.5)), each = nyrs)
+      upper[idx] <- rep(log(c(5.0, 8.0, 25.0)), each = nyrs)
+    }
+  }
+
   t0 <- Sys.time()
-  fit <- nlminb(obj$par, obj$fn, obj$gr, control = list(eval.max = 5000, iter.max = 3000))
+  fit <- nlminb(
+    obj$par, obj$fn, obj$gr,
+    lower = lower,
+    upper = upper,
+    control = list(eval.max = 5000, iter.max = 3000)
+  )
   t1 <- Sys.time()
 
   fitted_parms <- obj$env$parList(fit$par)
@@ -150,7 +172,7 @@ fit_one <- function(form_id, label) {
 
 runs <- list(
   list(id = 0L, label = "Base (coefficients + change-year deviations)"),
-  list(id = 2L, label = "Double logistic (3-parm dome)"),
+  list(id = 2L, label = "Time-varying double logistic (annual p1/p2/p3)"),
   list(id = 5L, label = "2D AR1 year×age (all years)" )
 )
 

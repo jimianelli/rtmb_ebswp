@@ -134,17 +134,23 @@ compute_selectivity_fsh_forms <- function(fishery_sel_form, nsel, stsel, endyr, 
     base <- center_log_selectivity(base)
     for (i in 1:nyrs) log_sel[i, ] <- base
   } else if (form == 2L) {
-    p1 <- exp(sel_double_logistic_fsh[1])
-    p2 <- exp(sel_double_logistic_fsh[2])
-    p3 <- exp(sel_double_logistic_fsh[3])
-    gamma1 <- p1 + p2
-    gamma2 <- 2 * p1 + p2 + p3
-    asc <- 1 / (1 + exp(-log(19) * (age_vector - gamma1) / p1))
-    desc <- 1 - 1 / (1 + exp(-log(19) * (age_vector - gamma2) / p3))
-    base <- log(asc * desc * 0.95^(-2) + 1e-12)
-    base <- base - max(base)
-    base <- center_log_selectivity(base)
-    for (i in 1:nyrs) log_sel[i, ] <- base
+    for (i in 1:nyrs) {
+      par_i <- if (is.null(dim(sel_double_logistic_fsh))) {
+        sel_double_logistic_fsh
+      } else {
+        sel_double_logistic_fsh[min(i, nrow(sel_double_logistic_fsh)), ]
+      }
+      p1 <- exp(par_i[1])
+      p2 <- exp(par_i[2])
+      p3 <- exp(par_i[3])
+      gamma1 <- p1 + p2
+      gamma2 <- 2 * p1 + p2 + p3
+      asc <- 1 / (1 + exp(-log(19) * (age_vector - gamma1) / p1))
+      desc <- 1 - 1 / (1 + exp(-log(19) * (age_vector - gamma2) / p3))
+      base <- log(asc * desc * 0.95^(-2) + 1e-12)
+      base <- base - max(base)
+      log_sel[i, ] <- center_log_selectivity(base)
+    }
   } else if (form == 3L) {
     a501 <- exp(sel_richards_fsh[1])
     k1 <- exp(sel_richards_fsh[2])
@@ -797,8 +803,19 @@ selectivity_like_fsh_forms <- function(fishery_sel_form, log_sel_fsh, styr, endy
     scale <- c(2, 1)
     dev <- dev + sum(((sel_logistic_fsh - target) / scale)^2)
   } else if (form == 2L) {
-    target <- log(c(1.5, 3, 2.5))
-    dev <- dev + sum(((sel_double_logistic_fsh - target) / 1.5)^2)
+    target <- log(c(1.5, 3, 4))
+    prior_scale <- c(0.75, 0.75, 0.45)
+    rw_scale <- c(0.60, 0.60, 0.40)
+    if (is.null(dim(sel_double_logistic_fsh))) {
+      dev <- dev + sum(((sel_double_logistic_fsh - target) / prior_scale)^2)
+    } else {
+      for (i in 1:nrow(sel_double_logistic_fsh)) {
+        dev <- dev + sum(((sel_double_logistic_fsh[i, ] - target) / prior_scale)^2)
+      }
+      for (i in 2:nrow(sel_double_logistic_fsh)) {
+        dev <- dev + sum(((sel_double_logistic_fsh[i, ] - sel_double_logistic_fsh[i - 1, ]) / rw_scale)^2) / 2
+      }
+    }
     shape_pen <- shape_pen + domFish * norm2(log_sel_fsh[, ncol(log_sel_fsh)] - max(log_sel_fsh[1, ]))
   } else if (form == 3L) {
     target <- c(log(4), log(1), log(1), log(5), log(0.75), log(1))
