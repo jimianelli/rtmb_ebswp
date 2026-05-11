@@ -314,6 +314,53 @@ comp_tbl |>
 
 # Fishery Selectivity Surfaces
 
+## Form 5 (2D AR1 time-varying) model statement
+
+For `fishery_sel_form = 5`, the fishery selectivity is constructed from a **year×age latent field** `sel_tv_ar1_fsh[y, a]`.
+
+Let years be indexed by \(y = 1,\dots,n_{yr}\) and ages by \(a = 1,\dots,n_{age}\). Define the (unnormalized) log-selectivity field:
+
+\[
+\tilde\ell_{y,a} = u_{y,a}, \quad u_{y,a} \equiv \texttt{sel\_tv\_ar1\_fsh}[y,a].
+\]
+
+The model then applies the same centering used elsewhere to enforce an identifiability constraint (roughly, remove an age-average so the scale is anchored):
+
+\[
+\ell_{y,\cdot} = \text{center}(\tilde\ell_{y,\cdot})
+\]
+
+and the selectivity-at-age is
+
+\[
+s_{y,a} = \exp(\ell_{y,a}).
+\]
+
+### Which parameters are time-varying?
+
+- **Time-varying:** \(u_{y,a}\) (the full \(n_{yr}\times n_{age}\) matrix `sel_tv_ar1_fsh`). This is what can generate year-to-year changes in selectivity.
+- **Static (not time-varying):**
+  - `sel_tv_ar1_rho_fsh = (rho_year, rho_age)` (2 parameters controlling AR1 correlation across years and across ages)
+  - `log_sel_tv_ar1_sigma_fsh` (1 parameter controlling the marginal scale of the field)
+  - `sel_tv_ar1_weight_fsh` (1 scalar multiplier we introduced to relax/strengthen the AR1 penalty; default 1.0)
+
+### Penalty / prior (process model)
+
+The time-varying field is regularized with a **separable AR1×AR1 Gaussian process penalty**:
+
+\[
+-\;w\;\log p(u) \;=\; -\;w\;\log\Big( \text{AR1}_y(\rho_y) \otimes \text{AR1}_a(\rho_a) \Big) + \text{const},
+\]
+
+implemented as:
+
+- \(\rho_y = \text{logit}^{-1}(\texttt{sel\_tv\_ar1\_rho\_fsh}[1])\)
+- \(\rho_a = \text{logit}^{-1}(\texttt{sel\_tv\_ar1\_rho\_fsh}[2])\)
+- \(\sigma = \exp(\texttt{log\_sel\_tv\_ar1\_sigma\_fsh})\)
+- penalty term: `dseparable(dautoreg, dautoreg)(sel_tv_ar1_fsh, scale = scale)` multiplied by `sel_tv_ar1_weight_fsh = w`.
+
+So if the reported `sel_fsh` still looks nearly constant over time, it means the optimizer is finding that the likelihood gain from moving \(u_{y,a}\) away from 0 is small relative to the AR1 penalty (or the best fit uses only a small amount of variation).
+
 ## Selectivity curves (selected years)
 
 ```{r}
