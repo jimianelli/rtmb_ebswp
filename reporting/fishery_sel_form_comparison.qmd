@@ -674,11 +674,85 @@ The equations above are implemented through the RTMB parameter builder, the sele
 
 ## Parameter blocks
 
-Fishery selectivity parameters are initialized in `R/utils-rtmb.R::add_fishery_selectivity_parameters()`. Defaults include the annual double-logistic triplets for form 2 (`sel_double_logistic_fsh`), the year-by-age latent field for form 5 (`sel_tv_ar1_fsh`), the two AR1 correlation parameters (`sel_tv_ar1_rho_fsh`), and the AR1 process scale (`log_sel_tv_ar1_sigma_fsh`). `R/Rpm.R` includes matching safety defaults so older saved runs can still be evaluated.
+Fishery selectivity parameters are initialized in `R/utils-rtmb.R::add_fishery_selectivity_parameters()`. The defaults to check first are in `R/utils-rtmb.R:223-235`:
+
+```r
+add_fishery_selectivity_parameters <- function(parameters, data) {
+  nyrs <- as.integer(data$endyr - data$styr + 1L)
+  nages <- as.integer(data$nages)
+  defaults <- list(
+    sel_double_logistic_fsh = matrix(log(c(1.5, 3, 4)), nrow = nyrs, ncol = 3, byrow = TRUE),
+    sel_tv_ar1_fsh = matrix(0, nrow = nyrs, ncol = nages),
+    sel_tv_ar1_rho_fsh = c(0, 0),
+    log_sel_tv_ar1_sigma_fsh = log(0.2)
+  )
+}
+```
+
+`R/Rpm.R:9-22` contains matching safety defaults. These matter when older saved parameter lists are evaluated without the newer optional selectivity blocks:
+
+```r
+if (!exists("fishery_sel_form", inherits = FALSE)) fishery_sel_form <- 0L
+if (!exists("sel_double_logistic_fsh", inherits = FALSE)) {
+  sel_double_logistic_fsh <- matrix(log(c(1.5, 3, 4)), nrow = endyr - styr + 1, ncol = 3, byrow = TRUE)
+}
+if (!exists("sel_tv_ar1_fsh", inherits = FALSE)) sel_tv_ar1_fsh <- matrix(0, nrow = endyr - styr + 1, ncol = nages)
+if (!exists("sel_tv_ar1_rho_fsh", inherits = FALSE)) sel_tv_ar1_rho_fsh <- c(0, 0)
+if (!exists("log_sel_tv_ar1_sigma_fsh", inherits = FALSE)) log_sel_tv_ar1_sigma_fsh <- log(0.2)
+if (!exists("sel_tv_ar1_weight_fsh", inherits = FALSE)) sel_tv_ar1_weight_fsh <- 1.0
+```
 
 ## Selectivity construction
 
-`R/model_funs.R::compute_selectivity_fsh_forms()` dispatches among the fishery selectivity forms and returns the year-by-age log selectivity matrix. For form 0, it combines age coefficients and change-year deviations. For form 2, it evaluates the annual double-logistic curve. For form 5, it uses the full `sel_tv_ar1_fsh` latent field directly. The helper also applies the old-age plus-group constraint before the log selectivity is centered and returned.
+The base coefficient form is built in `R/model_funs.R:20-61`. The initial coefficients are centered, change-year deviations are applied, and selectivity is carried forward in years without a change:
+
+```r
+log_sel[1, 1:nsel] <- coffs
+log_sel[1, (nsel + 1):nages] <- coffs[nsel]
+log_sel[1, ] <- log_sel[1, ] - log(mean(exp(log_sel[1, ])))
+
+if (ii <= nch_fsh && year == yrs_ch_fsh[ii]) {
+  log_sel[i + 1, 1:nsel] <- log_sel[i, 1:nsel] + sel_devs[ii, ]
+  log_sel[i + 1, (nsel + 1):nages] <- log_sel[i + 1, nsel]
+} else {
+  log_sel[i + 1, ] <- log_sel[i, ]
+}
+```
+
+`R/model_funs.R:68-86` applies the age-11 plus-group constraint. This is the code that makes ages 11 and older share the same fishery selectivity value:
+
+```r
+if (ncol(log_sel) >= first_old_age) {
+  for (i in seq_len(nrow(log_sel))) {
+    log_sel[i, first_old_age:ncol(log_sel)] <- log_sel[i, first_old_age]
+    if (isTRUE(center)) log_sel[i, ] <- center_log_selectivity(log_sel[i, ])
+  }
+}
+```
+
+`R/model_funs.R:102-180` dispatches among selectivity forms and returns the year-by-age log selectivity matrix. The most relevant branches for this comparison are `R/model_funs.R:117-123` for form 0, `R/model_funs.R:136-153` for form 2, and `R/model_funs.R:172-180` for form 5:
+
+```r
+if (form == 0L) {
+  out <- compute_selectivity_fsh(...)
+  out$log_sel <- cap_old_age_log_selectivity(out$log_sel, first_old_age = 11L)
+  return(out)
+} else if (form == 2L) {
+  p1 <- exp(par_i[1])
+  p2 <- exp(par_i[2])
+  p3 <- exp(par_i[3])
+  gamma1 <- p1 + p2
+  gamma2 <- 2 * p1 + p2 + p3
+  asc <- 1 / (1 + exp(-log(19) * (age_vector - gamma1) / p1))
+  desc <- 1 - 1 / (1 + exp(-log(19) * (age_vector - gamma2) / p3))
+  base <- log(asc * desc * 0.95^(-2) + 1e-12)
+  log_sel[i, ] <- center_log_selectivity(base - max(base))
+} else if (form == 5L) {
+  for (i in 1:nyrs) log_sel[i, ] <- center_log_selectivity(sel_tv_ar1_fsh[i, ])
+}
+
+log_sel <- cap_old_age_log_selectivity(log_sel, first_old_age = 11L)
+```
 
 `R/Rpm.R` then exponentiates the returned log selectivity and applies it inside the annual fishing mortality calculation:
 
@@ -691,8 +765,71 @@ Thus, all scenario differences shown in the comparison report enter through the 
 
 ## Selectivity penalties
 
-`R/model_funs.R::selectivity_like_fsh_forms()` evaluates the selectivity penalties. For form 2, it applies the annual log-parameter prior and first-difference penalty on \(p_1\), \(p_2\), and \(p_3\). For form 5, it transforms the estimated AR1 correlation parameters, evaluates the separable AR1-by-AR1 density for the year-by-age field, and applies the configured penalty weight.
+`R/Rpm.R:283-298` calls `R/model_funs.R::selectivity_like_fsh_forms()` after the age-composition likelihood and before survey selectivity penalties:
+
+```r
+pen_fsh <- selectivity_like_fsh_forms(
+  fishery_sel_form = fishery_sel_form,
+  log_sel_fsh = log_sel_fsh,
+  sel_double_logistic_fsh = sel_double_logistic_fsh,
+  sel_tv_ar1_fsh = sel_tv_ar1_fsh,
+  sel_tv_ar1_rho_fsh = sel_tv_ar1_rho_fsh,
+  log_sel_tv_ar1_sigma_fsh = log_sel_tv_ar1_sigma_fsh,
+  sel_tv_ar1_weight_fsh = sel_tv_ar1_weight_fsh
+)
+```
+
+For form 2, `R/model_funs.R:805-819` applies the prior on annual log-scale double-logistic parameters and the first-difference penalty:
+
+```r
+target <- log(c(1.5, 3, 4))
+prior_scale <- c(0.75, 0.75, 0.45)
+rw_scale <- c(0.60, 0.60, 0.40)
+for (i in 1:nrow(sel_double_logistic_fsh)) {
+  dev <- dev + sum(((sel_double_logistic_fsh[i, ] - target) / prior_scale)^2)
+}
+for (i in 2:nrow(sel_double_logistic_fsh)) {
+  dev <- dev + sum(((sel_double_logistic_fsh[i, ] - sel_double_logistic_fsh[i - 1, ]) / rw_scale)^2) / 2
+}
+```
+
+For form 5, `R/model_funs.R:827-841` transforms the AR1 correlations, applies the old-age constraint to the latent field used in the penalty, and evaluates the separable AR1-by-AR1 density:
+
+```r
+rho_y <- safe_logit_rho(sel_tv_ar1_rho_fsh[1])
+rho_a <- safe_logit_rho(sel_tv_ar1_rho_fsh[2])
+f_year <- function(x) dautoreg(x, phi = rho_y, log = TRUE)
+f_age <- function(x) dautoreg(x, phi = rho_a, log = TRUE)
+sel_tv_ar1_fsh_pen <- cap_old_age_log_selectivity(
+  sel_tv_ar1_fsh,
+  first_old_age = 11L,
+  center = FALSE
+)
+dev <- dev - sel_tv_ar1_weight_fsh * dseparable(f_year, f_age)(sel_tv_ar1_fsh_pen, scale = scale)
+```
 
 ## Scenario driver
 
-`R/run_fishery_selectivity_forms.R::run_fishery_selectivity_forms()` defines the set of fishery selectivity scenarios and maps or frees the corresponding parameters before optimization. The report reads the saved outputs from `analysis/output/fishery_sel_forms/`, so the figures and tables reflect the fitted scenario objects rather than recomputing the model inside the document.
+`R/run_fishery_selectivity_forms.R` defines the scenario fits and writes the saved objects used by this report. The key setup is in `R/run_fishery_selectivity_forms.R:41-85`, where the form flag is set, form-specific starts are provided, and the AR1 penalty weight is relaxed for form 5:
+
+```r
+data$fishery_sel_form <- form_id
+parms <- e$add_fishery_selectivity_parameters(e$parms, data)
+
+if (form_id == 2L) {
+  parms$sel_double_logistic_fsh <- matrix(
+    log(c(1.5, 3, 4)),
+    nrow = nyrs,
+    ncol = 3,
+    byrow = TRUE
+  )
+}
+if (form_id == 5L) {
+  parms$log_sel_tv_ar1_sigma_fsh <- log(1.2)
+  data$sel_tv_ar1_weight_fsh <- 0.25
+  parms$sel_tv_ar1_rho_fsh <- c(0, 0)
+  parms$sel_tv_ar1_fsh <- matrix(rnorm(nyrs * nages, sd = 0.05), nrow = nyrs, ncol = nages)
+}
+```
+
+The optimizer setup is in `R/run_fishery_selectivity_forms.R:121-148`, and outputs are saved in `R/run_fishery_selectivity_forms.R:151-170`. The report reads those saved objects from `analysis/output/fishery_sel_forms/`, so the figures and tables reflect the fitted scenario objects rather than recomputing the model inside the document.
