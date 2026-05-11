@@ -11,22 +11,8 @@ format:
     number-sections: true
     embed-resources: true
     lightbox: true
-    # Ensure math renders on GitHub Pages by injecting MathJax explicitly.
-    html-math-method: plain
-    include-in-header:
-      - text: |
-          <script>
-            window.MathJax = {
-              tex: {
-                inlineMath: [['\\(','\\)']],
-                displayMath: [['\\[','\\]'], ['$$','$$']]
-              },
-              options: {
-                skipHtmlTags: ['script','noscript','style','textarea','pre','code']
-              }
-            };
-          </script>
-          <script defer src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-chtml.js"></script>
+    # KaTeX is shipped with Quarto and works well with embed-resources (no external CDN reliance).
+    html-math-method: katex
     code-fold: true
     code-summary: "Show code"
     code-tools: true
