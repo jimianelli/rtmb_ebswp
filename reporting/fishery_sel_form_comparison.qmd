@@ -11,27 +11,22 @@ format:
     number-sections: true
     embed-resources: true
     lightbox: true
-    # KaTeX isn't being injected reliably into the embedded HTML on Pages,
-    # so include scripts explicitly.
+    # Ensure math renders on GitHub Pages by injecting MathJax explicitly.
     html-math-method: plain
     include-in-header:
       - text: |
-          <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.11/dist/katex.min.css" crossorigin="anonymous">
-          <script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.11/dist/katex.min.js" crossorigin="anonymous"></script>
-          <script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.11/dist/contrib/auto-render.min.js" crossorigin="anonymous"></script>
           <script>
-            document.addEventListener("DOMContentLoaded", function () {
-              if (typeof renderMathInElement !== 'undefined') {
-                renderMathInElement(document.body, {
-                  delimiters: [
-                    {left: "$$", right: "$$", display: true},
-                    {left: "\\[", right: "\\]", display: true},
-                    {left: "\\(", right: "\\)", display: false}
-                  ]
-                });
+            window.MathJax = {
+              tex: {
+                inlineMath: [['\\(','\\)']],
+                displayMath: [['\\[','\\]'], ['$$','$$']]
+              },
+              options: {
+                skipHtmlTags: ['script','noscript','style','textarea','pre','code']
               }
-            });
+            };
           </script>
+          <script defer src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-chtml.js"></script>
     code-fold: true
     code-summary: "Show code"
     code-tools: true
