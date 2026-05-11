@@ -11,6 +11,7 @@ format:
     number-sections: true
     embed-resources: true
     lightbox: true
+    html-math-method: katex
     code-fold: true
     code-summary: "Show code"
     code-tools: true
