@@ -371,7 +371,7 @@ comp_tbl <- bind_rows(purrr::map(runs, extract_components)) |>
   )
 
 comp_tbl |>
-  mutate(across(where(is.numeric), ~round(.x, 6))) |>
+  mutate(across(where(is.numeric), ~round(.x, 0))) |>
   gt_report() |>
   tab_header(title = "NLL components")
 ```
