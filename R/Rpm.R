@@ -505,6 +505,8 @@ rpm <- function(parms) {
       sam_bts = sam_bts,
       sam_ats = sam_ats,
       oac_fsh = oac_fsh,
+      oac_bts = oac_bts,
+      oac_ats = oac_ats,
       phat_fsh = eac_fsh,
       phat_bts = eac_bts,
       phat_ats = eac_ats,
