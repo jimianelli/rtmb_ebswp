@@ -504,9 +504,12 @@ rpm <- function(parms) {
       sam_fsh = sam_fsh,
       sam_bts = sam_bts,
       sam_ats = sam_ats,
+      # NOTE: oac_fsh appears to already be proportions (rowSums=1).
+      # BTS/ATS observed age comps may be stored as counts (or not normalized);
+      # for plotting we store normalized proportions that sum-to-1 within each year.
       oac_fsh = oac_fsh,
-      oac_bts = oac_bts,
-      oac_ats = oac_ats,
+      oac_bts = sweep(oac_bts, 1, pmax(rowSums(oac_bts), 1e-12), "/"),
+      oac_ats = sweep(oac_ats, 1, pmax(rowSums(oac_ats), 1e-12), "/"),
       yrs_fsh_data = yrs_fsh_data,
       yrs_bts_data = yrs_bts_data,
       yrs_ats_data = yrs_ats_data,
