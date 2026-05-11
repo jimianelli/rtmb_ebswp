@@ -117,6 +117,22 @@ get_sel_df <- function(run) {
 ssb_df <- bind_rows(purrr::map(runs, get_ssb_df))
 sel_df <- bind_rows(purrr::map(runs, get_sel_df))
 
+get_catch_df <- function(run) {
+  obs <- run$report$obs_catch
+  pred <- run$report$pred_catch
+  yrs <- as.integer(names(obs) %||% names(pred) %||% seq_along(obs))
+  tibble(
+    fishery_sel_form = run$form,
+    label = run$label,
+    label_short = short_label(run$form),
+    year = yrs,
+    obs_catch = as.numeric(obs),
+    pred_catch = as.numeric(pred)
+  )
+}
+
+catch_df <- bind_rows(purrr::map(runs, get_catch_df))
+
 # Generic GT wrapper
 
 gt_report <- function(data, ...) {
@@ -145,6 +161,23 @@ summary_tbl |>
   mutate(across(c(objective, delta_objective, max_gradient, seconds), ~round(.x, 6))) |>
   gt_report() |>
   tab_header(title = "Fit summary")
+```
+
+## Catch biomass fit (observed vs predicted)
+
+```{r}
+#| label: fig-catch-fit
+#| fig-cap: "Observed vs predicted catch biomass by scenario (fishery)."
+
+catch_long <- catch_df |>
+  pivot_longer(c(obs_catch, pred_catch), names_to = "series", values_to = "catch") |>
+  mutate(series = factor(series, levels = c("obs_catch", "pred_catch"), labels = c("Observed", "Predicted")))
+
+ggplot(catch_long, aes(x = year, y = catch, color = series)) +
+  geom_line(linewidth = 0.6) +
+  facet_wrap(~label_short, ncol = 1, scales = "free_y") +
+  labs(x = "Year", y = "Catch biomass", color = NULL) +
+  theme(legend.position = "bottom")
 ```
 
 # Likelihood Component Comparison
@@ -432,7 +465,26 @@ if (!exists("log_sel_tv_ar1_sigma_fsh", inherits = FALSE)) log_sel_tv_ar1_sigma_
 if (!exists("sel_tv_ar1_weight_fsh", inherits = FALSE)) sel_tv_ar1_weight_fsh <- 1.0
 ```
 
-### 2) Selectivity construction (how `sel_tv_ar1_fsh` becomes `sel_fsh[year,age]`)
+### 2) Form 5 pipeline (end-to-end)
+
+When `fishery_sel_form = 5`, the selectivity that enters the population dynamics is built and applied in this exact sequence:
+
+1. **Latent field (parameters):** `sel_tv_ar1_fsh[year, age]` (free parameter matrix)
+2. **Row-wise centering:** `log_sel_fsh[year, ] <- center_log_selectivity(sel_tv_ar1_fsh[year, ])`
+3. **Exponentiate:** `sel_fsh <- exp(log_sel_fsh)`
+4. **Apply to fishing mortality:** `F[year, age] <- Fmort[year] * sel_fsh[year, age]`
+
+Code locations:
+
+- Build `log_sel_fsh` from the latent field:
+  - `R/model_funs.R:143-145`
+  - `R/Rpm.R:24-37` (assignment `log_sel_fsh <- tmp$log_sel`)
+- Exponentiate:
+  - `R/Rpm.R:38` (`sel_fsh <- exp(log_sel_fsh)`)
+- Apply in dynamics:
+  - `R/Rpm.R:80` (`F[i, ] <- Fmort[i] * sel_fsh[i, ]`)
+
+### 3) Selectivity construction (how `sel_tv_ar1_fsh` becomes `sel_fsh[year,age]`)
 
 **R/model_funs.R** (dispatch for form 5):
 ```text
