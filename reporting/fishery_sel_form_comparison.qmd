@@ -62,9 +62,19 @@ compare_forms <- as.integer(params$compare_forms)
 forms <- c(base_form, compare_forms)
 runs <- purrr::map(forms, load_run)
 
+# Short labels for plotting (full labels can get clipped in facets)
+short_label <- function(form) {
+  form <- as.integer(form)
+  if (form == 0L) return("Base")
+  if (form == 2L) return("Double-logistic")
+  if (form == 5L) return("2D AR1")
+  paste0("Form ", form)
+}
+
 summary_tbl <- tibble(
   fishery_sel_form = purrr::map_int(runs, "form"),
   label = purrr::map_chr(runs, "label"),
+  label_short = purrr::map_chr(purrr::map_int(runs, "form"), short_label),
   objective = purrr::map_dbl(runs, "objective"),
   convergence = purrr::map_int(runs, "convergence"),
   max_gradient = purrr::map_dbl(runs, "max_gradient"),
@@ -78,6 +88,7 @@ get_ssb_df <- function(run) {
   tibble(
     fishery_sel_form = run$form,
     label = run$label,
+    label_short = short_label(run$form),
     year = as.integer(names(ssb)),
     SSB = as.numeric(ssb)
   )
@@ -97,7 +108,8 @@ get_sel_df <- function(run) {
     mutate(
       age = as.integer(age),
       fishery_sel_form = run$form,
-      label = run$label
+      label = run$label,
+      label_short = short_label(run$form)
     )
 }
 
@@ -222,6 +234,7 @@ extract_agecomp_df <- function(run, fleet = c("fsh", "bts", "ats")) {
     as.data.frame()
   grid$fishery_sel_form <- run$form
   grid$label <- run$label
+  grid$label_short <- short_label(run$form)
   grid$fleet <- fleet
 
   # Convert to proportions within each year-row to make residuals comparable
@@ -247,6 +260,7 @@ agecomp_df <- bind_rows(
 ) |>
   mutate(
     label = factor(label, levels = unique(summary_tbl$label)),
+    label_short = factor(label_short, levels = unique(summary_tbl$label_short)),
     fleet = factor(fleet, levels = c("fsh", "bts", "ats"), labels = c("Fishery", "BTS", "ATS"))
   )
 
@@ -264,7 +278,7 @@ lim <- max(abs(agecomp_df$resid), na.rm = TRUE)
 
 ggplot(agecomp_df, aes(x = year, y = age)) +
   geom_point(aes(size = abs_resid_scaled, color = resid), alpha = 0.85) +
-  facet_grid(fleet ~ label) +
+  facet_grid(fleet ~ label_short) +
   scale_color_gradient2(low = "#2c7bb6", mid = "white", high = "#d7191c", limits = c(-lim, lim)) +
   scale_size(range = c(0.6, 4.0), guide = "none") +
   labs(x = "Year", y = "Age", color = "Obs-Exp") +
@@ -287,7 +301,7 @@ plot_age_df <- agecomp_df |>
 ggplot(plot_age_df, aes(x = year)) +
   geom_line(aes(y = exp), linewidth = 0.6, color = "black") +
   geom_point(aes(y = obs), size = 0.5, alpha = 0.7) +
-  facet_grid(fleet + label ~ age, scales = "free_y") +
+  facet_grid(fleet + label_short ~ age, scales = "free_y") +
   labs(x = "Year", y = "Proportion", caption = "Black line = expected; points = observed") +
   theme(axis.text.x = element_text(angle = 45, hjust = 1))
 ```
@@ -400,7 +414,7 @@ plot_df <- sel_df |>
 
 ggplot(plot_df, aes(x = age, y = relative, color = factor(year))) +
   geom_line(linewidth = 0.9) +
-  facet_wrap(~label, ncol = 1, scales = "fixed") +
+  facet_wrap(~label_short, ncol = 1, scales = "fixed") +
   scale_y_continuous(limits = c(0, 1.05)) +
   labs(x = "Age", y = "Relative selectivity", color = "Year")
 ```
@@ -419,7 +433,7 @@ ridge_df <- sel_df |>
 
 ggplot(ridge_df, aes(x = age, y = year_factor, height = relative, group = year_factor)) +
   geom_density_ridges(stat = "identity", fill = "#1f78b4", alpha = 0.65, rel_min_height = 0.01) +
-  facet_wrap(~label, ncol = 3) +
+  facet_wrap(~label_short, ncol = 3) +
   labs(x = "Age", y = "Year") +
   theme(axis.text.y = element_text(size = 6))
 ```
