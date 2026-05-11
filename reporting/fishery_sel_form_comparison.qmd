@@ -271,9 +271,22 @@ extract_agecomp_df <- function(run, fleet = c("fsh", "bts", "ats")) {
   grid$label_short <- short_label(run$form)
   grid$fleet <- fleet
 
-  # Convert to proportions within each year-row to make residuals comparable
-  o_prop <- sweep(oac, 1, pmax(rowSums(oac), 1e-12), "/")
-  e_prop <- sweep(eac, 1, pmax(rowSums(eac), 1e-12), "/")
+  # Convert to proportions within each year-row (sum-to-1 within year over ages)
+  # to make residuals comparable across fleets/scenarios.
+  o_rs <- pmax(rowSums(oac), 1e-12)
+  e_rs <- pmax(rowSums(eac), 1e-12)
+  o_prop <- sweep(oac, 1, o_rs, "/")
+  e_prop <- sweep(eac, 1, e_rs, "/")
+
+  # Safety: enforce exact renormalization numerically (and catch pathologies)
+  o_prop <- sweep(o_prop, 1, pmax(rowSums(o_prop), 1e-12), "/")
+  e_prop <- sweep(e_prop, 1, pmax(rowSums(e_prop), 1e-12), "/")
+
+  # Optional checks (won't stop render, but will warn in console if something is off)
+  o_chk <- max(abs(rowSums(o_prop) - 1))
+  e_chk <- max(abs(rowSums(e_prop) - 1))
+  if (is.finite(o_chk) && o_chk > 1e-6) warning("oac proportions do not sum to 1 (max abs dev = ", o_chk, ") for fleet=", fleet, ", form=", run$form)
+  if (is.finite(e_chk) && e_chk > 1e-6) warning("eac proportions do not sum to 1 (max abs dev = ", e_chk, ") for fleet=", fleet, ", form=", run$form)
 
   grid$obs <- as.numeric(o_prop)
   grid$exp <- as.numeric(e_prop)
