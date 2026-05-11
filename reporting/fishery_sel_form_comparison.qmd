@@ -135,6 +135,60 @@ summary_tbl |>
 
 # Likelihood Component Comparison
 
+## Age-composition fit comparison
+
+The model returns an age-composition negative log-likelihood contribution by fleet in `report$age_like`.
+
+```{r}
+#| label: fig-age-like
+#| fig-cap: "Age-composition NLL contributions by fleet, across fishery selectivity scenarios."
+
+age_like_df <- bind_rows(purrr::map(runs, function(run) {
+  al <- run$report$age_like
+  tibble(
+    fishery_sel_form = run$form,
+    label = run$label,
+    fleet = names(al),
+    age_like = as.numeric(al)
+  )
+})) |>
+  mutate(
+    fleet = factor(fleet, levels = c("fsh", "bts", "ats"), labels = c("Fishery", "BTS", "ATS")),
+    label = factor(label, levels = unique(summary_tbl$label))
+  )
+
+base_vals <- age_like_df |>
+  filter(fishery_sel_form == base_form) |>
+  select(fleet, base_age_like = age_like)
+
+age_like_df2 <- age_like_df |>
+  left_join(base_vals, by = "fleet") |>
+  mutate(delta_age_like = age_like - base_age_like)
+
+p1 <- ggplot(age_like_df2, aes(x = fleet, y = age_like, fill = label)) +
+  geom_col(position = position_dodge(width = 0.8), width = 0.7) +
+  labs(x = NULL, y = "Age-comp NLL", fill = NULL) +
+  theme(legend.position = "bottom")
+
+p2 <- ggplot(age_like_df2, aes(x = fleet, y = delta_age_like, fill = label)) +
+  geom_hline(yintercept = 0, linewidth = 0.4, color = "gray50") +
+  geom_col(position = position_dodge(width = 0.8), width = 0.7) +
+  labs(x = NULL, y = "Delta vs base", fill = NULL) +
+  theme(legend.position = "bottom")
+
+patchwork::wrap_plots(p1, p2, ncol = 1, guides = "collect")
+```
+
+```{r}
+#| label: tbl-age-like
+#| tbl-cap: "Age-composition NLL contributions (and deltas vs base) by fleet and scenario."
+
+age_like_df2 |>
+  mutate(across(c(age_like, base_age_like, delta_age_like), ~round(.x, 6))) |>
+  arrange(fleet, fishery_sel_form) |>
+  gt_report()
+```
+
 The RTMB report object stores a set of likelihood (or penalty) components. The most relevant ones for this comparison are:
 
 - `sel_like`, `sel_like_dev` (selectivity penalties)
