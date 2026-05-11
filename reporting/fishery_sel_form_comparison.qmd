@@ -139,6 +139,8 @@ summary_tbl |>
 
 The model returns an age-composition negative log-likelihood contribution by fleet in `report$age_like`.
 
+It also stores fishery observed (`oac_fsh`) and expected (`eac_fsh`) age-composition proportions by year×age in the saved run outputs.
+
 ```{r}
 #| label: fig-age-like
 #| fig-cap: "Age-composition NLL contributions by fleet, across fishery selectivity scenarios."
@@ -187,6 +189,74 @@ age_like_df2 |>
   mutate(across(c(age_like, base_age_like, delta_age_like), ~round(.x, 6))) |>
   arrange(fleet, fishery_sel_form) |>
   gt_report()
+```
+
+```{r}
+#| label: fig-fsh-agecomp-bubbles
+#| fig-cap: "Fishery age-comp residual bubble plots (Observed − Expected) by scenario."
+
+extract_agecomp_df <- function(run) {
+  oac <- run$report$oac_fsh
+  eac <- run$report$phat_fsh
+  stopifnot(!is.null(oac), !is.null(eac))
+
+  yrs <- suppressWarnings(as.integer(rownames(oac)))
+  if (length(yrs) == 0 || anyNA(yrs)) yrs <- seq_len(nrow(oac))
+  ages <- seq_len(ncol(oac))
+
+  grid <- tidyr::expand_grid(year = yrs, age = ages) |>
+    as.data.frame()
+  grid$fishery_sel_form <- run$form
+  grid$label <- run$label
+  grid$obs <- as.numeric(oac)
+  grid$exp <- as.numeric(eac)
+  grid$resid <- grid$obs - grid$exp
+  tibble::as_tibble(grid)
+}
+
+agecomp_df <- bind_rows(purrr::map(runs, extract_agecomp_df)) |>
+  mutate(label = factor(label, levels = unique(summary_tbl$label)))
+
+# scale bubble sizes within each panel for readability
+agecomp_df <- agecomp_df |>
+  group_by(label) |>
+  mutate(abs_resid = abs(resid),
+         abs_resid_scaled = abs_resid / max(abs_resid, na.rm = TRUE)) |>
+  ungroup()
+
+lim <- max(abs(agecomp_df$resid), na.rm = TRUE)
+
+# Bubbles: size = |resid|, color = sign
+# (The expectation is a multinomial, so these are proportion residuals.)
+ggplot(agecomp_df, aes(x = year, y = age)) +
+  geom_point(aes(size = abs_resid_scaled, color = resid), alpha = 0.8) +
+  facet_wrap(~label, ncol = 1) +
+  scale_color_gradient2(low = "#2c7bb6", mid = "white", high = "#d7191c", limits = c(-lim, lim)) +
+  scale_size(range = c(0.2, 3.2), guide = "none") +
+  labs(x = "Year", y = "Age", color = "Obs-Exp") +
+  theme(axis.text.x = element_text(angle = 45, hjust = 1))
+```
+
+```{r}
+#| label: fig-fsh-agecomp-fitlines
+#| fig-cap: "Fishery observed vs expected age-composition at a few representative ages (proportions)."
+
+ages_to_show <- sort(unique(agecomp_df$age))
+ages_to_show <- ages_to_show[ages_to_show %in% c(1, 3, 5, 7, 9, 11, 13, 15)]
+if (length(ages_to_show) == 0) ages_to_show <- head(sort(unique(agecomp_df$age)), 6)
+
+plot_age_df <- agecomp_df |>
+  filter(age %in% ages_to_show)
+
+# plot observed points and expected lines
+# facet by scenario (rows) and age (cols) to keep it compact
+
+ggplot(plot_age_df, aes(x = year)) +
+  geom_line(aes(y = exp), linewidth = 0.7, color = "black") +
+  geom_point(aes(y = obs), size = 0.6, alpha = 0.7) +
+  facet_grid(label ~ age, scales = "free_y") +
+  labs(x = "Year", y = "Proportion", caption = "Black line = expected; points = observed") +
+  theme(axis.text.x = element_text(angle = 45, hjust = 1))
 ```
 
 The RTMB report object stores a set of likelihood (or penalty) components. The most relevant ones for this comparison are:

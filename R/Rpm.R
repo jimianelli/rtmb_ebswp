@@ -445,6 +445,11 @@ rpm <- function(parms) {
   ADREPORT(sel_richards_fsh)
   ADREPORT(sel_spline_fsh)
   ADREPORT(sel_tv_ar1_fsh)
+
+  # Age-composition diagnostics (fishery)
+  # These are small enough (nyears x nages) to store in the saved run outputs.
+  ADREPORT(oac_fsh)
+  ADREPORT(eac_fsh)
   ADREPORT(sel_slp_bts_dev)
   ADREPORT(sel_a50_bts_dev)
   ADREPORT(sel_age_one_bts_dev)
@@ -499,6 +504,7 @@ rpm <- function(parms) {
       sam_fsh = sam_fsh,
       sam_bts = sam_bts,
       sam_ats = sam_ats,
+      oac_fsh = oac_fsh,
       phat_fsh = eac_fsh,
       phat_bts = eac_bts,
       phat_ats = eac_ats,
