@@ -91,9 +91,15 @@ run_one <- function(form) {
   fit_file <- file.path(out_dir, sprintf("rtmb_ebswp_sparsenuts_form_%d.rds", form))
 
   # Run MCMC
+  # Default SparseNUTS runs can be heavy (memory/time). We run a lighter configuration
+  # for scenario comparison; adjust as needed.
   fit <- SparseNUTS::sample_snuts(
     obj,
+    chains = 2,
     cores = 1,
+    iter = 1000,
+    warmup = 500,
+    metric = "diag",
     globals = list(data = data)
   )
   attr(fit, "rtmb_ebswp_sparsenuts") <- list(
