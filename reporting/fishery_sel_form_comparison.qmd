@@ -268,6 +268,14 @@ ggplot(catch_long, aes(x = year, y = catch, color = series)) +
   theme(legend.position = "bottom")
 ```
 
+## Per-scenario assessment reports
+
+For deeper inspection of each scenario (catch/SSB/selectivity surfaces/age-comp residuals), see the scenario-specific assessment pages:
+
+- Base (form 0): `fishery_sel_form_0_assessment.html`
+- Double-logistic (form 2): `fishery_sel_form_2_assessment.html`
+- 2D AR1 (form 5): `fishery_sel_form_5_assessment.html`
+
 # Likelihood Component Comparison
 
 ## Age-composition fit comparison
