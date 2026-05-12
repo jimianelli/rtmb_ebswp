@@ -16,6 +16,9 @@ format:
 params:
   run_file: "analysis/output/fishery_sel_forms/fishery_sel_form_0.rds"
   scenario_label: "(set via params)"
+  run_sparsenuts: false
+  force_sparsenuts: false
+  sparsenuts_file: "analysis/output/sparsenuts/rtmb_ebswp_sparsenuts_form0.rds"
 ---
 
 ```{r setup}
@@ -30,6 +33,14 @@ suppressPackageStartupMessages({
   library(tibble)
   library(readr)
 })
+
+param_is_true <- function(x) {
+  isTRUE(x) || (
+    is.character(x) &&
+      length(x) > 0 &&
+      tolower(x[1]) %in% c("true", "t", "yes", "y", "1")
+  )
+}
 
 theme_set(ggthemes::theme_few())
 
@@ -170,4 +181,151 @@ ggplot(df, aes(x = year, y = age)) +
   scale_color_gradient2(low = "#2c7bb6", mid = "white", high = "#d7191c", limits = c(-lim, lim)) +
   scale_size(range = c(0.2, 3.5), guide = "none") +
   labs(x = "Year", y = "Age", color = "Obs-Exp")
+```
+
+# SparseNUTS MCMC (slow-mixing marginals + pairs)
+
+This section uses `SparseNUTS` to sample the RTMB posterior and then produces:
+
+- **Marginal plots** for the slowest-mixing parameters (by ESS)
+- **Pairs plot** for the same slow parameters
+
+It will **reuse** a saved run if `params$sparsenuts_file` exists, unless you render with `force_sparsenuts: true`.
+
+```{r}
+#| label: sparsenuts-run
+#| echo: true
+
+sparsenuts_available <- requireNamespace("SparseNUTS", quietly = TRUE)
+
+sparsenuts_file <- rtmb_file(params$sparsenuts_file)
+
+sparsenuts_fit <- NULL
+sparsenuts_error <- NULL
+
+if (file.exists(sparsenuts_file) && !param_is_true(params$force_sparsenuts)) {
+  sparsenuts_fit <- readRDS(sparsenuts_file)
+} else if (param_is_true(params$run_sparsenuts)) {
+  if (!sparsenuts_available) {
+    sparsenuts_error <- "SparseNUTS is not installed."
+  } else {
+    dir.create(dirname(sparsenuts_file), showWarnings = FALSE, recursive = TRUE)
+
+    # NOTE: The saved scenario run files do not include the RTMB obj.
+    # We rebuild the RTMB object for this scenario by sourcing config.R,
+    # setting fishery_sel_form, and refitting at the saved MLE.
+
+    pollock_root <- Sys.getenv("POLLOCK_ROOT", unset = NA_character_)
+    if (is.na(pollock_root) || !nzchar(pollock_root)) pollock_root <- Sys.getenv("POLLOCK_BASE", unset = NA_character_)
+    if (is.na(pollock_root) || !nzchar(pollock_root)) stop("Set POLLOCK_ROOT before running SparseNUTS.")
+
+    rtmb_env <- new.env(parent = globalenv())
+    rtmb_env$rm <- function(...) invisible(NULL)
+    rtmb_env$source <- function(file, ...) base::source(file, local = parent.frame(), ...)
+    base::source(rtmb_file("R", "config.R"), local = rtmb_env)
+
+    data <- rtmb_env$data
+    parms <- rtmb_env$parms
+    rpm <- rtmb_env$rpm
+
+    # Override scenario selectivity form and rebuild mapping so the right parameter blocks are active
+    data$fishery_sel_form <- as.integer(run$form)
+    parms$fishery_sel_form <- as.integer(run$form)
+
+    # Always ensure optional blocks exist with correct dimensions
+    parms <- add_fishery_selectivity_parameters(parms, data)
+
+    fixed_params <- c(
+      "log_K", "d_scale", "L1", "L2",
+      "log_avginit", "log_avgrec", "log_avg_F",
+      "log_q_bts",
+      "rec_dev_future",
+      "natmort_phi",
+      "larv_rec_devs",
+      "sel_devs_bts", "sel_slp_bts", "sel_a50_bts", "sel_age_one_bts",
+      "sel_trm2_fsh", "sel_dif1_fsh", "sel_a501_fsh", "sel_trm1_fsh",
+      "sel_dif2_fsh", "sel_dif1_fsh_dev", "sel_a501_fsh_dev", "sel_trm2_fsh_dev",
+      inactive_fishery_selectivity_parameters(data$fishery_sel_form),
+      "resid_temp_x1", "resid_temp_x2",
+      "log_q_std_area", "bt_slope", "sigr", "steepness",
+      "sel_coffs_bts",
+      "M_dev",
+      "log_a_II", "log_b_II", "log_a_II_vec", "log_b_II_vec",
+      "log_rho", "log_resid_M",
+      "log_alpha"
+    )
+
+    map_obj <- create_map_from_par(
+      parms, parms,
+      exact_names = fixed_params,
+      exclude_patterns = "xxx"
+    )
+
+    obj <- RTMB::MakeADFun(rpm, parms, map = map_obj)
+
+    # initialize at saved MLE if available
+    mle_par <- run$par %||% NULL
+    if (!is.null(mle_par)) {
+      obj$par[names(mle_par)] <- unlist(mle_par)
+    }
+
+    sparsenuts_fit <- tryCatch(
+      SparseNUTS::sample_snuts(
+        obj,
+        cores = 1,
+        globals = list(data = data)
+      ),
+      error = function(e) {
+        sparsenuts_error <<- conditionMessage(e)
+        NULL
+      }
+    )
+
+    if (!is.null(sparsenuts_fit)) saveRDS(sparsenuts_fit, sparsenuts_file)
+  }
+}
+
+list(
+  sparsenuts_available = sparsenuts_available,
+  run_sparsenuts = param_is_true(params$run_sparsenuts),
+  force_sparsenuts = param_is_true(params$force_sparsenuts),
+  sparsenuts_file = sparsenuts_file,
+  has_fit = !is.null(sparsenuts_fit),
+  error = sparsenuts_error
+)
+```
+
+```{r}
+#| label: sparsenuts-plots
+#| echo: false
+#| fig-cap: "SparseNUTS diagnostics for slow-mixing parameters (marginals + pairs)."
+
+if (!is.null(sparsenuts_fit) && sparsenuts_available && !is.null(sparsenuts_fit$samples) && !is.null(sparsenuts_fit$monitor)) {
+
+  fig_dir <- rtmb_file("analysis", "output", "figures")
+  dir.create(fig_dir, showWarnings = FALSE, recursive = TRUE)
+
+  mon <- sparsenuts_fit$monitor
+  mon <- mon |> arrange(ess_bulk)
+  slow <- head(mon$variable, 12)
+  slow <- slow[slow %in% dimnames(sparsenuts_fit$samples)[[3]]]
+
+  pairs_file <- file.path(fig_dir, sprintf("sparsenuts_pairs_slow_form%d.png", as.integer(run$form)))
+  marg_file <- file.path(fig_dir, sprintf("sparsenuts_marginals_slow_form%d.png", as.integer(run$form)))
+
+  # Pairs plot
+  png(pairs_file, width = 1800, height = 1400, res = 180)
+  try(SparseNUTS::plot_pairs(sparsenuts_fit, pars = slow, max_points = 2000), silent = TRUE)
+  dev.off()
+
+  # Marginals plot
+  png(marg_file, width = 1800, height = 1400, res = 180)
+  try(SparseNUTS::plot_marginals(sparsenuts_fit, pars = slow, ncol = 3), silent = TRUE)
+  dev.off()
+
+  knitr::include_graphics(c(pairs_file, marg_file))
+
+} else {
+  cat("No SparseNUTS fit available. Render with run_sparsenuts: true to run / load MCMC and produce plots.\n")
+}
 ```
