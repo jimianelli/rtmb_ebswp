@@ -1,0 +1,173 @@
+---
+title: "Fishery Selectivity Scenario Assessment"
+execute:
+  echo: true
+  warning: false
+  message: false
+format:
+  html:
+    toc: true
+    toc-depth: 3
+    number-sections: true
+    embed-resources: true
+    lightbox: true
+    code-fold: true
+    code-summary: "Show code"
+params:
+  run_file: "analysis/output/fishery_sel_forms/fishery_sel_form_0.rds"
+  scenario_label: "(set via params)"
+---
+
+```{r setup}
+#| include: false
+suppressPackageStartupMessages({
+  library(dplyr)
+  library(tidyr)
+  library(ggplot2)
+  library(ggthemes)
+  library(ggridges)
+  library(gt)
+  library(tibble)
+  library(readr)
+})
+
+theme_set(ggthemes::theme_few())
+
+rtmb_root <- normalizePath(if (file.exists("R")) getwd() else file.path(getwd(), ".."), mustWork = TRUE)
+rtmb_file <- function(...) normalizePath(file.path(rtmb_root, ...), mustWork = FALSE)
+
+run_path <- rtmb_file(params$run_file)
+if (!file.exists(run_path)) stop("Missing run_file: ", run_path)
+run <- readRDS(run_path)
+rep <- run$report
+
+label_short <- params$scenario_label
+if (is.null(label_short) || !nzchar(label_short) || label_short == "(set via params)") {
+  label_short <- run$label %||% paste0("form ", run$form)
+}
+
+`%||%` <- function(x, y) if (is.null(x) || length(x) == 0) y else x
+
+as_year_age <- function(mat, years, ages = seq_len(ncol(mat)), value_name = "value") {
+  out <- as_tibble(mat, .name_repair = "minimal")
+  names(out) <- ages
+  out |>
+    mutate(year = years, .before = 1) |>
+    pivot_longer(-year, names_to = "age", values_to = value_name) |>
+    mutate(age = as.integer(age))
+}
+```
+
+# Scenario
+
+- File: `{params$run_file}`
+- Label: `{label_short}`
+
+# Fit summary
+
+```{r}
+#| label: tbl-fit-summary
+#| tbl-cap: "Optimization summary (from saved run file)."
+
+tibble(
+  fishery_sel_form = run$form,
+  label = run$label,
+  objective = run$objective,
+  convergence = run$convergence,
+  max_gradient = run$max_gradient,
+  seconds = run$seconds
+) |>
+  gt()
+```
+
+# Catch biomass fit
+
+```{r}
+#| label: fig-catch-fit
+#| fig-cap: "Observed vs predicted catch biomass."
+obs <- rep$obs_catch
+pred <- rep$pred_catch
+stopifnot(!is.null(obs), !is.null(pred))
+yrs <- as.integer(names(obs) %||% names(pred) %||% seq_along(obs))
+df <- tibble(year = yrs, obs = as.numeric(obs), pred = as.numeric(pred))
+
+ggplot(df, aes(x = year)) +
+  geom_line(aes(y = obs), linewidth = 0.6) +
+  geom_line(aes(y = pred), linewidth = 0.6, linetype = 2) +
+  labs(x = "Year", y = "Catch biomass", caption = "Solid=Observed; Dashed=Predicted")
+```
+
+# SSB
+
+```{r}
+#| label: fig-ssb
+#| fig-cap: "SSB time series."
+ssb <- rep$SSB
+ssb_df <- tibble(year = as.integer(names(ssb)), SSB = as.numeric(ssb))
+
+ggplot(ssb_df, aes(year, SSB)) +
+  geom_line(linewidth = 0.7) +
+  labs(x = "Year", y = "SSB")
+```
+
+# Fishery selectivity
+
+```{r}
+#| label: fig-sel-surface
+#| fig-cap: "Fishery selectivity surface (relative within year)."
+sel <- rep$sel_fsh
+stopifnot(is.matrix(sel))
+years <- as.integer(rownames(sel) %||% seq_len(nrow(sel)))
+sel_df <- as_year_age(sel, years, value_name = "sel") |>
+  group_by(year) |>
+  mutate(sel_rel = sel / max(sel, na.rm = TRUE)) |>
+  ungroup()
+
+ggplot(sel_df, aes(x = year, y = age, fill = sel_rel)) +
+  geom_tile() +
+  scale_fill_viridis_c() +
+  labs(x = "Year", y = "Age", fill = "Rel sel")
+```
+
+# Age compositions (Obs vs Exp, within-year sum-to-1)
+
+```{r}
+#| label: fig-agecomp-resid
+#| fig-cap: "Age-comp residuals (Obs - Exp) bubble plot, by fleet."
+
+extract_agecomp <- function(fleet) {
+  oac <- rep[[paste0("oac_", fleet)]]
+  eac <- rep[[paste0("phat_", fleet)]]
+  yrs <- rep[[paste0("yrs_", fleet, "_data")]]
+  stopifnot(!is.null(oac), !is.null(eac), !is.null(yrs))
+
+  ages <- seq_len(ncol(oac))
+  # normalize within-year over ages
+  oac <- sweep(oac, 1, pmax(rowSums(oac), 1e-12), "/")
+  eac <- sweep(eac, 1, pmax(rowSums(eac), 1e-12), "/")
+
+  df <- tidyr::expand_grid(year = yrs, age = ages) |>
+    mutate(
+      obs = as.numeric(oac),
+      exp = as.numeric(eac),
+      resid = obs - exp,
+      fleet = fleet
+    )
+
+  # drop age1 for BTS/ATS for display consistency with prior diagnostics
+  if (fleet %in% c("bts", "ats")) df <- df |> filter(age >= 2)
+  df
+}
+
+df <- bind_rows(extract_agecomp("fsh"), extract_agecomp("bts"), extract_agecomp("ats")) |>
+  mutate(fleet = factor(fleet, levels = c("fsh", "bts", "ats"), labels = c("Fishery", "BTS", "ATS")))
+
+lim <- max(abs(df$resid), na.rm = TRUE)
+
+ggplot(df, aes(x = year, y = age)) +
+  geom_point(aes(size = abs(resid), color = resid), alpha = 0.8) +
+  facet_wrap(~fleet, ncol = 1) +
+  scale_color_gradient2(low = "#2c7bb6", mid = "white", high = "#d7191c", limits = c(-lim, lim)) +
+  scale_size(range = c(0.2, 3.5), guide = "none") +
+  labs(x = "Year", y = "Age", color = "Obs-Exp")
+```
