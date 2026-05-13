@@ -1,0 +1,477 @@
+---
+title: "RTMB Base-Model Simulation and Refit Workflow"
+execute:
+  echo: true
+  warning: false
+  message: false
+format:
+  html:
+    toc: true
+    toc-depth: 3
+    number-sections: true
+    embed-resources: true
+    code-fold: true
+    lightbox: true
+    code-summary: "Show code"
+params:
+  nsim: 30
+  sim_file: "analysis/output/simulated/base_simulated_datasets.rds"
+  refit_dir: "analysis/output/simulated/refits"
+  refit_2dar1_dir: "analysis/output/simulated/refits_2dar1"
+  base_file: "analysis/output/base.rds"
+---
+
+```{r setup}
+#| include: false
+qmd_file <- tryCatch(knitr::current_input(dir = TRUE), error = function(e) NULL)
+qmd_dir <- if (is.null(qmd_file)) file.path(getwd(), "reporting") else dirname(normalizePath(qmd_file))
+rtmb_root <- normalizePath(file.path(qmd_dir, ".."), mustWork = TRUE)
+rtmb_file <- function(...) normalizePath(file.path(rtmb_root, ...), mustWork = FALSE)
+
+`%||%` <- function(x, y) {
+  if (is.null(x) || length(x) == 0) y else x
+}
+
+sim_file <- rtmb_file(params$sim_file)
+base_file <- rtmb_file(params$base_file)
+refit_dir <- rtmb_file(params$refit_dir)
+refit_2dar1_dir <- rtmb_file(params$refit_2dar1_dir)
+timeseries_file <- file.path(refit_dir, "simulated_refit_timeseries.csv")
+diagnostics_file <- file.path(refit_dir, "simulated_refit_diagnostics.csv")
+selectivity_file <- file.path(refit_dir, "simulated_refit_fishery_selectivity.csv")
+timeseries_2dar1_file <- file.path(refit_2dar1_dir, "simulated_refit_timeseries.csv")
+diagnostics_2dar1_file <- file.path(refit_2dar1_dir, "simulated_refit_diagnostics.csv")
+selectivity_2dar1_file <- file.path(refit_2dar1_dir, "simulated_refit_fishery_selectivity.csv")
+
+base <- readRDS(base_file)
+true_ssb <- data.frame(
+  quantity = "SSB",
+  year = as.integer(names(base$report$SSB)),
+  true = as.numeric(base$report$SSB)
+)
+true_rec <- data.frame(
+  quantity = "recruitment",
+  year = as.integer(rownames(base$report$N) %||% seq_len(nrow(base$report$N))),
+  true = as.numeric(base$report$N[, 1])
+)
+true_series <- rbind(true_ssb, true_rec)
+
+true_selectivity <- {
+  sel <- as.matrix(base$report$sel_fsh)
+  years <- as.integer(rownames(sel) %||% seq_len(nrow(sel)))
+  ages <- 3:8
+  cols <- match(as.character(ages), colnames(sel))
+  if (anyNA(cols)) cols <- ages
+  out <- expand.grid(year = years, age = ages, KEEP.OUT.ATTRS = FALSE)
+  out$true <- as.numeric(sel[, cols, drop = FALSE])
+  out
+}
+
+plot_truth_distribution <- function(data, truth, quantity_name, ylab) {
+  d <- data[data$quantity == quantity_name, , drop = FALSE]
+  t <- truth[truth$quantity == quantity_name, , drop = FALSE]
+  if (nrow(d) == 0) {
+    plot.new()
+    text(0.5, 0.5, paste("No refit", quantity_name, "series available."))
+    return(invisible(NULL))
+  }
+  years <- sort(unique(d$year))
+  mat <- sapply(years, function(y) d$value[d$year == y])
+  q <- apply(mat, 2, quantile, probs = c(0.05, 0.25, 0.5, 0.75, 0.95), na.rm = TRUE)
+  truth_y <- t$true[match(years, t$year)]
+  yrange <- range(c(q, truth_y), finite = TRUE)
+  plot(years, q[3, ], type = "n", ylim = yrange, xlab = "Year", ylab = ylab)
+  polygon(c(years, rev(years)), c(q[1, ], rev(q[5, ])), border = NA, col = adjustcolor("#8db9dd", 0.25))
+  polygon(c(years, rev(years)), c(q[2, ], rev(q[4, ])), border = NA, col = adjustcolor("#4f8fc0", 0.35))
+  lines(years, q[3, ], lwd = 2, col = "#1f5f8b")
+  lines(years, truth_y, lwd = 2.2, col = "#c43c39")
+  legend(
+    "topleft",
+    legend = c("Refit median", "50% interval", "90% interval", "True base value"),
+    col = c("#1f5f8b", adjustcolor("#4f8fc0", 0.55), adjustcolor("#8db9dd", 0.55), "#c43c39"),
+    lty = c(1, NA, NA, 1),
+    lwd = c(2, NA, NA, 2.2),
+    pch = c(NA, 15, 15, NA),
+    pt.cex = c(NA, 1.6, 1.6, NA),
+    bty = "n"
+  )
+}
+
+read_scenario_csv <- function(paths, labels) {
+  out <- vector("list", length(paths))
+  for (i in seq_along(paths)) {
+    if (!file.exists(paths[[i]])) next
+    d <- read.csv(paths[[i]])
+    d$scenario <- labels[[i]]
+    out[[i]] <- d
+  }
+  out <- out[!vapply(out, is.null, logical(1))]
+  if (length(out) == 0L) return(NULL)
+  cols <- unique(unlist(lapply(out, names), use.names = FALSE))
+  out <- lapply(out, function(d) {
+    missing <- setdiff(cols, names(d))
+    for (m in missing) d[[m]] <- NA
+    d[, cols, drop = FALSE]
+  })
+  do.call(rbind, out)
+}
+
+scenario_quantiles <- function(data, quantity_name = NULL, probs = c(0.05, 0.25, 0.5, 0.75, 0.95)) {
+  if (!is.null(quantity_name)) {
+    data <- data[data$quantity == quantity_name, , drop = FALSE]
+  }
+  scenarios <- unique(data$scenario)
+  out <- list()
+  k <- 0L
+  for (sc in scenarios) {
+    ds <- data[data$scenario == sc, , drop = FALSE]
+    for (yr in sort(unique(ds$year))) {
+      vals <- ds$value[ds$year == yr]
+      qq <- quantile(vals, probs = probs, na.rm = TRUE)
+      k <- k + 1L
+      out[[k]] <- data.frame(
+        scenario = sc,
+        year = yr,
+        q05 = qq[[1]],
+        q25 = qq[[2]],
+        q50 = qq[[3]],
+        q75 = qq[[4]],
+        q95 = qq[[5]]
+      )
+    }
+  }
+  do.call(rbind, out)
+}
+
+plot_scenario_distribution <- function(data, truth, quantity_name, ylab) {
+  q <- scenario_quantiles(data, quantity_name = quantity_name)
+  t <- truth[truth$quantity == quantity_name, , drop = FALSE]
+  years <- sort(unique(q$year))
+  truth_y <- t$true[match(years, t$year)]
+  cols <- c("Base-form refit" = "#1f5f8b", "2D AR1 refit" = "#2f7d4f")
+  yrange <- range(c(q$q05, q$q95, truth_y), finite = TRUE)
+  plot(years, truth_y, type = "n", ylim = yrange, xlab = "Year", ylab = ylab)
+  for (sc in names(cols)) {
+    qs <- q[q$scenario == sc, , drop = FALSE]
+    if (nrow(qs) == 0) next
+    polygon(c(qs$year, rev(qs$year)), c(qs$q25, rev(qs$q75)), border = NA, col = adjustcolor(cols[[sc]], 0.18))
+    lines(qs$year, qs$q50, lwd = 2, col = cols[[sc]])
+  }
+  lines(years, truth_y, lwd = 2.2, col = "#c43c39")
+  legend(
+    "topleft",
+    legend = c(names(cols), "True base value"),
+    col = c(cols, "#c43c39"),
+    lty = 1,
+    lwd = c(2, 2, 2.2),
+    bty = "n"
+  )
+}
+```
+
+## Purpose
+
+This document records the parametric-bootstrap style workflow added around the saved RTMB base model. The current workflow treats the saved base-model fitted values as the data-generating truth, simulates new observations using the same observation variances and sample sizes, then refits the model to each simulated data set.
+
+The generated data sets are conditional on the base model point estimate. They do not yet include parameter uncertainty from a fitted Hessian or posterior distribution.
+
+## Simulation Steps
+
+The simulation script is:
+
+```{r}
+rtmb_file("R", "simulate_base_datasets.R")
+```
+
+Run it with:
+
+```{bash}
+#| eval: false
+NSIM=30 SEED=123 Rscript R/simulate_base_datasets.R
+```
+
+For each simulated data set, the script:
+
+1. Reads the saved base report from `analysis/output/base.rds`.
+2. Uses the base fitted values as truth:
+   - `pred_catch`
+   - `eb_bts`
+   - `eb_ats`
+   - `pred_cpue`
+   - `pred_avo`
+   - `phat_fsh`, `phat_bts`, and `phat_ats`.
+3. Simulates new observations:
+   - catch from the catch log-scale penalty implied by `catBio`;
+   - BTS from the full BTS covariance matrix;
+   - ATS from log-scale biomass variances;
+   - CPUE and AVO from their observation variances;
+   - fishery, BTS, and ATS age compositions from multinomial draws.
+4. Returns a full RTMB-style `data` list with observed fields replaced by simulated values.
+
+## Estimation-Ready Data
+
+Each simulated object is designed to be a direct replacement for the model `data` list used by `rpm()`. The simulation script now validates each data set before saving.
+
+```{r}
+if (!file.exists(sim_file)) {
+  cat("Simulation file not found:", sim_file, "\n")
+} else {
+  sims <- readRDS(sim_file)
+  cat("Simulation file:", sim_file, "\n")
+  cat("Number of simulations:", length(sims$simulations), "\n")
+  cat("Validation passed:", all(sims$validation %||% FALSE), "\n")
+  cat("Estimation ready:", isTRUE(sims$metadata$estimation_ready), "\n")
+}
+```
+
+The validation checks that:
+
+- all required observed fields are present;
+- index and catch values are finite and positive;
+- age-composition matrices have `nages` columns;
+- sample sizes and year vectors align with observed matrices;
+- composition rows sum to one in the modeled age ranges;
+- simulated data dimensions align with the base fitted quantities.
+
+## Refit Workflow
+
+The refit script is:
+
+```{r}
+rtmb_file("R", "fit_simulated_datasets.R")
+```
+
+Run it with:
+
+```{bash}
+#| eval: false
+MAXSIM=30 Rscript R/fit_simulated_datasets.R
+```
+
+To refit the same simulated data sets with the fishery selectivity option changed to the 2D AR1 form (`fishery_sel_form = 5`), run:
+
+```{bash}
+#| eval: false
+FISHERY_SEL_FORM=5 FISHERY_SEL_LABEL=2dar1 \
+  OUTPUT_DIR=analysis/output/simulated/refits_2dar1 \
+  MAXSIM=30 Rscript R/fit_simulated_datasets.R
+```
+
+The script rebuilds the RTMB objective for each simulated data set, runs `nlminb()`, and writes:
+
+- `simulated_refits.rds`
+- `simulated_refit_diagnostics.csv`
+- `simulated_refit_timeseries.csv`
+- `simulated_refit_fishery_selectivity.csv`
+
+```{r}
+diagnostics <- read_scenario_csv(
+  c(diagnostics_file, diagnostics_2dar1_file),
+  c("Base-form refit", "2D AR1 refit")
+)
+if (!is.null(diagnostics)) {
+  print(diagnostics)
+} else {
+  cat("No refit diagnostics yet. Run MAXSIM=30 Rscript R/fit_simulated_datasets.R\n")
+}
+```
+
+```{r}
+if (!is.null(diagnostics)) {
+  summary_diag <- aggregate(
+    max_gradient ~ scenario + convergence,
+    diagnostics,
+    function(x) sprintf("%0.4g to %0.4g", min(x, na.rm = TRUE), max(x, na.rm = TRUE))
+  )
+  names(summary_diag)[names(summary_diag) == "max_gradient"] <- "max_gradient_range"
+  summary_diag$n <- as.integer(ave(
+    diagnostics$simulation,
+    diagnostics$scenario,
+    diagnostics$convergence,
+    FUN = length
+  )[match(
+    paste(summary_diag$scenario, summary_diag$convergence),
+    paste(diagnostics$scenario, diagnostics$convergence)
+  )])
+  print(summary_diag)
+}
+```
+
+## Results
+
+The comparisons below use the original base-model run as the data-generating truth. For each year, the shaded bands summarize the distribution of refitted estimates across simulated data sets.
+
+### SSB
+
+```{r}
+#| fig-width: 9
+#| fig-height: 5
+if (file.exists(timeseries_file)) {
+  refit_series <- read.csv(timeseries_file)
+  plot_truth_distribution(refit_series, true_series, "SSB", "Spawning biomass")
+} else {
+  plot.new()
+  text(0.5, 0.5, "Run MAXSIM=30 Rscript R/fit_simulated_datasets.R to create SSB refit output.")
+}
+```
+
+### Recruitment
+
+```{r}
+#| fig-width: 9
+#| fig-height: 5
+if (file.exists(timeseries_file)) {
+  refit_series <- read.csv(timeseries_file)
+  plot_truth_distribution(refit_series, true_series, "recruitment", "Recruitment")
+} else {
+  plot.new()
+  text(0.5, 0.5, "Run MAXSIM=30 Rscript R/fit_simulated_datasets.R to create recruitment refit output.")
+}
+```
+
+### Base Form and 2D AR1 Comparison
+
+These panels compare estimates from refitting the same 30 simulated data sets with the base fishery selectivity form and with the 2D AR1 fishery selectivity form. The red line is the original base-model value used as the data-generating truth.
+
+```{r}
+#| fig-width: 9
+#| fig-height: 5
+scenario_series <- read_scenario_csv(
+  c(timeseries_file, timeseries_2dar1_file),
+  c("Base-form refit", "2D AR1 refit")
+)
+if (!is.null(scenario_series)) {
+  plot_scenario_distribution(scenario_series, true_series, "SSB", "Spawning biomass")
+} else {
+  plot.new()
+  text(0.5, 0.5, "Run both simulated refit commands to create the comparison output.")
+}
+```
+
+```{r}
+#| fig-width: 9
+#| fig-height: 5
+if (!is.null(scenario_series)) {
+  plot_scenario_distribution(scenario_series, true_series, "recruitment", "Recruitment")
+} else {
+  plot.new()
+  text(0.5, 0.5, "Run both simulated refit commands to create the comparison output.")
+}
+```
+
+### Fishery Selectivity, Ages 3-8
+
+```{r}
+#| fig-width: 9
+#| fig-height: 10
+if (file.exists(selectivity_file)) {
+  sel_refit <- read.csv(selectivity_file)
+  ages <- 3:8
+  op <- par(mfrow = c(length(ages), 1), mar = c(2.2, 4.2, 1.3, 0.8), oma = c(2.2, 0, 1.5, 0), las = 1)
+  for (a in ages) {
+    d <- sel_refit[sel_refit$age == a, , drop = FALSE]
+    t <- true_selectivity[true_selectivity$age == a, , drop = FALSE]
+    years <- sort(unique(d$year))
+    mat <- sapply(years, function(y) d$value[d$year == y])
+    q <- apply(mat, 2, quantile, probs = c(0.05, 0.25, 0.5, 0.75, 0.95), na.rm = TRUE)
+    truth_y <- t$true[match(years, t$year)]
+    yrange <- range(c(q, truth_y), finite = TRUE)
+    plot(years, q[3, ], type = "n", ylim = yrange, xlab = "", ylab = paste("Age", a))
+    polygon(c(years, rev(years)), c(q[1, ], rev(q[5, ])), border = NA, col = adjustcolor("#8db9dd", 0.25))
+    polygon(c(years, rev(years)), c(q[2, ], rev(q[4, ])), border = NA, col = adjustcolor("#4f8fc0", 0.35))
+    lines(years, q[3, ], lwd = 2, col = "#1f5f8b")
+    lines(years, truth_y, lwd = 2.2, col = "#c43c39")
+    if (a == ages[1]) {
+      legend(
+        "topleft",
+        legend = c("Refit median", "True base value"),
+        col = c("#1f5f8b", "#c43c39"),
+        lty = 1,
+        lwd = c(2, 2.2),
+        bty = "n"
+      )
+    }
+  }
+  mtext("Year", side = 1, outer = TRUE, line = 0.8)
+  mtext("Fishery selectivity estimates compared with base truth", side = 3, outer = TRUE, line = 0.2, font = 2)
+  par(op)
+} else {
+  plot.new()
+  text(0.5, 0.5, "Run MAXSIM=30 Rscript R/fit_simulated_datasets.R to create selectivity refit output.")
+}
+```
+
+### Fishery Selectivity, Base Form vs 2D AR1
+
+```{r}
+#| fig-width: 9
+#| fig-height: 10
+scenario_sel <- read_scenario_csv(
+  c(selectivity_file, selectivity_2dar1_file),
+  c("Base-form refit", "2D AR1 refit")
+)
+if (!is.null(scenario_sel)) {
+  ages <- 3:8
+  cols <- c("Base-form refit" = "#1f5f8b", "2D AR1 refit" = "#2f7d4f")
+  op <- par(mfrow = c(length(ages), 1), mar = c(2.2, 4.2, 1.3, 0.8), oma = c(2.2, 0, 1.5, 0), las = 1)
+  for (a in ages) {
+    d <- scenario_sel[scenario_sel$age == a, , drop = FALSE]
+    t <- true_selectivity[true_selectivity$age == a, , drop = FALSE]
+    q <- scenario_quantiles(d)
+    years <- sort(unique(q$year))
+    truth_y <- t$true[match(years, t$year)]
+    yrange <- range(c(q$q25, q$q75, truth_y), finite = TRUE)
+    plot(years, truth_y, type = "n", ylim = yrange, xlab = "", ylab = paste("Age", a))
+    for (sc in names(cols)) {
+      qs <- q[q$scenario == sc, , drop = FALSE]
+      if (nrow(qs) == 0) next
+      polygon(c(qs$year, rev(qs$year)), c(qs$q25, rev(qs$q75)), border = NA, col = adjustcolor(cols[[sc]], 0.14))
+      lines(qs$year, qs$q50, lwd = 2, col = cols[[sc]])
+    }
+    lines(years, truth_y, lwd = 2.1, col = "#c43c39")
+    if (a == ages[1]) {
+      legend(
+        "topleft",
+        legend = c(names(cols), "True base value"),
+        col = c(cols, "#c43c39"),
+        lty = 1,
+        lwd = c(2, 2, 2.1),
+        bty = "n"
+      )
+    }
+  }
+  mtext("Year", side = 1, outer = TRUE, line = 0.8)
+  mtext("Fishery selectivity estimates: base form and 2D AR1 refits", side = 3, outer = TRUE, line = 0.2, font = 2)
+  par(op)
+} else {
+  plot.new()
+  text(0.5, 0.5, "Run both simulated refit commands to create selectivity comparison output.")
+}
+```
+
+## Existing Illustration Figures
+
+These figures illustrate the simulated observations before refitting.
+
+```{r}
+bts_plot <- rtmb_file("analysis/output/figures/simulated_bts_index_30.png")
+fishery_plot <- rtmb_file("analysis/output/figures/simulated_fishery_age_props_by_year_30.png")
+cat("BTS plot:", bts_plot, "\n")
+cat("Fishery age-composition plot:", fishery_plot, "\n")
+```
+
+```{r}
+#| echo: false
+#| out-width: "100%"
+if (file.exists(bts_plot)) {
+  knitr::include_graphics(bts_plot)
+}
+```
+
+```{r}
+#| echo: false
+#| out-width: "100%"
+if (file.exists(fishery_plot)) {
+  knitr::include_graphics(fishery_plot)
+}
+```

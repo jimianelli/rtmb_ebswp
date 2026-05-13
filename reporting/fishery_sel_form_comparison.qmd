@@ -1,5 +1,7 @@
 ---
 title: "Fishery Selectivity Form Comparison"
+bibliography: ../references/selectivity.bib
+link-citations: true
 execute:
   echo: true
   warning: false
@@ -34,7 +36,6 @@ suppressPackageStartupMessages({
   library(knitr)
   library(tibble)
   library(purrr)
-  library(readr)
 })
 
 theme_set(ggthemes::theme_few())
@@ -510,6 +511,20 @@ s_{t,a} = \exp(\ell^*_{t,a}).
 $$
 
 The centered selectivity \(s_{t,a}\) enters the population dynamics as \(F_{t,a} = F_t s_{t,a}\). Code references needed to reproduce the implementation are in @sec-appendix-implementation.
+
+## Literature context
+
+@sampson2014fishery provides a useful framing for this comparison by separating contact selection, availability, and population-level fishery selectivity. That distinction matters here because the RTMB selectivity surface is not simply a gear-retention curve; it is the relative fishing mortality pattern implied by the combined fishery, fleet behavior, fish distribution, and assessment model structure. The paper also illustrates that population selectivity can be temporally variable and can take diverse shapes, which motivates comparing the base change-year coefficient form against more flexible alternatives.
+
+@punt2014model focuses on the assessment-model problem: selectivity forms reduce variance when they are parsimonious, but they can bias assessment outputs when the assumed functional form is wrong. The paper reviews how residual diagnostics, information criteria, and simulation studies can be used to evaluate selectivity choices. This report follows that logic by comparing model likelihood components, age-composition fits, selectivity surfaces, and spawning biomass trajectories rather than interpreting one selectivity form from the objective value alone.
+
+@martell2014goodPractices is the most direct precedent for the time-varying selectivity comparison. Martell and Stewart used simulation-estimation experiments to evaluate fixed, blocked, and continuously changing selectivity patterns and emphasized that both statistical fit and policy consequences should be evaluated. The base model here resembles a blocked approach through change-year deviations, whereas the 2D AR1 option is closer to a continuous time-varying surface that borrows strength across neighboring years and ages.
+
+@butterworth2014selectivityMatter asks how much selectivity uncertainty affects management advice across a set of applied assessment and management-procedure examples. The study is a caution against treating selectivity sensitivity as automatically dominant: selectivity can strongly affect reference points and biomass scale in some cases, but other uncertainties may be equally or more influential. For this report, that means SSB and likelihood differences should be read as one part of a broader sensitivity analysis rather than as a complete basis for model choice.
+
+@cadrin2016fieldObservations connects assessment selectivity and catchability to field observations of fishing gear, survey gear, efficiency, and availability. The paper is relevant because assessment-estimated selectivity can absorb several processes that field studies may measure separately. For EBS pollock, any interpretation of the fishery selectivity surface should therefore distinguish model-based population selectivity from direct observations about gear performance, fishing behavior, or fish availability.
+
+@vasilakopoulos2020metrics shifts the focus from estimating selectivity curves to operational metrics for management advice. The authors evaluate candidate metrics for sensitivity to selectivity changes and robustness to recruitment and fishing-mortality variation, identifying the ratio of fishing mortality on the first recruited age to average fishing mortality as a useful summary. That perspective suggests a practical extension of this comparison: after fitting alternative selectivity forms, summarize whether the implied exploitation pattern changes in a way that managers could track, not only whether the full selectivity surface looks different.
 
 ## Form 0: base coefficients with change-year deviations
 
