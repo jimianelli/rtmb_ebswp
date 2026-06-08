@@ -4,6 +4,7 @@
 # and write plots (marginals + pairs) for slow-mixing parameters.
 #
 # Usage:
+#   Rscript R/run_sparsenuts_fishery_sel_forms.R
 #   POLLOCK_ROOT=/path/to/pollock Rscript R/run_sparsenuts_fishery_sel_forms.R
 
 suppressPackageStartupMessages({
@@ -19,10 +20,29 @@ if (!file.exists(file.path(rtmb_dir, "R", "config.R"))) {
   stop("Run from repo root (directory containing R/config.R)")
 }
 
-pollock_root <- Sys.getenv("POLLOCK_ROOT", unset = NA_character_)
-if (is.na(pollock_root) || !nzchar(pollock_root)) {
-  stop("Set POLLOCK_ROOT to the external pollock workspace")
+resolve_pollock_root <- function(rtmb_dir) {
+  has_bridge <- function(path) {
+    if (is.na(path) || !nzchar(path)) return(FALSE)
+    file.exists(file.path(path, "admb", "runs", "for_rtmb", "pm.rep")) &&
+      file.exists(file.path(path, "admb", "runs", "for_rtmb", "pm.par")) &&
+      file.exists(file.path(path, "admb", "runs", "data", "pm_24.dat"))
+  }
+  env_root <- Sys.getenv("POLLOCK_ROOT", unset = NA_character_)
+  if (is.na(env_root) || !nzchar(env_root)) {
+    env_root <- Sys.getenv("POLLOCK_BASE", unset = NA_character_)
+  }
+  if (!is.na(env_root) && nzchar(env_root)) {
+    return(normalizePath(env_root, mustWork = TRUE))
+  }
+  candidates <- c(rtmb_dir, dirname(rtmb_dir), file.path(dirname(rtmb_dir), "pollock"))
+  for (cand in candidates) {
+    if (has_bridge(cand)) {
+      return(normalizePath(cand, mustWork = TRUE))
+    }
+  }
+  stop("Cannot locate pollock bridge inputs. Set POLLOCK_ROOT or use bundled admb/runs files.")
 }
+pollock_root <- resolve_pollock_root(rtmb_dir)
 
 forms <- c(0L, 2L, 5L)
 out_dir <- file.path("analysis", "output", "sparsenuts", "fishery_sel_forms")

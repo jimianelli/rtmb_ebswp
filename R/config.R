@@ -39,6 +39,15 @@ get_rtmb_root <- function() {
 }
 
 get_pollock_root <- function(rtmb_root) {
+  has_bridge <- function(path) {
+    if (is.na(path) || !nzchar(path)) {
+      return(FALSE)
+    }
+    file.exists(file.path(path, "admb", "runs", "for_rtmb", "pm.rep")) &&
+      file.exists(file.path(path, "admb", "runs", "for_rtmb", "pm.par")) &&
+      file.exists(file.path(path, "admb", "runs", "data", "pm_24.dat"))
+  }
+
   env_root <- Sys.getenv("POLLOCK_ROOT", unset = NA_character_)
   if (is.na(env_root) || !nzchar(env_root)) {
     env_root <- Sys.getenv("POLLOCK_BASE", unset = NA_character_)
@@ -48,24 +57,25 @@ get_pollock_root <- function(rtmb_root) {
   }
 
   candidates <- c(
+    rtmb_root,
     dirname(rtmb_root),
     file.path(dirname(rtmb_root), "pollock"),
     file.path(rtmb_root, "data", "private", "pollock")
   )
   for (cand in candidates) {
-    if (file.exists(file.path(cand, "admb", "runs", "for_rtmb"))) {
+    if (has_bridge(cand)) {
       return(normalizePath(cand, mustWork = TRUE))
     }
   }
 
   stop(
-    "Cannot locate the external pollock workspace. ",
-    "Set POLLOCK_ROOT to a directory containing admb/runs/for_rtmb/."
+    "Cannot locate pollock bridge inputs. ",
+    "This repository can use bundled files under admb/runs/for_rtmb, ",
+    "or set POLLOCK_ROOT to another directory containing that layout."
   )
 }
 
-# Set up paths. This repository is standalone; the ADMB/input workspace is an
-# external dependency supplied through POLLOCK_ROOT.
+# Set up paths. POLLOCK_ROOT/POLLOCK_BASE can override the bundled bridge files.
 rtmb_dir <- get_rtmb_root()
 pollock_root <- get_pollock_root(rtmb_dir)
 

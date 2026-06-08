@@ -26,6 +26,12 @@ get_rtmb_root <- function() {
 }
 
 get_pollock_root <- function(rtmb_root) {
+  has_bridge <- function(path) {
+    if (is.na(path) || !nzchar(path)) return(FALSE)
+    file.exists(file.path(path, "admb", "runs", "for_rtmb", "pm.rep")) &&
+      file.exists(file.path(path, "admb", "runs", "for_rtmb", "pm.par")) &&
+      file.exists(file.path(path, "admb", "runs", "data", "pm_24.dat"))
+  }
   env_root <- Sys.getenv("POLLOCK_ROOT", unset = NA_character_)
   if (is.na(env_root) || !nzchar(env_root)) {
     env_root <- Sys.getenv("POLLOCK_BASE", unset = NA_character_)
@@ -33,7 +39,13 @@ get_pollock_root <- function(rtmb_root) {
   if (!is.na(env_root) && nzchar(env_root)) {
     return(normalizePath(env_root, mustWork = TRUE))
   }
-  normalizePath(dirname(rtmb_root), mustWork = TRUE)
+  candidates <- c(rtmb_root, dirname(rtmb_root), file.path(dirname(rtmb_root), "pollock"))
+  for (cand in candidates) {
+    if (has_bridge(cand)) {
+      return(normalizePath(cand, mustWork = TRUE))
+    }
+  }
+  stop("Cannot locate pollock bridge inputs. Set POLLOCK_ROOT or use bundled admb/runs files.")
 }
 
 write_csv_base <- function(x, path) {

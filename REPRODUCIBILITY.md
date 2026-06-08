@@ -1,32 +1,43 @@
 # Reproducibility
 
 This repository is designed to reproduce the RTMB side of the EBS pollock
-RTMB-ADMB bridge when supplied with the external ADMB bridge inputs.
+RTMB-ADMB bridge using the bundled minimum ADMB bridge inputs. A different ADMB
+bridge run can still be supplied through `POLLOCK_ROOT` or `POLLOCK_BASE`.
 
-## 1. External Data Layout
+## 1. Bridge Data Layout
 
-Create or identify a pollock workspace outside this repository with this
-minimum layout:
+The repository includes this minimum layout:
 
 ```text
-pollock/
-  admb/
-    runs/
-      for_rtmb/
-        pm.par
-        pm.rep
-        pm.tpl
-      data/
+admb/
+  runs/
+    for_rtmb/
+      pm.dat
+      pm.par
+      pm.rep
+      pm.std
+      pm.tpl
+      control.dat
+      proj_df.csv
+      proj/
+        tacpar.dat
+    data/
+      cov_2024.dat
+      pm_24.dat
+      selvar24.dat
+      surv.dat
+      surveycpue.dat
+      wtage2024.dat
 ```
 
-Then set:
+To override the bundled bridge inputs with another pollock workspace, set:
 
 ```bash
 export POLLOCK_ROOT=/path/to/pollock
 ```
 
-The repository does not version these files because they are assessment inputs
-and generated ADMB bridge outputs.
+If neither `POLLOCK_ROOT` nor `POLLOCK_BASE` is set, the code uses the bundled
+`admb/runs/` tree.
 
 ## 2. R Dependencies
 
@@ -125,7 +136,7 @@ Rendered HTML is generated output and should not be committed.
 For a reproducible release, record:
 
 - Git commit hash of this repository.
-- Location and provenance of the external pollock workspace.
+- Provenance of the bundled or external ADMB bridge workspace.
 - Checksums of `pm.par`, `pm.rep`, and `pm.tpl`.
 - R version and package versions.
 - Commands run and parameter overrides.

@@ -14,6 +14,7 @@
 #   5) Prints a git commit/push checklist (does NOT push automatically)
 #
 # Usage:
+#   Rscript scripts/recipe_evaluate_scenarios.R
 #   POLLOCK_ROOT=/path/to/pollock Rscript scripts/recipe_evaluate_scenarios.R
 #
 # Notes:
@@ -64,12 +65,34 @@ if (!file.exists(file.path(repo_root, "R", "run_fishery_selectivity_forms.R"))) 
 cat("Repo root:", repo_root, "\n")
 setwd(repo_root)
 
-pollock_root <- Sys.getenv("POLLOCK_ROOT", unset = NA_character_)
-if (is.na(pollock_root) || pollock_root == "") {
-  stop("POLLOCK_ROOT is not set. Example:\n  POLLOCK_ROOT=/Users/you/workspace/pollock Rscript scripts/recipe_evaluate_scenarios.R")
+resolve_pollock_root <- function(repo_root) {
+  has_bridge <- function(path) {
+    if (is.na(path) || !nzchar(path)) return(FALSE)
+    file.exists(file.path(path, "admb", "runs", "for_rtmb", "pm.par")) &&
+      file.exists(file.path(path, "admb", "runs", "for_rtmb", "pm.rep")) &&
+      file.exists(file.path(path, "admb", "runs", "for_rtmb", "pm.tpl")) &&
+      file.exists(file.path(path, "admb", "runs", "data", "pm_24.dat"))
+  }
+
+  env_root <- Sys.getenv("POLLOCK_ROOT", unset = NA_character_)
+  if (is.na(env_root) || !nzchar(env_root)) {
+    env_root <- Sys.getenv("POLLOCK_BASE", unset = NA_character_)
+  }
+  if (!is.na(env_root) && nzchar(env_root)) {
+    return(normalizePath(env_root, mustWork = TRUE))
+  }
+
+  candidates <- c(repo_root, dirname(repo_root), file.path(dirname(repo_root), "pollock"))
+  for (cand in candidates) {
+    if (has_bridge(cand)) {
+      return(normalizePath(cand, mustWork = TRUE))
+    }
+  }
+
+  stop("Cannot locate pollock bridge inputs. Set POLLOCK_ROOT or use bundled admb/runs files.")
 }
 
-pollock_root <- normalizePath(pollock_root, mustWork = TRUE)
+pollock_root <- resolve_pollock_root(repo_root)
 cat("POLLOCK_ROOT:", pollock_root, "\n")
 
 # minimal structural check

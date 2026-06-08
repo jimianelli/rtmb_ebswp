@@ -4,28 +4,31 @@ This repository contains a standalone RTMB reimplementation of the ADMB EBS
 pollock bridge model. It is intended for model-port debugging, reproducibility
 checks, and diagnostics comparing RTMB output to a dedicated ADMB bridge run.
 
-The repository contains source code and reporting scripts only. Assessment
-inputs, ADMB outputs, generated RDS files, rendered HTML reports, and projection
-executables are intentionally not versioned here.
+The repository contains source code, reporting scripts, and the minimal ADMB
+bridge bundle needed for standard RTMB runs. Generated RDS files, rendered HTML
+reports, full ADMB run products, and projection executables are intentionally
+not versioned here.
 
-## External Inputs
+## Bridge Inputs
 
-The RTMB model is initialized and compared against an external pollock workspace
-that must contain:
+The default run uses the bundled bridge files in this repository:
 
 - `admb/runs/for_rtmb/pm.par`
 - `admb/runs/for_rtmb/pm.rep`
 - `admb/runs/for_rtmb/pm.tpl`
+- `admb/runs/for_rtmb/pm.dat`
 - `admb/runs/data/`
 
-Point the repository at that workspace with:
+To compare against a different ADMB bridge run, point the repository at another
+pollock workspace with:
 
 ```bash
 export POLLOCK_ROOT=/path/to/pollock
 ```
 
 For compatibility with older scripts, `POLLOCK_BASE` is also recognized when
-`POLLOCK_ROOT` is not set.
+`POLLOCK_ROOT` is not set. If neither variable is set, the code uses the
+in-repository `admb/runs/` bundle.
 
 ## Run
 
@@ -66,8 +69,9 @@ https://jimianelli.github.io/rtmb_ebswp/
 
 - `R/`: RTMB model, data utilities, run scripts, and output writers.
 - `analysis/`: top-level analysis entry points.
+- `admb/runs/`: minimal ADMB bridge inputs and comparison outputs.
 - `reporting/`: Quarto diagnostic report source and run notes.
-- `data/README.md`: description of external input requirements.
+- `data/README.md`: description of bundled bridge data and override behavior.
 
 Generated outputs are ignored by git and should remain under
 `analysis/output/` or `output/`.

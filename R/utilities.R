@@ -18,27 +18,57 @@ second_difference <- sdiff <- function(x) {
 }
 
 resolve_pollock_root <- function() {
+  has_bridge <- function(path) {
+    if (is.na(path) || !nzchar(path)) {
+      return(FALSE)
+    }
+    file.exists(file.path(path, "admb", "runs", "for_rtmb")) &&
+      file.exists(file.path(path, "admb", "runs", "data", "pm_24.dat"))
+  }
+
+  env_root <- Sys.getenv("POLLOCK_ROOT", unset = NA_character_)
+  if (!is.na(env_root) && nzchar(env_root)) {
+    return(env_root)
+  }
+
   env_base <- Sys.getenv("POLLOCK_BASE", unset = NA_character_)
   if (!is.na(env_base) && nzchar(env_base)) {
     return(env_base)
   }
 
-  if (exists("pollock_root", inherits = TRUE)) {
+  if (exists("pollock_root", inherits = TRUE) &&
+      has_bridge(get("pollock_root", inherits = TRUE))) {
     return(get("pollock_root", inherits = TRUE))
   }
 
+  candidates <- character()
+  if (exists("rtmb_dir", inherits = TRUE)) {
+    candidates <- c(candidates, get("rtmb_dir", inherits = TRUE))
+  }
+  if (exists("rtmb_root", inherits = TRUE)) {
+    candidates <- c(candidates, get("rtmb_root", inherits = TRUE))
+  }
+
+  env_rtmb_root <- Sys.getenv("RTMB_EBSWP_ROOT", unset = NA_character_)
+  if (!is.na(env_rtmb_root) && nzchar(env_rtmb_root)) {
+    candidates <- c(candidates, env_rtmb_root)
+  }
+
   if (requireNamespace("here", quietly = TRUE)) {
-    base <- here::here()
-    if (file.exists(file.path(base, "admb"))) {
-      return(base)
-    }
-    parent <- dirname(base)
-    if (file.exists(file.path(parent, "admb"))) {
-      return(parent)
+    candidates <- c(candidates, here::here())
+  }
+
+  wd <- normalizePath(getwd(), mustWork = TRUE)
+  candidates <- unique(c(candidates, wd, file.path(wd, "..")))
+  candidates <- c(candidates, file.path(candidates, "data", "private", "pollock"))
+
+  for (cand in candidates) {
+    if (has_bridge(cand)) {
+      return(normalizePath(cand, mustWork = TRUE))
     }
   }
 
-  stop("Cannot locate pollock root. Set POLLOCK_BASE or use project root.")
+  stop("Cannot locate pollock root. Set POLLOCK_ROOT/POLLOCK_BASE or use the bundled admb/runs bridge files.")
 }
 
 resolve_runs_root <- function() {

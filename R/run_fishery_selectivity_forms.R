@@ -3,6 +3,7 @@
 # Run alternative fishery selectivity forms (real model fits) and compare to base.
 #
 # Usage:
+#   Rscript R/run_fishery_selectivity_forms.R
 #   POLLOCK_ROOT=~/workspace/pollock Rscript R/run_fishery_selectivity_forms.R
 #
 # Outputs:
@@ -20,10 +21,6 @@ suppressPackageStartupMessages({
 `%||%` <- function(x, y) if (is.null(x) || length(x) == 0) y else x
 
 rtmb_root <- normalizePath(getwd(), mustWork = TRUE)
-
-if (is.na(Sys.getenv("POLLOCK_ROOT", unset = NA_character_)) || Sys.getenv("POLLOCK_ROOT") == "") {
-  stop("Set POLLOCK_ROOT before running (e.g., POLLOCK_ROOT=~/workspace/pollock)")
-}
 
 out_dir <- file.path(rtmb_root, "analysis", "output", "fishery_sel_forms")
 dir.create(out_dir, recursive = TRUE, showWarnings = FALSE)

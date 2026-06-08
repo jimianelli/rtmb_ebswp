@@ -19,5 +19,29 @@ reporting/*_files/
 
 # Local/private inputs
 data/private/
-admb/
 runs/
+
+# Keep full ADMB workspaces ignored, but allow the minimal bridge bundle.
+admb/*
+!admb/runs/
+admb/runs/*
+!admb/runs/data/
+admb/runs/data/*
+!admb/runs/data/cov_2024.dat
+!admb/runs/data/pm_24.dat
+!admb/runs/data/selvar24.dat
+!admb/runs/data/surv.dat
+!admb/runs/data/surveycpue.dat
+!admb/runs/data/wtage2024.dat
+!admb/runs/for_rtmb/
+admb/runs/for_rtmb/*
+!admb/runs/for_rtmb/control.dat
+!admb/runs/for_rtmb/pm.dat
+!admb/runs/for_rtmb/pm.par
+!admb/runs/for_rtmb/pm.rep
+!admb/runs/for_rtmb/pm.std
+!admb/runs/for_rtmb/pm.tpl
+!admb/runs/for_rtmb/proj_df.csv
+!admb/runs/for_rtmb/proj/
+admb/runs/for_rtmb/proj/*
+!admb/runs/for_rtmb/proj/tacpar.dat
