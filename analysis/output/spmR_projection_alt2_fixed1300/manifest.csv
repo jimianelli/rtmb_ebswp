@@ -1,0 +1,5 @@
+"file","role","exists"
+"/Users/jim/_mymods/pollock/rtmb_ebswp/analysis/output/spmR_projection_alt2_fixed1300/spm.dat","SPM setup file",TRUE
+"/Users/jim/_mymods/pollock/rtmb_ebswp/analysis/output/spmR_projection_alt2_fixed1300/pm.prj","Species assessment input file generated from RTMB",TRUE
+"/Users/jim/_mymods/pollock/rtmb_ebswp/analysis/output/spmR_projection_alt2_fixed1300/tacpar.dat","SPM TAC parameter file copied from ADMB bridge projection directory",TRUE
+"/Users/jim/_mymods/pollock/rtmb_ebswp/analysis/output/spmR_projection_alt2_fixed1300/spm","SPM executable copied from ADMB bridge projection directory",TRUE

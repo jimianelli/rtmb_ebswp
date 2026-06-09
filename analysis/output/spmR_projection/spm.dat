@@ -1,0 +1,50 @@
+#_SETUP_FILE_FOR_EBS_Pollock_RTMB
+rtmb_ebswp # Run name
+# Tier
+3
+#--------------------------------------------
+7 # Number of Alternatives
+#--------------------------------------------
+1 # List of alternatives
+2 # List of alternatives
+3 # List of alternatives
+4 # List of alternatives
+5 # List of alternatives
+6 # List of alternatives
+7 # List of alternatives
+#--------------------------------------------
+1    # Flag to set TAC equal to ABC
+#--------------------------------------------
+2    # Stock-recruitment type (1=Ricker, 2=Bholt)
+1    # projection recruitment form
+1    # SR-Conditioning
+0    # Recruitment prior CV condition
+#--------------------------------------------
+1    # Flag to write big file
+#--------------------------------------------
+14 #_Number of projection years
+1000 #_Number of simulations
+2025 #_Begin Year
+#_Number_of_years with specified catch
+2
+# Number of species
+1
+# OY Min
+0
+# OY Max
+2.00E+06
+# data files for each species
+pm.prj
+# ABC Multipliers
+1
+# scalars
+1
+# New Alt 4 Fabc SPRs
+0.6
+# Number of TAC model categories
+1
+# TAC model indices
+1
+# Catch in each future year
+2025 1350
+2026 1350

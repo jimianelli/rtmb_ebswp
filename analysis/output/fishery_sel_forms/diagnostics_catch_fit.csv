@@ -1,0 +1,4 @@
+fishery_sel_form,label,corr_obs_pred,mean_abs_log_ratio
+0,Base (coefficients + change-year deviations),0.9982250527326038,0.009935068059008581
+2,Time-varying double logistic (annual p1/p2/p3),0.9992659610048313,0.00724264818185514
+5,2D AR1 year×age (all years),0.998506281737714,0.00899498721160648
