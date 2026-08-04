@@ -169,7 +169,7 @@ implementations.
 ## Supporting RTMB development reports
 
 - [RTMB assessment report](ebs_pollock_rtmb_ebswp_assessment.html)
-- [Fishery selectivity comparison](fishery_sel_form_comparison.html)
+- [Fishery selectivity: methods, comparisons, and results](fishery_selectivity.html)
 - [Simulated-data workflow](simulated_data_workflow.html)
 
 # Immediate work order

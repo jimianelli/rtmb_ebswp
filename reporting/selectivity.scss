@@ -1,0 +1,75 @@
+/*-- scss:defaults --*/
+$primary: #005ea8;
+$secondary: #163e63;
+$link-color: #005ea8;
+$font-family-sans-serif: "Source Sans 3", "Segoe UI", system-ui, sans-serif;
+
+/*-- scss:rules --*/
+:root {
+  --afsc-navy: #063b66;
+  --afsc-blue: #005ea8;
+  --afsc-ice: #f4f9fc;
+  --afsc-gold: #f5c242;
+}
+
+.quarto-title-banner {
+  color: white;
+  background: linear-gradient(120deg, var(--afsc-navy), var(--afsc-blue));
+}
+
+.quarto-title-banner .title,
+.quarto-title-banner .subtitle {
+  color: white;
+}
+
+.selectivity-hero {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 180px;
+  gap: 2rem;
+  align-items: center;
+  margin: 0 0 1.8rem;
+  padding: 1.4rem 1.6rem;
+  background: linear-gradient(135deg, var(--afsc-ice), white);
+  border-left: 6px solid var(--afsc-blue);
+  border-radius: 0.45rem;
+  box-shadow: 0 0.35rem 1rem rgb(6 59 102 / 10%);
+}
+
+.selectivity-intro {
+  font-size: 1.08rem;
+}
+
+.selectivity-logo img {
+  display: block;
+  width: 170px;
+  max-width: 100%;
+  margin: auto;
+  border-radius: 50%;
+  box-shadow: 0 0.4rem 1.2rem rgb(6 59 102 / 18%);
+}
+
+.selectivity-logo a:focus-visible {
+  display: block;
+  outline: 4px solid var(--afsc-gold);
+  outline-offset: 5px;
+  border-radius: 50%;
+}
+
+table thead {
+  color: white;
+  background: var(--afsc-navy);
+}
+
+@media (max-width: 720px) {
+  .selectivity-hero {
+    grid-template-columns: 1fr;
+  }
+
+  .selectivity-logo {
+    order: -1;
+  }
+
+  .selectivity-logo img {
+    width: 135px;
+  }
+}
