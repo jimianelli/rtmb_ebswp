@@ -17,99 +17,6 @@ second_difference <- sdiff <- function(x) {
   diff(diff(x)) # second_difference
 }
 
-resolve_pollock_root <- function() {
-  has_bridge <- function(path) {
-    if (is.na(path) || !nzchar(path)) {
-      return(FALSE)
-    }
-    file.exists(file.path(path, "admb", "runs", "for_rtmb")) &&
-      file.exists(file.path(path, "admb", "runs", "data", "pm_24.dat"))
-  }
-
-  env_root <- Sys.getenv("POLLOCK_ROOT", unset = NA_character_)
-  if (!is.na(env_root) && nzchar(env_root)) {
-    return(env_root)
-  }
-
-  env_base <- Sys.getenv("POLLOCK_BASE", unset = NA_character_)
-  if (!is.na(env_base) && nzchar(env_base)) {
-    return(env_base)
-  }
-
-  if (exists("pollock_root", inherits = TRUE) &&
-      has_bridge(get("pollock_root", inherits = TRUE))) {
-    return(get("pollock_root", inherits = TRUE))
-  }
-
-  candidates <- character()
-  if (exists("rtmb_dir", inherits = TRUE)) {
-    candidates <- c(candidates, get("rtmb_dir", inherits = TRUE))
-  }
-  if (exists("rtmb_root", inherits = TRUE)) {
-    candidates <- c(candidates, get("rtmb_root", inherits = TRUE))
-  }
-
-  env_rtmb_root <- Sys.getenv("RTMB_EBSWP_ROOT", unset = NA_character_)
-  if (!is.na(env_rtmb_root) && nzchar(env_rtmb_root)) {
-    candidates <- c(candidates, env_rtmb_root)
-  }
-
-  if (requireNamespace("here", quietly = TRUE)) {
-    candidates <- c(candidates, here::here())
-  }
-
-  wd <- normalizePath(getwd(), mustWork = TRUE)
-  candidates <- unique(c(candidates, wd, file.path(wd, "..")))
-  candidates <- c(candidates, file.path(candidates, "data", "private", "pollock"))
-
-  for (cand in candidates) {
-    if (has_bridge(cand)) {
-      return(normalizePath(cand, mustWork = TRUE))
-    }
-  }
-
-  stop("Cannot locate pollock root. Set POLLOCK_ROOT/POLLOCK_BASE or use the bundled admb/runs bridge files.")
-}
-
-resolve_runs_root <- function() {
-  root <- resolve_pollock_root()
-  candidates <- c(file.path(root, "admb", "runs"), file.path(root, "runs"))
-  for (cand in candidates) {
-    if (file.exists(cand)) {
-      return(cand)
-    }
-  }
-  stop("Cannot locate runs directory under pollock root.")
-}
-
-resolve_runs_data_dir <- function() {
-  runs_root <- resolve_runs_root()
-  data_dir <- file.path(runs_root, "data")
-  if (file.exists(data_dir)) {
-    return(data_dir)
-  }
-  stop("Cannot locate runs/data directory.")
-}
-
-resolve_pm_run_dir <- function() {
-  runs_root <- resolve_runs_root()
-  env_run <- Sys.getenv("RTMB_ADMB_RUN_DIR", unset = NA_character_)
-  if (!is.na(env_run) && nzchar(env_run)) {
-    return(env_run)
-  }
-
-  candidates <- c(
-    file.path(runs_root, "for_rtmb"),
-    file.path(runs_root, "2024")
-  )
-  for (cand in candidates) {
-    if (file.exists(file.path(cand, "pm.dat"))) {
-      return(cand)
-    }
-  }
-  stop("Cannot locate pm.dat under runs/for_rtmb or runs/2024.")
-}
-
 
 # 1. Comparison function with max |% diff|
 compare_outputs_max_pct <- function(rtmb, admb, tolerance = 1e-6) {
@@ -443,67 +350,7 @@ read_pars_simple <- function(file) {
   flush_buffer()
   return(result)
 }
-
-make_fishery_sel_spline_basis <- function(nages, nbasis = 6L, degree = 3L) {
-  ages <- 0.5 + seq_len(nages)
-  nbasis <- max(as.integer(nbasis), degree + 1L)
-  intercept <- TRUE
-  as.matrix(splines::bs(
-    ages,
-    df = nbasis,
-    degree = degree,
-    intercept = intercept
-  ))
-}
-
-add_fishery_selectivity_parameters <- function(parameters, data) {
-  nyrs <- as.integer(data$endyr - data$styr + 1L)
-  nages <- as.integer(data$nages)
-  nbasis <- if (!is.null(data$fishery_sel_spline_basis)) {
-    ncol(data$fishery_sel_spline_basis)
-  } else {
-    6L
-  }
-
-  defaults <- list(
-    sel_logistic_fsh = c(log(5), log(1.5)),
-    sel_double_logistic_fsh = matrix(log(c(1.5, 3, 4)), nrow = nyrs, ncol = 3, byrow = TRUE),
-    sel_richards_fsh = c(log(4), log(1), log(1), log(5), log(0.75), log(1)),
-    sel_spline_fsh = rep(0, nbasis),
-    sel_tv_ar1_fsh = matrix(0, nrow = nyrs, ncol = nages),
-    sel_tv_ar1_rho_fsh = c(0, 0),
-    log_sel_tv_ar1_sigma_fsh = log(0.2)
-  )
-
-  for (nm in names(defaults)) {
-    if (is.null(parameters[[nm]])) parameters[[nm]] <- defaults[[nm]]
-  }
-  parameters
-}
-
-inactive_fishery_selectivity_parameters <- function(fishery_sel_form = 0L) {
-  form <- as.integer(fishery_sel_form)[1]
-  all_sets <- list(
-    coeff = c("sel_coffs_fsh", "sel_devs_fsh"),
-    logistic = "sel_logistic_fsh",
-    double_logistic = "sel_double_logistic_fsh",
-    richards = "sel_richards_fsh",
-    spline = "sel_spline_fsh",
-    tv_ar1 = c("sel_tv_ar1_fsh", "sel_tv_ar1_rho_fsh", "log_sel_tv_ar1_sigma_fsh")
-  )
-  active <- switch(
-    as.character(form),
-    "0" = "coeff",
-    "1" = "logistic",
-    "2" = "double_logistic",
-    "3" = "richards",
-    "4" = "spline",
-    "5" = "tv_ar1",
-    "coeff"
-  )
-  unname(unlist(all_sets[names(all_sets) != active], use.names = FALSE))
-}
-build_model_inputs <- function(filepath, fn = file.path(resolve_runs_data_dir(), "pm_24.dat")) {
+build_model_inputs <- function(filepath, fn = here::here("Rtmb", "rpm.dat")) {
   # Utilities to read .dat-style content
   read_matrix <- function(file, ...) {
     as.matrix(read.table(file, header = FALSE, ...))
@@ -529,7 +376,7 @@ build_model_inputs <- function(filepath, fn = file.path(resolve_runs_data_dir(),
   # names(inputs)
   inputs$files <- read_model_files(filepath)
   inputs$files
-  Cov_Filename <- file.path(resolve_runs_data_dir(), "cov_2024.dat")
+  Cov_Filename <- here::here("runs", "data", "cov_2024.dat")
   # inputs$files$Wtage_file
   inputs$cov_matrix <- if (file.exists(Cov_Filename)) read_matrix(Cov_Filename) else NULL
   # Read optional age comp or ragged data files
@@ -555,8 +402,8 @@ read_model_files <- function(filepath) {
   files
 }
 
-fn <- file.path(resolve_runs_data_dir(), "pm_24.dat")
-read_model_inputs <- function(fn = file.path(resolve_runs_data_dir(), "pm_24.dat")) {
+fn <- here::here("Rtmb", "rpm.dat")
+read_model_inputs <- function(fn) {
   data_tmp <- read_data(fn)
   const <- list(
     DoCovBTS = 1,
@@ -597,8 +444,6 @@ read_model_inputs <- function(fn = file.path(resolve_runs_data_dir(), "pm_24.dat
     robust_phase = 1350,
     ats_robust_phase = 1350,
     ats_like_type = 0,
-    fishery_sel_form = 0,
-    n_fishery_sel_spline_basis = 6,
     phase_logist_fsh = -1,
     phase_logist_bts = 2,
     phase_seldevs_fsh = 4,
@@ -669,22 +514,12 @@ read_model_inputs <- function(fn = file.path(resolve_runs_data_dir(), "pm_24.dat
     # Assume these are values already defined in full model
   )
   obs_catch <- function(year) 1200 # mockup function for illustration
-  if (!is.null(data_tmp$fishery_sel_form)) {
-    const$fishery_sel_form <- as.integer(data_tmp$fishery_sel_form[1])
-  }
-  if (!is.null(data_tmp$n_fishery_sel_spline_basis)) {
-    const$n_fishery_sel_spline_basis <- as.integer(data_tmp$n_fishery_sel_spline_basis[1])
-  }
   endyr <- data_tmp$endyr - const$retroYr
   endyr_est <- endyr - const$omitSR
   n_selages_fsh <- data_tmp$nages - const$last_age_sel_fsh + 1
   n_selages_bts <- data_tmp$nages - const$last_age_sel_bts + 1
   n_selages_ats <- data_tmp$nages - const$last_age_sel_ats + 1
   nagecomp <- c(data_tmp$n_fsh - const$retroYr, data_tmp$n_bts - const$retroYr, data_tmp$n_ats - const$retroYr)
-  fishery_sel_spline_basis <- make_fishery_sel_spline_basis(
-    data_tmp$nages,
-    nbasis = const$n_fishery_sel_spline_basis
-  )
   # const$nages
   # const$last_age_sel_ats
   data <- c(
@@ -697,7 +532,6 @@ read_model_inputs <- function(fn = file.path(resolve_runs_data_dir(), "pm_24.dat
       n_selages_fsh = n_selages_fsh,
       n_selages_bts = n_selages_bts,
       n_selages_ats = n_selages_ats,
-      fishery_sel_spline_basis = fishery_sel_spline_basis,
       endyr = endyr,
       endyr_est = endyr_est,
       dec_tab_catch = c(10, 0.25 * obs_catch(endyr), 0.50 * obs_catch(endyr), 0.75 * obs_catch(endyr), 1.00 * obs_catch(endyr), 1.25 * obs_catch(endyr), 1.50 * obs_catch(endyr), 2.00 * obs_catch(endyr))
@@ -708,12 +542,8 @@ read_model_inputs <- function(fn = file.path(resolve_runs_data_dir(), "pm_24.dat
 
 Get_Data <- function() {
   #--Includes PRELIMINARY Calcs stuff too-------
-  run_dir <- resolve_pm_run_dir()
-  data_dir <- resolve_runs_data_dir()
-  data <- build_model_inputs(
-    file.path(run_dir, "pm.dat"),
-    fn = file.path(data_dir, "pm_24.dat")
-  )
+  data <- build_model_inputs(here::here("runs","rtmb", "pm.dat"), 
+                            fn = here::here("runs","data", "pm_24.dat"))
   data$spawnmo <- 4. # scalar, month of spawning
   data$yrfrac <- (data$spawnmo - 1.) / 12 # scalar, fraction of year for spawning
   data$inv_bts_cov <- solve(data$cov_matrix)  # inverse covariance matrix
@@ -733,7 +563,7 @@ Get_Data <- function() {
     data$base_natmort <- data$M[as.character(data$endyr), ]
     data$natmort <- data$base_natmort
   }
-  Wtage_file <- file.path(data_dir, "wtage2024.dat")
+  Wtage_file <- here::here("runs", "data", "wtage2024.dat")
   waa <- read_wtage_data(Wtage_file)
   data <- (c(data,waa))
 
@@ -1338,14 +1168,3 @@ assign_wtage_data <- function(wtage_data) {
    
    return(p)
  }
- # Convert any single-element lists to scalars
- fix_structure <- function(x) {
-   if(is.list(x) && length(x) == 1 && is.numeric(x[[1]])) {
-     return(x[[1]])
-   }
-   if(is.list(x) && all(sapply(x, is.numeric))) {
-     return(unlist(x))
-   }
-   return(x)
- }
- #parms <- fix_structure(parms)

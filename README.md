@@ -1,5 +1,10 @@
 # EBS Pollock RTMB Bridge
 
+The exact September 2025 numerical reference and its regression gate are
+documented in [BRIDGE_PROVENANCE.md](BRIDGE_PROVENANCE.md). Post-bridge changes
+and the first identified numerical regressions are documented in
+[POST_BRIDGE_CHANGE_AUDIT.md](POST_BRIDGE_CHANGE_AUDIT.md).
+
 This repository contains a standalone RTMB reimplementation of the ADMB EBS
 pollock bridge model. It is intended for model-port debugging, reproducibility
 checks, and diagnostics comparing RTMB output to a dedicated ADMB bridge run.
