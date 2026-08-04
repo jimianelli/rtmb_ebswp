@@ -1,0 +1,188 @@
+---
+title: "EBS Pollock Model Bridge and Update Program"
+subtitle: "ADMB, RTMB, and Rceattle evidence through the 2025 assessment update"
+author: "EBS Pollock assessment development"
+date: last-modified
+format:
+  html:
+    toc: true
+    toc-location: left
+    toc-depth: 3
+    number-sections: true
+    code-fold: true
+    code-tools: true
+    embed-resources: true
+    link-external-newwindow: true
+    smooth-scroll: true
+    theme:
+      light: cosmo
+      dark: darkly
+    lightbox: true
+execute:
+  echo: false
+  warning: false
+  message: false
+editor:
+  markdown:
+    wrap: 72
+---
+
+# Purpose
+
+This is the central orientation page for the EBS pollock model
+translation and annual-update work. It separates two questions that should
+not be conflated:
+
+1. **Bridge fidelity:** does another implementation reproduce a specified
+   ADMB model when supplied the same model structure, data, and parameter
+   values?
+2. **Updated-data performance:** after extending the inputs through 2025,
+   do the implementations optimize reliably and give scientifically
+   comparable assessment results?
+
+The September 2025 ADMB--RTMB restoration is the numerical reference. The
+Rceattle work is a close, independently fitted bridge to the modified
+`m23_rceattle_full` ADMB model. The 2025 comparison is the next controlled
+experiment; it is not yet presented as completed evidence.
+
+::: {.callout-important}
+The exact RTMB bridge and close Rceattle bridge refer to different ADMB
+reference configurations. Their numerical bridge statistics therefore test
+implementation fidelity within each pair; they are not a direct ranking of
+the two software frameworks.
+:::
+
+# Evidence at a glance
+
+| Track | Reference and implementation | Current evidence | Interpretation |
+|---|---|---|---|
+| Exact bridge | `for_rtmb/pm.tpl` versus restored `R/Rpm.R` | Total NLL differs by 0.004097748; key outputs differ by less than 0.0005%; maximum absolute gradient is 6.37e-06 | Validated fixed-parameter bridge baseline |
+| Close bridge | `ADMB/m23_rceattle_full/` versus fitted Rceattle `NonParametricPM` | Terminal 2024 differences: SSB -0.2%, recruitment -0.9%, total biomass -0.2%; correlations are at least 0.9992 | Close fitted bridge, not bit-for-bit equivalence |
+| 2025 update | 2025 ADMB base run versus matched RTMB and Rceattle updates | ADMB input and run artifacts exist; matched RTMB and Rceattle results have not yet been accepted into this comparison | Work in progress |
+
+[Read the validated September 2025 ADMB--RTMB bridge](sept_2025_bridge_restoration.html){.btn .btn-primary}
+[Read the Rceattle handoff results](grant_rceattle_handoff_results.html){.btn .btn-secondary}
+[Open the separate SparseNUTS report](rceattle_2024_results.html){.btn .btn-secondary}
+
+# 1. Exact ADMB--RTMB bridge
+
+The restored bridge compares the 2024 `for_rtmb` ADMB configuration with the
+historical `Rpm.R` implementation used for the September 2025 bridge. Its
+automated regression test recalculates the objective, key state variables,
+predictions, and gradient.
+
+| Metric | Result |
+|---|---:|
+| ADMB total NLL | 7940.720000000 |
+| RTMB total NLL | 7940.715902252 |
+| Absolute total NLL difference | 0.004097748 |
+| Maximum key output difference | 0.000492728% |
+| Maximum absolute gradient | 6.3653498e-06 |
+
+These are rounding-scale differences associated with transferring ADMB
+outputs through text artifacts. This pair is the deterministic regression
+gate for subsequent RTMB development.
+
+The source report records the exact template, RTMB sources, file hashes, and
+test procedure. Development changes should be introduced only after the base
+bridge continues to pass unchanged.
+
+# 2. Close ADMB--Rceattle bridge
+
+Grant Adams's Rceattle handoff uses the modified ADMB reference in
+`ADMB/m23_rceattle_full/` and the prepared
+`Data/2024_EBS_pollock_m23_rceattle_full.xlsx` workbook. Because Rceattle fits
+the model in two stages and resolves a multimodal fishery-selectivity problem,
+this is appropriately described as a **close fitted bridge** rather than an
+exact fixed-parameter translation.
+
+| Quantity | Correlation with ADMB | Mean absolute difference | Maximum absolute difference | 2024 difference |
+|---|---:|---:|---:|---:|
+| Spawning biomass | 0.9995 | 1.3% | 10.0% | -0.2% |
+| Recruitment | 1.0000 | 0.3% | 2.0% | -0.9% |
+| Total biomass | 0.9992 | 1.0% | 8.8% | -0.2% |
+
+The largest discrepancies occur near the beginning of the series, where
+initial abundance and fishery-selectivity scale are weakly identified. The
+terminal-year agreement is much closer.
+
+The 2D age-by-year AR1 selectivity sensitivity did not converge and is not an
+accepted bridge alternative. The SparseNUTS run is exploratory and remains in
+its own report so MCMC diagnostics are not confused with deterministic bridge
+validation.
+
+# 3. Controlled comparison with data through 2025
+
+The next comparison should begin from the operational 2025 ADMB base inputs
+and update the two alternate implementations without changing their model
+semantics. The comparison should preserve three named configurations:
+
+1. **ADMB 2025 reference** -- the operational 2025 base run and its complete
+   input/output manifest.
+2. **RTMB 2025 matched update** -- the validated RTMB bridge extended with the
+   same new observations and model settings.
+3. **Rceattle 2025 matched update** -- the close Rceattle bridge workbook
+   updated using Grant's annual-update workflow and the same observations.
+
+## Acceptance sequence
+
+| Gate | Required comparison | Minimum documentation |
+|---|---|---|
+| Inputs | Years, fleets, indices, compositions, covariance inputs, weights, maturity, catches | Machine-readable input inventory and hashes |
+| Fixed-parameter bridge | Objective components and derived quantities at matched parameter values | Total and component likelihood differences, maximum state/prediction differences |
+| Optimization | Convergence code, maximum gradient, Hessian status, bounds, runtime | Common summary table and optimizer logs |
+| Assessment results | Recruitment, SSB, total biomass, F, selectivity, predicted observations | Overlay and relative-difference figures, including terminal values |
+| Diagnostics | Residuals, retrospectives, profiles, jitters or self-tests where available | Method-specific caveats and common diagnostics |
+| Uncertainty | ADMB uncertainty, RTMB uncertainty, and Rceattle uncertainty/MCMC where supportable | Interval comparison; MCMC only after its deterministic model passes |
+
+::: {.callout-warning}
+No 2025 RTMB--Rceattle result is claimed here yet. The local 2025 ADMB run and
+data establish a reference, but a fair three-way comparison requires matched
+input manifests and completed deterministic runs from both alternate
+implementations.
+:::
+
+# Interpretation rules
+
+- Use **exact bridge** only for a fixed-parameter comparison with
+  rounding-scale discrepancies and a passing regression test.
+- Use **close bridge** for independently optimized implementations with very
+  similar trajectories but meaningful structural or fitting differences.
+- Compare updated-data results only after confirming that all three models
+  received the same intended 2025 observations and assessment assumptions.
+- Keep structural sensitivities and exploratory MCMC outside the base bridge
+  claim, but link them as supporting analyses.
+- Report nonconvergence directly; do not use terminal-year similarity to
+  rehabilitate a failed optimization.
+
+# Documentation map
+
+## Primary evidence
+
+- [September 2025 bridge restoration](sept_2025_bridge_restoration.html):
+  exact ADMB--RTMB bridge, provenance, and regression test.
+- [Rceattle handoff results](grant_rceattle_handoff_results.html): Grant's six
+  handoff items, close bridge results, and diagnostic limitations.
+- [Rceattle SparseNUTS report](rceattle_2024_results.html): separate exploratory
+  MCMC and selectivity comparisons.
+
+## Supporting RTMB development reports
+
+- [RTMB assessment report](ebs_pollock_rtmb_ebswp_assessment.html)
+- [Fishery selectivity comparison](fishery_sel_form_comparison.html)
+- [Simulated-data workflow](simulated_data_workflow.html)
+
+# Immediate work order
+
+1. Freeze and hash the 2025 ADMB reference inputs and outputs.
+2. Build a field-level crosswalk from the 2025 ADMB inputs to RTMB and
+   Rceattle.
+3. Run the RTMB fixed-parameter 2025 bridge before optimization.
+4. Update and fit Rceattle through 2025, retaining both stages and all
+   convergence diagnostics.
+5. Produce one common results object and a three-way Quarto comparison.
+6. Run uncertainty analyses only for deterministic configurations that pass
+   their acceptance gates.
+
+This ordering preserves the validated 2024 evidence while making the 2025
+comparison the forward-looking assessment-development task.

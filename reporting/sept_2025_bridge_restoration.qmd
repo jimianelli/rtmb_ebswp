@@ -1,6 +1,6 @@
 ---
 title: "Restoration of the September 2025 EBS Pollock ADMB–RTMB Bridge"
-subtitle: "Provenance, numerical verification, and post-bridge regression audit"
+subtitle: "Provenance and numerical verification"
 author: "EBS Pollock assessment development"
 date: last-modified
 format:
@@ -75,16 +75,6 @@ bridge_metrics <- tibble::tibble(
   )
 )
 
-audit <- tibble::tribble(
-  ~source, ~nll_difference, ~gradient, ~SSB, ~N, ~F, ~fishery_selectivity, ~catch,
-  "September 2025 archived bridge", -0.004097748, 0.00000636535, 0.000447060, 0.000486318, 0.000482440, 0.000492728, 0.000383004,
-  "NOAA-AFSC 215efa4",             -0.004097748, 0.00001490000, 0.000447060, 0.000486318, 0.000482440, 0.000492728, 0.000383004,
-  "Standalone 567e2ee",              0.506449000, 4.68066000000, 0.000447060, 0.000486318, 0.000482440, 0.000492728, 0.000383004,
-  "Selectable forms 7301aa0",        0.506449000, 4.68066000000, 0.000447060, 0.000486318, 0.000482440, 0.000492728, 0.000383004,
-  "Pre-cap af5c490",                 0.506449000, 4.68066000000, 0.000447060, 0.000486318, 0.000482440, 0.000492728, 0.000383004,
-  "Old-age cap 7db7217",             10.73690000, 113.409000000, 3.479380000, 12.05650000, 26.53340000, 26.53360000, 6.519860000,
-  "Later comparison cd46353",        10.73690000, 113.409000000, 3.479380000, 12.05650000, 26.53340000, 26.53360000, 6.519860000
-)
 ```
 
 # Executive result
@@ -139,9 +129,13 @@ published report are linked in `BRIDGE_PROVENANCE.md`.
 #| label: fig-restored-accuracy
 #| fig-cap: "Maximum absolute percentage differences between restored RTMB outputs and the ADMB bridge report. Select the figure to open the lightbox."
 
-accuracy <- audit |>
-  slice(1) |>
-  select(SSB, N, F, fishery_selectivity, catch) |>
+accuracy <- tibble::tibble(
+  SSB = 0.000447060,
+  N = 0.000486318,
+  F = 0.000482440,
+  fishery_selectivity = 0.000492728,
+  catch = 0.000383004
+) |>
   pivot_longer(everything(), names_to = "quantity", values_to = "percent_difference") |>
   mutate(
     quantity = recode(
@@ -175,89 +169,14 @@ All key state variables, predictions, and selectivity outputs differ by less
 than `0.0005%`. These are rounding-scale differences from transferring ADMB
 outputs through text files rather than substantive model discrepancies.
 
-# Post-bridge regression audit
-
-```{r}
-#| label: tbl-regression-audit
-#| tbl-cap: "Numerical audit of selected source revisions. State and prediction columns are maximum absolute percentage differences from ADMB."
-
-audit |>
-  mutate(across(where(is.numeric), ~ format(.x, scientific = FALSE, digits = 7))) |>
-  kable(
-    col.names = c(
-      "Source state", "NLL difference", "Maximum gradient", "SSB %", "N %",
-      "F %", "Fishery selectivity %", "Catch %"
-    ),
-    align = c("l", rep("r", 7))
-  )
-```
-
-```{r}
-#| label: fig-regression-timeline
-#| fig-cap: "Growth of state and prediction discrepancies across selected post-bridge source states. The logarithmic scale separates rounding-level bridge differences from the old-age selectivity regression. Select the figure to open the lightbox."
-
-audit |>
-  select(source, SSB, N, F, fishery_selectivity, catch) |>
-  pivot_longer(-source, names_to = "quantity", values_to = "percent_difference") |>
-  mutate(
-    source = factor(source, levels = audit$source),
-    quantity = recode(
-      quantity,
-      SSB = "SSB",
-      N = "Numbers at age",
-      F = "Fishing mortality",
-      fishery_selectivity = "Fishery selectivity",
-      catch = "Predicted catch"
-    )
-  ) |>
-  ggplot(aes(source, percent_difference, color = quantity, group = quantity)) +
-  geom_line(linewidth = 0.8) +
-  geom_point(size = 2.2) +
-  scale_y_log10(labels = label_number()) +
-  scale_color_brewer(palette = "Dark2") +
-  labs(x = NULL, y = "Maximum absolute difference (%)", color = NULL) +
-  theme_minimal(base_size = 11) +
-  theme(
-    axis.text.x = element_text(angle = 32, hjust = 1),
-    legend.position = "bottom",
-    panel.grid.minor = element_blank()
-  )
-```
-
-## Objective and gradient change
-
-The initial standalone repository retained the bridged state trajectories but
-fixed steepness at `0.67` and changed the parameter map. The NLL discrepancy
-increased from approximately `0.0041` to `0.5064`, and the maximum gradient
-increased from approximately (6.4\times10^{-6}) to `4.68`.
-
-This is a configuration regression rather than a population-dynamics
-regression. Bridge mode must retain every ADMB parameter value and the original
-map; development assumptions belong in a separate configuration.
-
-## First state-trajectory regression
-
-Commit `7db7217e4016c2f9d8f6b988fb308ca456b753a8` is the first tested revision
-with large state and prediction discrepancies. It added
-`cap_old_age_log_selectivity()` and applied it to fishery-selectivity form 0.
-Ages 11 and older were set equal to age 11 and the curve was recentered, but the
-ADMB reference was not changed.
-
-That single structural change propagated through fishery selectivity, F,
-numbers at age, predicted catch, SSB, and the likelihood. Form 0 must remain
-unchanged in bridge mode. Old-age tying should be an explicitly named
-sensitivity with its own matching ADMB reference if exact equivalence is
-required.
-
 # Required development sequence
 
 1. Retain this report and `tests/test_sept_2025_bridge.R` as the deterministic gate.
 2. Reintroduce selectable fishery forms without changing form 0; rerun the gate.
 3. Add double-logistic and 2D-AR1 sensitivities one at a time; rerun the gate after each.
-4. Add old-age tying only as a separate option and keep it disabled in bridge mode.
-5. Reintroduce profiling helpers and rerun the deterministic gate.
-6. Reintroduce SparseNUTS only after its underlying deterministic model passes.
-7. Implement Grant Adams' `m23_rceattle_full` as a separately named RTMB configuration with independent artifacts and bridge thresholds.
+4. Reintroduce profiling helpers and rerun the deterministic gate.
+5. Reintroduce SparseNUTS only after its underlying deterministic model passes.
+6. Implement Grant Adams' `m23_rceattle_full` as a separately named RTMB configuration with independent artifacts and bridge thresholds.
 
 # Reproducibility
 
