@@ -3,35 +3,418 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="description" content="Eastern Bering Sea pollock ADMB, RTMB, and Rceattle model bridge documentation, diagnostics, and development reports.">
   <title>EBS Pollock Model Bridge and Update Program</title>
+  <link rel="icon" href="assets/logo2.png" type="image/png">
   <style>
-    body {
-      color: #222;
-      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
-      line-height: 1.5;
-      margin: 3rem auto;
-      max-width: 46rem;
-      padding: 0 1rem;
+    :root {
+      --afsc-navy: #063b66;
+      --afsc-blue: #005ea8;
+      --afsc-sky: #d9eef7;
+      --afsc-ice: #f4f9fc;
+      --afsc-gold: #f5c242;
+      --afsc-ink: #17324d;
+      --afsc-green: #27864b;
+      --afsc-purple: #6d5cae;
+      --border: #cbdce8;
+      --shadow: 0 0.45rem 1.35rem rgb(6 59 102 / 10%);
     }
-    a {
-      color: #1f5fbf;
+
+    * { box-sizing: border-box; }
+
+    html { scroll-behavior: smooth; }
+
+    body {
+      margin: 0;
+      color: var(--afsc-ink);
+      background: #fff;
+      font-family: "Source Sans 3", "Segoe UI", system-ui, -apple-system, sans-serif;
+      font-size: 1.04rem;
+      line-height: 1.6;
+    }
+
+    a { color: var(--afsc-blue); }
+
+    a:hover { color: var(--afsc-navy); }
+
+    a:focus-visible {
+      outline: 4px solid var(--afsc-gold);
+      outline-offset: 3px;
+      border-radius: 0.2rem;
+    }
+
+    .site-header {
+      background: var(--afsc-navy);
+      color: white;
+      border-bottom: 4px solid var(--afsc-gold);
+    }
+
+    .nav-wrap {
+      display: flex;
+      width: min(1180px, calc(100% - 2rem));
+      min-height: 74px;
+      margin: auto;
+      align-items: center;
+      justify-content: space-between;
+      gap: 1.2rem;
+    }
+
+    .brand {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.8rem;
+      color: white;
+      font-weight: 700;
+      text-decoration: none;
+    }
+
+    .brand img {
+      width: 52px;
+      height: 52px;
+      background: white;
+      border-radius: 50%;
+      object-fit: cover;
+    }
+
+    .brand small {
+      display: block;
+      color: var(--afsc-sky);
+      font-size: 0.76rem;
+      font-weight: 600;
+      letter-spacing: 0.06em;
+      text-transform: uppercase;
+    }
+
+    .nav-link {
+      color: white;
+      font-weight: 650;
+      text-decoration: none;
+    }
+
+    .nav-link:hover { color: var(--afsc-gold); }
+
+    .hero {
+      background:
+        radial-gradient(circle at 82% 28%, rgb(217 238 247 / 72%), transparent 28rem),
+        linear-gradient(130deg, var(--afsc-ice), #fff 62%);
+      border-bottom: 1px solid var(--border);
+    }
+
+    .hero-grid {
+      display: grid;
+      grid-template-columns: minmax(0, 1.8fr) minmax(220px, 0.65fr);
+      width: min(1180px, calc(100% - 2rem));
+      margin: auto;
+      padding: 4.2rem 0 3.8rem;
+      align-items: center;
+      gap: 3rem;
+    }
+
+    .eyebrow {
+      margin: 0 0 0.55rem;
+      color: var(--afsc-blue);
+      font-size: 0.82rem;
+      font-weight: 800;
+      letter-spacing: 0.095em;
+      text-transform: uppercase;
+    }
+
+    h1 {
+      max-width: 830px;
+      margin: 0 0 1rem;
+      color: var(--afsc-navy);
+      font-size: clamp(2.25rem, 5vw, 4.25rem);
+      line-height: 1.04;
+      letter-spacing: -0.035em;
+    }
+
+    .lede {
+      max-width: 760px;
+      margin: 0 0 1.5rem;
+      color: #34536b;
+      font-size: clamp(1.08rem, 2vw, 1.28rem);
+    }
+
+    .status {
+      display: inline-flex;
+      margin-bottom: 1.5rem;
+      padding: 0.42rem 0.75rem;
+      align-items: center;
+      gap: 0.5rem;
+      background: #e8f5ec;
+      border: 1px solid #a9d4b5;
+      border-radius: 999px;
+      color: #155d30;
+      font-size: 0.9rem;
+      font-weight: 750;
+    }
+
+    .status::before {
+      width: 0.62rem;
+      height: 0.62rem;
+      background: var(--afsc-green);
+      border-radius: 50%;
+      content: "";
+    }
+
+    .actions {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 0.75rem;
+    }
+
+    .button {
+      display: inline-block;
+      padding: 0.72rem 1rem;
+      border: 2px solid var(--afsc-blue);
+      border-radius: 0.35rem;
+      font-weight: 750;
+      text-decoration: none;
+    }
+
+    .button-primary {
+      background: var(--afsc-blue);
+      color: white;
+    }
+
+    .button-primary:hover {
+      background: var(--afsc-navy);
+      color: white;
+    }
+
+    .button-secondary { background: white; }
+
+    .hero-logo {
+      display: block;
+      width: min(100%, 300px);
+      margin: auto;
+      background: white;
+      border-radius: 50%;
+      box-shadow: 0 0.8rem 2.2rem rgb(6 59 102 / 20%);
+    }
+
+    main {
+      width: min(1180px, calc(100% - 2rem));
+      margin: auto;
+      padding: 3.6rem 0 4.5rem;
+    }
+
+    .section-heading {
+      max-width: 780px;
+      margin-bottom: 1.5rem;
+    }
+
+    h2 {
+      margin: 0 0 0.4rem;
+      color: var(--afsc-navy);
+      font-size: clamp(1.7rem, 3vw, 2.35rem);
+      line-height: 1.2;
+    }
+
+    .section-heading p { margin: 0; color: #526b7d; }
+
+    .card-grid {
+      display: grid;
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+      gap: 1.2rem;
+      margin-bottom: 3.4rem;
+    }
+
+    .card {
+      display: flex;
+      min-height: 245px;
+      padding: 1.35rem 1.4rem;
+      flex-direction: column;
+      background: white;
+      border: 1px solid var(--border);
+      border-top: 5px solid var(--afsc-blue);
+      border-radius: 0.45rem;
+      box-shadow: var(--shadow);
+    }
+
+    .card.primary { border-top-color: var(--afsc-gold); }
+    .card.validated { border-top-color: var(--afsc-green); }
+    .card.research { border-top-color: var(--afsc-purple); }
+
+    .card-label {
+      margin-bottom: 0.55rem;
+      color: #60778a;
+      font-size: 0.76rem;
+      font-weight: 800;
+      letter-spacing: 0.075em;
+      text-transform: uppercase;
+    }
+
+    .card h3 {
+      margin: 0 0 0.55rem;
+      color: var(--afsc-navy);
+      font-size: 1.28rem;
+      line-height: 1.25;
+    }
+
+    .card p { margin: 0 0 1.1rem; color: #476176; }
+
+    .card a {
+      margin-top: auto;
+      font-weight: 750;
+      text-decoration-thickness: 0.09em;
+      text-underline-offset: 0.18em;
+    }
+
+    .guide {
+      display: grid;
+      grid-template-columns: minmax(0, 1.3fr) minmax(260px, 0.7fr);
+      gap: 2rem;
+      padding: 1.65rem 1.8rem;
+      background: var(--afsc-ice);
+      border-left: 6px solid var(--afsc-blue);
+      border-radius: 0.45rem;
+    }
+
+    .guide h2 { font-size: 1.55rem; }
+    .guide p { margin: 0.45rem 0 0; }
+
+    .guide-links {
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      gap: 0.55rem;
+    }
+
+    .guide-links a { font-weight: 700; }
+
+    footer {
+      padding: 2rem 1rem;
+      color: white;
+      background: var(--afsc-navy);
+      text-align: center;
+    }
+
+    footer p { margin: 0.2rem 0; }
+    footer a { color: var(--afsc-sky); }
+
+    @media (max-width: 860px) {
+      .hero-grid, .guide { grid-template-columns: 1fr; }
+      .hero-logo { width: 190px; order: -1; }
+      .card-grid { grid-template-columns: 1fr 1fr; }
+    }
+
+    @media (max-width: 600px) {
+      .nav-wrap { align-items: flex-start; padding: 0.75rem 0; }
+      .nav-link { font-size: 0.9rem; text-align: right; }
+      .hero-grid { padding: 2.6rem 0 2.8rem; }
+      .card-grid { grid-template-columns: 1fr; }
+      .card { min-height: auto; }
     }
   </style>
 </head>
 <body>
-  <h1>EBS Pollock Model Bridge and Update Program</h1>
-  <p>The central comparison separates exact ADMB–RTMB bridge fidelity, the close ADMB–Rceattle bridge, and controlled model updates through 2025.</p>
-  <ul>
-    <li><strong><a href="model_bridge_motherhood.html">Model bridge and 2025 update overview</a></strong></li>
-    <li><a href="sept_2025_bridge_restoration.html">Validated September 2025 ADMB–RTMB bridge</a></li>
-    <li><a href="grant_rceattle_handoff_results.html">Rceattle handoff and close-bridge results</a></li>
-    <li><a href="rceattle_2024_results.html">Separate Rceattle SparseNUTS report</a></li>
-  </ul>
-  <p>Supporting development reports:</p>
-  <ul>
-    <li><a href="ebs_pollock_rtmb_ebswp_assessment.html">EBS pollock RTMB development assessment</a></li>
-    <li><a href="fishery_selectivity.html">Fishery selectivity: methods, comparisons, and results</a></li>
-    <li><a href="simulated_data_workflow.html">Simulated data workflow</a></li>
-  </ul>
+  <header class="site-header">
+    <nav class="nav-wrap" aria-label="Primary navigation">
+      <a class="brand" href="index.html" aria-label="EBS Pollock RTMB home">
+        <img src="assets/logo2.png" alt="">
+        <span><small>Eastern Bering Sea pollock</small>RTMB model development</span>
+      </a>
+      <a class="nav-link" href="https://afsc-assessments.github.io/EBS_pollock_stock_assessment/">Main assessment site</a>
+    </nav>
+  </header>
+
+  <section class="hero">
+    <div class="hero-grid">
+      <div>
+        <p class="eyebrow">Alaska Fisheries Science Center · Assessment methods</p>
+        <h1>Model bridge and update program</h1>
+        <p class="lede">A focused record of how the accepted EBS pollock assessment connects to the exact ADMB–RTMB translation, the close Rceattle comparison, and controlled model development.</p>
+        <div class="status">Restored ADMB–RTMB baseline passes its numerical comparison test</div>
+        <div class="actions">
+          <a class="button button-primary" href="model_bridge_motherhood.html">Start with the program overview</a>
+          <a class="button button-secondary" href="sept_2025_bridge_restoration.html">Review the validated bridge</a>
+        </div>
+      </div>
+      <a href="index.html" aria-label="RTMB model development home">
+        <img class="hero-logo" src="assets/logo2.png" alt="Walleye pollock illustration with NOAA Fisheries identification">
+      </a>
+    </div>
+  </section>
+
+  <main>
+    <section aria-labelledby="bridge-record">
+      <div class="section-heading">
+        <p class="eyebrow">Start here</p>
+        <h2 id="bridge-record">Bridge record and principal comparisons</h2>
+        <p>These reports establish what is being compared, which ADMB reference belongs to each implementation, and what has been reproduced.</p>
+      </div>
+      <div class="card-grid">
+        <article class="card primary">
+          <div class="card-label">Program orientation</div>
+          <h3>Model bridge and 2025 update overview</h3>
+          <p>The central guide to the exact RTMB bridge, close Rceattle bridge, common-data update, and acceptance sequence.</p>
+          <a href="model_bridge_motherhood.html">Open the program overview →</a>
+        </article>
+        <article class="card validated">
+          <div class="card-label">Exact comparison</div>
+          <h3>September 2025 ADMB–RTMB bridge</h3>
+          <p>The restored fixed-parameter comparison, numerical tolerances, source configuration, and reproducibility record.</p>
+          <a href="sept_2025_bridge_restoration.html">Open the validated bridge →</a>
+        </article>
+        <article class="card research">
+          <div class="card-label">Close fitted comparison</div>
+          <h3>Rceattle handoff results</h3>
+          <p>Grant Adams’ 2024-model handoff, fitted Rceattle results, diagnostics, and comparison with its modified ADMB reference.</p>
+          <a href="grant_rceattle_handoff_results.html">Open the Rceattle handoff →</a>
+        </article>
+      </div>
+    </section>
+
+    <section aria-labelledby="methods-reports">
+      <div class="section-heading">
+        <p class="eyebrow">Supporting work</p>
+        <h2 id="methods-reports">Methods, diagnostics, and uncertainty</h2>
+        <p>These pages document model behavior and alternatives after the underlying deterministic configuration is defined.</p>
+      </div>
+      <div class="card-grid">
+        <article class="card">
+          <div class="card-label">Development assessment</div>
+          <h3>RTMB development assessment</h3>
+          <p>Integrated assessment documentation, comparisons, diagnostics, and development results.</p>
+          <a href="ebs_pollock_rtmb_ebswp_assessment.html">Open the RTMB assessment →</a>
+        </article>
+        <article class="card">
+          <div class="card-label">Model structure</div>
+          <h3>Fishery selectivity</h3>
+          <p>Methods, fitted comparisons, convergence findings, and interpretation of the tested selectivity forms.</p>
+          <a href="fishery_selectivity.html">Open the selectivity report →</a>
+        </article>
+        <article class="card">
+          <div class="card-label">Model self-test</div>
+          <h3>Simulated data workflow</h3>
+          <p>Simulation and refitting tools that give the model self-testing capabilities under known conditions.</p>
+          <a href="simulated_data_workflow.html">Open the simulation workflow →</a>
+        </article>
+        <article class="card research">
+          <div class="card-label">Bayesian uncertainty</div>
+          <h3>Rceattle SparseNUTS results</h3>
+          <p>The separate MCMC run and diagnostics associated with the 2024 Rceattle model work.</p>
+          <a href="rceattle_2024_results.html">Open the SparseNUTS report →</a>
+        </article>
+      </div>
+    </section>
+
+    <aside class="guide" aria-labelledby="reading-guide">
+      <div>
+        <h2 id="reading-guide">How to read these comparisons</h2>
+        <p>The RTMB and Rceattle branches use different paired ADMB references. The exact RTMB comparison checks a translation at the same parameter point. The Rceattle result is a close fitted comparison with a modified ADMB configuration. Neither result alone ranks the software.</p>
+      </div>
+      <div class="guide-links">
+        <a href="https://afsc-assessments.github.io/EBS_pollock_stock_assessment/">Return to the main EBS pollock assessment →</a>
+        <a href="https://noaa-afsc.github.io/EBS_pollock/doc/Sept_2025.html">Read the September 2025 research narrative →</a>
+      </div>
+    </aside>
+  </main>
+
+  <footer>
+    <p><strong>Eastern Bering Sea walleye pollock assessment development</strong></p>
+    <p>Alaska Fisheries Science Center · NOAA Fisheries</p>
+  </footer>
 </body>
 </html>
