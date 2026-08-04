@@ -81,7 +81,9 @@ bridge_metrics <- tibble::tibble(
 
 The September 2025 fixed-parameter bridge has been restored from the archived
 NOAA-AFSC source and independently reproduced using the bundled `for_rtmb`
-ADMB artifacts. The automated regression gate passed during this render.
+ADMB artifacts. The numerical comparison test passed during this render: the
+RTMB likelihood, key outputs, and gradient all remained within the specified
+tolerances of the ADMB reference.
 
 ```{r}
 #| label: tbl-current-bridge
@@ -171,11 +173,11 @@ outputs through text files rather than substantive model discrepancies.
 
 # Required development sequence
 
-1. Retain this report and `tests/test_sept_2025_bridge.R` as the deterministic gate.
-2. Reintroduce selectable fishery forms without changing form 0; rerun the gate.
-3. Add double-logistic and 2D-AR1 sensitivities one at a time; rerun the gate after each.
-4. Reintroduce profiling helpers and rerun the deterministic gate.
-5. Reintroduce SparseNUTS only after its underlying deterministic model passes.
+1. Retain this report and `tests/test_sept_2025_bridge.R` as the standard ADMB–RTMB numerical comparison test.
+2. Reintroduce selectable fishery forms without changing form 0; rerun the comparison test.
+3. Add double-logistic and 2D-AR1 sensitivities one at a time; rerun the comparison test after each change.
+4. Reintroduce profiling helpers and rerun the comparison test.
+5. Reintroduce SparseNUTS only after its underlying deterministic configuration passes the ADMB–RTMB comparison test.
 6. Implement Grant Adams' `m23_rceattle_full` as a separately named RTMB configuration with independent artifacts and bridge thresholds.
 
 # Reproducibility
