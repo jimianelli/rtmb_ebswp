@@ -5,6 +5,11 @@ documented in [BRIDGE_PROVENANCE.md](BRIDGE_PROVENANCE.md). Post-bridge changes
 and the first identified numerical regressions are documented in
 [POST_BRIDGE_CHANGE_AUDIT.md](POST_BRIDGE_CHANGE_AUDIT.md).
 
+The primary rendered report is built from
+[`reporting/sept_2025_bridge_restoration.qmd`](reporting/sept_2025_bridge_restoration.qmd)
+and includes lightbox-enabled figures and a render-time execution of the bridge
+gate.
+
 This repository contains a standalone RTMB reimplementation of the ADMB EBS
 pollock bridge model. It is intended for model-port debugging, reproducibility
 checks, and diagnostics comparing RTMB output to a dedicated ADMB bridge run.

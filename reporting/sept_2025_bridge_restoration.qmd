@@ -1,0 +1,286 @@
+---
+title: "Restoration of the September 2025 EBS Pollock ADMB–RTMB Bridge"
+subtitle: "Provenance, numerical verification, and post-bridge regression audit"
+author: "EBS Pollock assessment development"
+date: last-modified
+format:
+  html:
+    toc: true
+    toc-location: left
+    toc-depth: 3
+    number-sections: true
+    code-fold: true
+    code-summary: "Show code"
+    code-tools: true
+    embed-resources: true
+    link-external-newwindow: true
+    smooth-scroll: true
+    theme: cosmo
+    lightbox: true
+execute:
+  echo: false
+  warning: false
+  message: false
+  freeze: auto
+knitr:
+  opts_chunk:
+    fig-align: center
+    fig-width: 9
+    fig-height: 5.5
+    dpi: 150
+---
+
+```{r}
+#| label: setup
+#| include: false
+
+library(ggplot2)
+library(dplyr)
+library(tidyr)
+library(knitr)
+library(scales)
+
+repo_root <- normalizePath(file.path(getwd(), ".."), mustWork = TRUE)
+
+bridge_output <- system2(
+  "Rscript",
+  file.path(repo_root, "tests", "test_sept_2025_bridge.R"),
+  stdout = TRUE,
+  stderr = TRUE
+)
+bridge_status <- attr(bridge_output, "status")
+if (!is.null(bridge_status) && bridge_status != 0L) {
+  stop(paste(bridge_output, collapse = "\n"))
+}
+
+extract_value <- function(pattern) {
+  line <- grep(pattern, bridge_output, value = TRUE)
+  as.numeric(sub(".*: *", "", sub("%$", "", line[[1]])))
+}
+
+bridge_metrics <- tibble::tibble(
+  metric = c(
+    "ADMB total NLL",
+    "RTMB total NLL",
+    "Absolute total NLL difference",
+    "Maximum key percent difference",
+    "Maximum absolute gradient"
+  ),
+  value = c(
+    extract_value("^ADMB total NLL"),
+    extract_value("^RTMB total NLL"),
+    extract_value("^Absolute total NLL difference"),
+    extract_value("^Maximum key percent difference"),
+    extract_value("^Maximum absolute gradient")
+  )
+)
+
+audit <- tibble::tribble(
+  ~source, ~nll_difference, ~gradient, ~SSB, ~N, ~F, ~fishery_selectivity, ~catch,
+  "September 2025 archived bridge", -0.004097748, 0.00000636535, 0.000447060, 0.000486318, 0.000482440, 0.000492728, 0.000383004,
+  "NOAA-AFSC 215efa4",             -0.004097748, 0.00001490000, 0.000447060, 0.000486318, 0.000482440, 0.000492728, 0.000383004,
+  "Standalone 567e2ee",              0.506449000, 4.68066000000, 0.000447060, 0.000486318, 0.000482440, 0.000492728, 0.000383004,
+  "Selectable forms 7301aa0",        0.506449000, 4.68066000000, 0.000447060, 0.000486318, 0.000482440, 0.000492728, 0.000383004,
+  "Pre-cap af5c490",                 0.506449000, 4.68066000000, 0.000447060, 0.000486318, 0.000482440, 0.000492728, 0.000383004,
+  "Old-age cap 7db7217",             10.73690000, 113.409000000, 3.479380000, 12.05650000, 26.53340000, 26.53360000, 6.519860000,
+  "Later comparison cd46353",        10.73690000, 113.409000000, 3.479380000, 12.05650000, 26.53340000, 26.53360000, 6.519860000
+)
+```
+
+# Executive result
+
+The September 2025 fixed-parameter bridge has been restored from the archived
+NOAA-AFSC source and independently reproduced using the bundled `for_rtmb`
+ADMB artifacts. The automated regression gate passed during this render.
+
+```{r}
+#| label: tbl-current-bridge
+#| tbl-cap: "Numerical bridge results recalculated during this Quarto render."
+
+bridge_metrics |>
+  mutate(
+    value = case_when(
+      metric == "Maximum key percent difference" ~ sprintf("%.9f%%", value),
+      metric == "Maximum absolute gradient" ~ format(value, scientific = TRUE, digits = 7),
+      TRUE ~ sprintf("%.9f", value)
+    )
+  ) |>
+  kable(align = c("l", "r"))
+```
+
+The absolute total NLL difference is
+`r sprintf("%.9f", bridge_metrics$value[bridge_metrics$metric == "Absolute total NLL difference"])`,
+the maximum key output difference is
+`r sprintf("%.9f%%", bridge_metrics$value[bridge_metrics$metric == "Maximum key percent difference"])`,
+and the maximum absolute gradient is
+`r format(bridge_metrics$value[bridge_metrics$metric == "Maximum absolute gradient"], scientific = TRUE, digits = 7)`.
+
+# Reference configuration
+
+The numerical reference uses the following paired implementations:
+
+- ADMB template: `admb/runs/for_rtmb/pm.tpl`.
+- ADMB estimates and report: `pm.par`, `pm.rep`, and `pm.std` in the same directory.
+- RTMB objective: the restored `R/Rpm.R` and its historical helper functions.
+- Parameter mapping: the historical report-era `R/config.R`.
+
+The report-era `runs/rtmb/pm.tpl` and the current bundled
+`admb/runs/for_rtmb/pm.tpl` share SHA-256 digest
+`d1384a696de864c0918542dcb5992272ba3283b617f00ad8efc7b3e2a391d66b`.
+The restored historical `Rpm.R` has digest
+`b3f360b324cc57af8248d97dea12e9f6cf94e5e07fae5494401a369e4de775cb`.
+
+The full manifest is in `bridge/sept_2025.sha256`. The historical sources and
+published report are linked in `BRIDGE_PROVENANCE.md`.
+
+# Accuracy of the restored bridge
+
+```{r}
+#| label: fig-restored-accuracy
+#| fig-cap: "Maximum absolute percentage differences between restored RTMB outputs and the ADMB bridge report. Select the figure to open the lightbox."
+
+accuracy <- audit |>
+  slice(1) |>
+  select(SSB, N, F, fishery_selectivity, catch) |>
+  pivot_longer(everything(), names_to = "quantity", values_to = "percent_difference") |>
+  mutate(
+    quantity = recode(
+      quantity,
+      SSB = "Spawning biomass",
+      N = "Numbers at age",
+      F = "Fishing mortality",
+      fishery_selectivity = "Fishery selectivity",
+      catch = "Predicted catch"
+    ),
+    quantity = reorder(quantity, percent_difference)
+  )
+
+ggplot(accuracy, aes(percent_difference, quantity)) +
+  geom_col(fill = "#2166ac", width = 0.7) +
+  geom_text(
+    aes(label = sprintf("%.6f%%", percent_difference)),
+    hjust = -0.08,
+    size = 3.5
+  ) +
+  scale_x_continuous(
+    labels = label_number(accuracy = 0.0001),
+    expand = expansion(mult = c(0, 0.25))
+  ) +
+  labs(x = "Maximum absolute difference (%)", y = NULL) +
+  theme_minimal(base_size = 12) +
+  theme(panel.grid.major.y = element_blank())
+```
+
+All key state variables, predictions, and selectivity outputs differ by less
+than `0.0005%`. These are rounding-scale differences from transferring ADMB
+outputs through text files rather than substantive model discrepancies.
+
+# Post-bridge regression audit
+
+```{r}
+#| label: tbl-regression-audit
+#| tbl-cap: "Numerical audit of selected source revisions. State and prediction columns are maximum absolute percentage differences from ADMB."
+
+audit |>
+  mutate(across(where(is.numeric), ~ format(.x, scientific = FALSE, digits = 7))) |>
+  kable(
+    col.names = c(
+      "Source state", "NLL difference", "Maximum gradient", "SSB %", "N %",
+      "F %", "Fishery selectivity %", "Catch %"
+    ),
+    align = c("l", rep("r", 7))
+  )
+```
+
+```{r}
+#| label: fig-regression-timeline
+#| fig-cap: "Growth of state and prediction discrepancies across selected post-bridge source states. The logarithmic scale separates rounding-level bridge differences from the old-age selectivity regression. Select the figure to open the lightbox."
+
+audit |>
+  select(source, SSB, N, F, fishery_selectivity, catch) |>
+  pivot_longer(-source, names_to = "quantity", values_to = "percent_difference") |>
+  mutate(
+    source = factor(source, levels = audit$source),
+    quantity = recode(
+      quantity,
+      SSB = "SSB",
+      N = "Numbers at age",
+      F = "Fishing mortality",
+      fishery_selectivity = "Fishery selectivity",
+      catch = "Predicted catch"
+    )
+  ) |>
+  ggplot(aes(source, percent_difference, color = quantity, group = quantity)) +
+  geom_line(linewidth = 0.8) +
+  geom_point(size = 2.2) +
+  scale_y_log10(labels = label_number()) +
+  scale_color_brewer(palette = "Dark2") +
+  labs(x = NULL, y = "Maximum absolute difference (%)", color = NULL) +
+  theme_minimal(base_size = 11) +
+  theme(
+    axis.text.x = element_text(angle = 32, hjust = 1),
+    legend.position = "bottom",
+    panel.grid.minor = element_blank()
+  )
+```
+
+## Objective and gradient change
+
+The initial standalone repository retained the bridged state trajectories but
+fixed steepness at `0.67` and changed the parameter map. The NLL discrepancy
+increased from approximately `0.0041` to `0.5064`, and the maximum gradient
+increased from approximately (6.4\times10^{-6}) to `4.68`.
+
+This is a configuration regression rather than a population-dynamics
+regression. Bridge mode must retain every ADMB parameter value and the original
+map; development assumptions belong in a separate configuration.
+
+## First state-trajectory regression
+
+Commit `7db7217e4016c2f9d8f6b988fb308ca456b753a8` is the first tested revision
+with large state and prediction discrepancies. It added
+`cap_old_age_log_selectivity()` and applied it to fishery-selectivity form 0.
+Ages 11 and older were set equal to age 11 and the curve was recentered, but the
+ADMB reference was not changed.
+
+That single structural change propagated through fishery selectivity, F,
+numbers at age, predicted catch, SSB, and the likelihood. Form 0 must remain
+unchanged in bridge mode. Old-age tying should be an explicitly named
+sensitivity with its own matching ADMB reference if exact equivalence is
+required.
+
+# Required development sequence
+
+1. Retain this report and `tests/test_sept_2025_bridge.R` as the deterministic gate.
+2. Reintroduce selectable fishery forms without changing form 0; rerun the gate.
+3. Add double-logistic and 2D-AR1 sensitivities one at a time; rerun the gate after each.
+4. Add old-age tying only as a separate option and keep it disabled in bridge mode.
+5. Reintroduce profiling helpers and rerun the deterministic gate.
+6. Reintroduce SparseNUTS only after its underlying deterministic model passes.
+7. Implement Grant Adams' `m23_rceattle_full` as a separately named RTMB configuration with independent artifacts and bridge thresholds.
+
+# Reproducibility
+
+```{r}
+#| label: bridge-test-output
+#| echo: true
+#| code-fold: false
+
+cat(paste(bridge_output, collapse = "\n"))
+```
+
+The bridge can be checked independently of this document with:
+
+```bash
+Rscript tests/test_sept_2025_bridge.R
+```
+
+Verify the archived source and ADMB artifact checksums with:
+
+```bash
+shasum -a 256 -c bridge/sept_2025.sha256
+```
+
+The active RTMB profiling work remains isolated on `agent/rtmbprof-stage1`.
+This restored report was developed on `bridge/restore-sept-2025` so the dirty
+profiling worktree was not modified.
