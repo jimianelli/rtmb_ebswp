@@ -600,7 +600,14 @@ The centered selectivity \(s_{t,a}\) enters the population dynamics as \(F_{t,a}
 
 ## Form 0: base coefficients with change-year deviations
 
-The base model uses estimated age coefficients plus deviations at configured fishery-selectivity change years:
+The base EBS pollock form follows the statistical approach developed by
+@butterworth2003sbt, which placed catch-at-age fitting in a likelihood framework
+and allowed age-specific selectivity to change over time within a specified
+structure. That paper is the key methodological reference for the assessment's
+use of age coefficients with time-varying deviations.
+
+The implemented base model uses estimated age coefficients plus deviations at
+configured fishery-selectivity change years:
 
 $$
 \ell_{t,a} = c_a + d_{k(t),a},
