@@ -88,6 +88,7 @@ summary_tbl <- tibble(
   label_short = purrr::map_chr(purrr::map_int(runs, "form"), short_label),
   objective = purrr::map_dbl(runs, "objective"),
   evaluated_total = purrr::map_dbl(runs, ~ .x$evaluated_total %||% .x$report$tot_like %||% NA_real_),
+  n_parameters = purrr::map_int(runs, ~ as.integer(.x$n_parameters %||% NA_integer_)),
   convergence = purrr::map_int(runs, "convergence"),
   max_gradient = purrr::map_dbl(runs, "max_gradient"),
   seconds = purrr::map_dbl(runs, "seconds")
@@ -267,16 +268,44 @@ parameter mapping are summarized in the implementation appendix.
 
 ```{r}
 #| label: tbl-fit-summary
-#| tbl-cap: "Model optimization summary by fishery selectivity form."
+#| tbl-cap: "Model optimization summary by fishery selectivity form. Parameters is the number of free parameters supplied to the optimizer. Optimizer objective is the negative log-likelihood minimized by nlminb; reported total NLL is the likelihood recalculated by the model report at the fitted values. Delta columns are differences from form 0. Report minus optimizer gap is reported total NLL minus optimizer objective and should be near zero when both evaluations use the same data, parameters, and likelihood settings. Convergence 0 indicates normal nlminb completion."
 summary_tbl |>
-  mutate(across(c(objective, evaluated_total, delta_objective, delta_evaluated_total,
-                  objective_report_gap, max_gradient, seconds), ~round(.x, 6))) |>
+  select(
+    fishery_sel_form, label_short, n_parameters, objective, evaluated_total,
+    delta_objective, delta_evaluated_total, objective_report_gap,
+    convergence, max_gradient, seconds
+  ) |>
   gt_report() |>
-  tab_header(title = "Fit summary")
+  tab_header(title = "Fit summary") |>
+  cols_label(
+    fishery_sel_form = "Form",
+    label_short = "Scenario",
+    n_parameters = "Parameters",
+    objective = "Optimizer objective",
+    evaluated_total = "Reported total NLL",
+    delta_objective = "Delta objective",
+    delta_evaluated_total = "Delta reported NLL",
+    objective_report_gap = "Report - optimizer gap",
+    convergence = "Convergence",
+    max_gradient = "Maximum gradient",
+    seconds = "Seconds"
+  ) |>
+  fmt_number(
+    columns = c(
+      objective, evaluated_total, delta_objective,
+      delta_evaluated_total, objective_report_gap
+    ),
+    decimals = 1
+  ) |>
+  fmt_number(columns = seconds, decimals = 1) |>
+  fmt_scientific(columns = max_gradient, decimals = 2) |>
+  fmt_integer(columns = c(n_parameters, convergence))
 ```
 
-`objective_report_gap` should be near zero. A large value indicates that the optimizer
-and the saved report were evaluated under different data or parameter settings.
+The **Report - optimizer gap** is an internal consistency check. A substantial
+gap indicates that the optimizer and the saved report were evaluated with
+different data, parameter values, model switches, or likelihood bookkeeping.
+It should not be interpreted as an improvement in model fit.
 
 ```{r}
 #| label: objective-report-gap-warning
@@ -621,6 +650,28 @@ Q_\mathrm{DL} =
 $$
 
 where \(\sigma_p = (0.75, 0.75, 0.45)\) and \(\sigma_\Delta = (0.60, 0.60, 0.40)\). The smaller scales for \(p_3\) impose stronger regularization on the descending limb, which is otherwise weakly informed by older ages.
+
+::: {.callout-warning title="Double-logistic estimability"}
+The current form-2 run is not converged: its optimizer convergence code is
+`1` and its maximum absolute gradient is `1.84`. The existing penalty provides
+some shrinkage, but estimating three unrelated parameters in every model year
+still leaves a weakly identified, highly correlated surface.
+
+The next fit should test a modestly informative hierarchical parameterization.
+Write each annual log-parameter as
+\(\theta_{t,j}=\mu_j+\eta_{t,j}\), give the three means priors centered at
+\(\log(1.5,3,4)\) with standard deviations approximately
+\((0.50,0.50,0.35)\), and give annual increments in \(\eta\) zero-centered
+normal priors with standard deviations approximately
+\((0.25,0.25,0.20)\). Constraining each deviation series to sum to zero—or
+integrating it as a random effect—would further separate the mean curve from
+annual variation.
+
+These values are a proposed estimability sensitivity, not part of the results
+shown on this page. The revised form should be accepted only if it attains a
+small gradient, a usable Hessian, stable recovery in simulation self-tests,
+and biologically plausible selectivity trajectories.
+:::
 
 ## Form 5: 2D AR1 time-varying surface
 

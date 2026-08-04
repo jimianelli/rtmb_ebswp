@@ -157,6 +157,7 @@ fit_one <- function(form_id, label) {
     evaluated_total = evaluated_total,
     convergence = fit$convergence,
     message = fit$message,
+    n_parameters = length(fit$par),
     max_gradient = max(abs(obj$gr(fit$par)), na.rm = TRUE),
     seconds = as.numeric(difftime(t1, t0, units = "secs")),
     fixed_parameters = fitted_parms,
@@ -180,6 +181,7 @@ summary_tbl <- tibble(
   label = purrr::map_chr(results, "label"),
   objective = purrr::map_dbl(results, "objective"),
   evaluated_total = purrr::map_dbl(results, "evaluated_total"),
+  n_parameters = purrr::map_int(results, "n_parameters"),
   convergence = purrr::map_int(results, "convergence"),
   max_gradient = purrr::map_dbl(results, "max_gradient"),
   seconds = purrr::map_dbl(results, "seconds")
