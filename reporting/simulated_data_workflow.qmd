@@ -1,5 +1,6 @@
 ---
 title: "RTMB Base-Model Simulation and Refit Workflow"
+subtitle: "Simulation-based self-testing of the assessment implementation"
 execute:
   echo: true
   warning: false
@@ -173,6 +174,32 @@ plot_scenario_distribution <- function(data, truth, quantity_name, ylab) {
 
 This document records the parametric-bootstrap style workflow added around the saved RTMB base model. The current workflow treats the saved base-model fitted values as the data-generating truth, simulates new observations using the same observation variances and sample sizes, then refits the model to each simulated data set.
 
+This gives the model **self-testing capabilities**. Because the generating
+values are known, the workflow can test the complete path from simulated
+observations through data preparation, the RTMB objective, optimization, and
+reported assessment quantities. Repeated simulation and refitting can reveal
+implementation errors, convergence problems, bias, weakly estimated
+quantities, or changes in recovery after the code is modified.
+
+::: {.callout-important title="What self-testing means here"}
+The model generates observations from a known fitted state and then attempts
+to recover that state from the simulated observations. Successful recovery
+supports the internal consistency of the implementation. It does not prove
+that the model is the correct representation of the real population or that
+all structural assumptions are appropriate.
+:::
+
+The workflow checks whether:
+
+- simulated data can pass through the normal estimation code without manual
+  reconstruction;
+- refits converge and produce usable gradients and Hessians;
+- spawning biomass, recruitment, selectivity, and other known quantities are
+  recovered without systematic bias;
+- uncertainty across repeated simulated data sets behaves as expected; and
+- alternative model configurations, such as 2D AR1 selectivity, can be tested
+  against the same known simulated truth.
+
 The generated data sets are conditional on the base model point estimate. They do not yet include parameter uncertainty from a fitted Hessian or posterior distribution.
 
 ## Simulation Steps
@@ -180,7 +207,7 @@ The generated data sets are conditional on the base model point estimate. They d
 The simulation script is:
 
 ```{r}
-rtmb_file("R", "simulate_base_datasets.R")
+"R/simulate_base_datasets.R"
 ```
 
 Run it with:
@@ -214,10 +241,10 @@ Each simulated object is designed to be a direct replacement for the model `data
 
 ```{r}
 if (!file.exists(sim_file)) {
-  cat("Simulation file not found:", sim_file, "\n")
+  cat("Simulation file not found:", params$sim_file, "\n")
 } else {
   sims <- readRDS(sim_file)
-  cat("Simulation file:", sim_file, "\n")
+  cat("Simulation file:", params$sim_file, "\n")
   cat("Number of simulations:", length(sims$simulations), "\n")
   cat("Validation passed:", all(sims$validation %||% FALSE), "\n")
   cat("Estimation ready:", isTRUE(sims$metadata$estimation_ready), "\n")
@@ -238,7 +265,7 @@ The validation checks that:
 The refit script is:
 
 ```{r}
-rtmb_file("R", "fit_simulated_datasets.R")
+"R/fit_simulated_datasets.R"
 ```
 
 Run it with:
@@ -456,8 +483,8 @@ These figures illustrate the simulated observations before refitting.
 ```{r}
 bts_plot <- rtmb_file("analysis/output/figures/simulated_bts_index_30.png")
 fishery_plot <- rtmb_file("analysis/output/figures/simulated_fishery_age_props_by_year_30.png")
-cat("BTS plot:", bts_plot, "\n")
-cat("Fishery age-composition plot:", fishery_plot, "\n")
+cat("BTS plot: analysis/output/figures/simulated_bts_index_30.png\n")
+cat("Fishery age-composition plot: analysis/output/figures/simulated_fishery_age_props_by_year_30.png\n")
 ```
 
 ```{r}

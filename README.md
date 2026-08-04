@@ -1,5 +1,15 @@
 # EBS Pollock RTMB Bridge
 
+The exact September 2025 numerical reference and its regression gate are
+documented in [BRIDGE_PROVENANCE.md](BRIDGE_PROVENANCE.md). Post-bridge changes
+and the first identified numerical regressions are documented in
+[POST_BRIDGE_CHANGE_AUDIT.md](POST_BRIDGE_CHANGE_AUDIT.md).
+
+The primary rendered report is built from
+[`reporting/sept_2025_bridge_restoration.qmd`](reporting/sept_2025_bridge_restoration.qmd)
+and includes lightbox-enabled figures and a render-time execution of the bridge
+gate.
+
 This repository contains a standalone RTMB reimplementation of the ADMB EBS
 pollock bridge model. It is intended for model-port debugging, reproducibility
 checks, and diagnostics comparing RTMB output to a dedicated ADMB bridge run.
@@ -54,6 +64,67 @@ To render the diagnostics report after generating required outputs:
 
 ```bash
 quarto render reporting/ebs_pollock_rtmb_ebswp_assessment.qmd
+```
+
+## Likelihood profiles
+
+The profile workflow fixes a selected parameter at each grid point and either
+reoptimizes all remaining parameters (a likelihood profile) or evaluates the
+objective without reoptimization (a slice). It records the total objective,
+optimizer diagnostics, and the contribution from each reported likelihood
+component.
+
+Run the default 17-point reoptimized profile for `log_avgrec` with:
+
+```bash
+Rscript R/run_likelihood_profiles.R
+```
+
+Configure a run with environment variables. Repeated RTMB parameter names must
+use one-based occurrence notation such as `log_rec_devs[10]`.
+
+```bash
+PROFILE_PARAMETERS="log_Rzero,log_q_ats" \
+PROFILE_POINTS=11 \
+PROFILE_HALF_WIDTH=0.3 \
+PROFILE_MODE=reopt \
+Rscript R/run_likelihood_profiles.R
+```
+
+When a requested parameter is fixed in `R/config.R`, the profile runner rebuilds
+the RTMB map with that parameter released before fitting the profile base. This
+is the default behavior for `log_avgrec`; it changes the diagnostic
+configuration but does not alter the standard bridge configuration used by
+other scripts.
+
+The `log_avgrec` default spans plus or minus 2 units on the log scale. This wider
+range is intentional: the recruitment deviations compensate for modest changes
+in average recruitment, and the narrower plus-or-minus-0.35 trial reached only
+about 0.08 Delta NLL. The wider profile crosses 1.92 on both sides.
+
+`PROFILE_HALF_WIDTH` is measured on the fitted parameter scale, which is the log
+scale for parameters whose names begin with `log_`. Outputs are written under
+the ignored `analysis/output/profiles/` directory as RDS, CSV, and PNG files.
+The CSV records convergence codes and maximum absolute gradients; inspect these
+before interpreting profile shape. `PROFILE_MODE=slice` is useful for a quick
+code check but is not a replacement for reoptimization.
+
+Profile figures use `ggthemes::theme_few()`, include the total objective, and
+use a common 0--2.1 Delta NLL scale for every facet. The Objective panel marks
+Delta NLL = 1.92, the usual approximate 95% likelihood interval threshold for
+one profiled parameter. Choose a grid wide enough to cross that threshold on
+both sides of the minimum; increase `PROFILE_HALF_WIDTH` when it does not.
+
+The runner requires a base-fit convergence code of zero and a maximum absolute
+gradient no larger than `0.002`. Increase `PROFILE_MAX_EVAL` (default `5000`) if
+the optimizer stops early. `PROFILE_GRADIENT_TOL` changes that threshold.
+`PROFILE_ALLOW_NONCONVERGED=true` bypasses the check for exploratory debugging,
+but output from such a run should not be used as assessment evidence.
+
+Run the focused helper tests with:
+
+```bash
+Rscript tests/test_profile_components.R
 ```
 
 See [REPRODUCIBILITY.md](REPRODUCIBILITY.md) for the full workflow and expected
