@@ -1102,8 +1102,8 @@ spmr_projection <- spmr_writer_env$write_spmr_projection_inputs(
   config_path = rtmb_file("R", "config.R")
 )
 spmr_manifest <- as_tibble(spmr_projection$manifest)
-spmr_detail_file <- file.path(display_path(spmr_projection$output_dir), "spm_detail.csv")
-spmr_summary_file <- file.path(display_path(spmr_projection$output_dir), "spm_summary.csv")
+spmr_detail_file <- file.path(spmr_projection$output_dir, "spm_detail.csv")
+spmr_summary_file <- file.path(spmr_projection$output_dir, "spm_summary.csv")
 spmr_detail <- if (file.exists(spmr_detail_file)) {
   as_tibble(utils::read.csv(spmr_detail_file, check.names = FALSE))
 } else {
