@@ -7,11 +7,13 @@ The current MCMC result was generated from the accepted base RTMB model
 SparseNUTS::sample_snuts(
   obj,
   globals = list(data = model_data),
-  model_name = "EBS pollock base RTMB"
+  model_name = "EBS pollock base RTMB",
+  control = list(adapt_delta = 0.95)
 )
 ```
 
-No sampler setting is overridden. The `globals` argument exports the RTMB data
+The target acceptance probability is increased to 0.95 to reduce divergent
+transitions; other sampler settings remain at package defaults. The `globals` argument exports the RTMB data
 object required to rebuild the objective in the package-default parallel worker
 sessions. Run the analysis from the repository root with:
 
@@ -28,13 +30,15 @@ cp reporting/ebs_pollock_rtmb_ebswp_assessment.html docs/
 - automatic dense metric
 - four chains running on four parallel workers
 - 150 warmup and 1,000 retained iterations per chain
-- maximum R-hat: 1.009
-- minimum bulk effective sample size: 1,257
-- 30 divergences among 4,000 retained transitions (0.75%)
+- `adapt_delta = 0.95`
+- maximum R-hat: 1.007
+- minimum bulk effective sample size: 1,281
+- 7 warmup divergences and 0 divergences among 4,000 retained transitions
 
-The divergences need to be resolved before these posterior draws are used for
-final assessment inference. The run is currently retained as a diagnostic of
-the base-model posterior and of the package-default configuration.
+The increased target acceptance probability eliminated the post-warmup
+divergences found under the unmodified default. Substantive posterior checks
+and comparison with deterministic uncertainty are still needed before final
+assessment use.
 
 ## Outputs
 

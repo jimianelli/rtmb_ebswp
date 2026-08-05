@@ -1950,7 +1950,7 @@ assumptions_tbl |>
 
 ## SparseNUTS MCMC
 
-This analysis applies the current `SparseNUTS` package to the **accepted base RTMB model** (`fishery_sel_form = 0`), not to the experimental Form 2 double-logistic model. The call leaves chains, cores, sampling iterations, warmup, initialization, metric selection, and sampler controls at the package defaults. Only the model name and `globals = list(data = model_data)` are supplied. Exporting that RTMB data object lets the package rebuild the objective in its parallel R workers, so the package-default chains can run concurrently.
+This analysis applies the current `SparseNUTS` package to the **accepted base RTMB model** (`fishery_sel_form = 0`), not to the experimental Form 2 double-logistic model. The call leaves chains, cores, sampling iterations, warmup, initialization, and metric selection at the package defaults, but increases `adapt_delta` to 0.95 to reduce divergent transitions. The model name and `globals = list(data = model_data)` are also supplied. Exporting that RTMB data object lets the package rebuild the objective in its parallel R workers, so the package-default chains can run concurrently.
 
 The completed fit is saved outside the rendered document. Every render reads that fit and rebuilds all MCMC tables and figures, preventing diagnostics from an older run from remaining in the report. The reproducible runner is `R/run_sparsenuts_default.R`.
 
@@ -2013,6 +2013,7 @@ sparsenuts_status <- tibble(
     "Output path",
     "Algorithm",
     "Metric",
+    "Target acceptance probability",
     "Chains",
     "Parallel cores",
     "Execution mode",
@@ -2032,6 +2033,7 @@ sparsenuts_status <- tibble(
     display_path(sparsenuts_file),
     as.character(sparsenuts_fit$algorithm %||% NA_character_),
     as.character(sparsenuts_fit$metric %||% NA_character_),
+    as.character(sparsenuts_run_metadata$adapt_delta %||% 0.95),
     as.character(chains),
     as.character(chains),
     sparsenuts_run_metadata$execution %||% "package-default parallel chains",
@@ -2058,15 +2060,23 @@ if (!is.null(sparsenuts_fit) && !is.null(sparsenuts_fit$monitor)) {
   )
   post_warmup_total <- chains * post_warmup
   divergence_percent <- diag_values$perc_divergent[1] %||% NA_real_
+  warmup_divergences <- sum(vapply(
+    sparsenuts_fit$sampler_params,
+    function(x) sum(x[seq_len(warmup), "divergent__"]),
+    numeric(1)
+  ))
+  sampling_divergences <- round(post_warmup_total * divergence_percent / 100)
   diag_tbl <- tibble(
     diagnostic = c(
-      "Post-warmup draws", "Divergences", "Divergent transitions (%)",
+      "Post-warmup draws", "Warmup divergences", "Post-warmup divergences",
+      "Post-warmup divergent transitions (%)",
       "Maximum R-hat", "Minimum bulk ESS", "Median bulk ESS",
       "Minimum tail ESS", "Maximum-treedepth transitions (%)"
     ),
     value = c(
       post_warmup_total,
-      round(post_warmup_total * divergence_percent / 100),
+      warmup_divergences,
+      sampling_divergences,
       divergence_percent,
       max(sparsenuts_fit$monitor$rhat, na.rm = TRUE),
       min(sparsenuts_fit$monitor$ess_bulk, na.rm = TRUE),
@@ -2088,7 +2098,7 @@ diag_tbl |>
   tab_header(title = "SparseNUTS Base-Model Diagnostics")
 ```
 
-The default run provides good overall chain mixing, but any post-warmup divergences mean that the affected posterior regions were not traversed reliably. These draws are therefore useful for diagnosing the base model and selecting the next sampler adjustment, but they should not yet replace the deterministic uncertainty estimates in assessment decisions.
+With `adapt_delta = 0.95`, the run produced `r warmup_divergences` divergences during adaptation and **`r sampling_divergences` divergences among the `r format(post_warmup_total, big.mark = ",")` retained transitions**. Maximum R-hat was `r sprintf("%.3f", max(sparsenuts_fit$monitor$rhat, na.rm = TRUE))`, and minimum bulk effective sample size was `r format(round(min(sparsenuts_fit$monitor$ess_bulk, na.rm = TRUE)), big.mark = ",")`. The retained draws therefore pass the reported divergence and chain-mixing checks; substantive posterior checks and comparison with deterministic uncertainty remain appropriate before using them in assessment decisions.
 
 ```{r}
 #| label: sparsenuts-plot-data

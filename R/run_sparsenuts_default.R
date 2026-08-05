@@ -1,8 +1,8 @@
 #!/usr/bin/env Rscript
 
 # Run SparseNUTS for the accepted base RTMB model. SparseNUTS controls all
-# sampler settings; the only additional argument is the RTMB global data object
-# needed to rebuild the objective in parallel R sessions.
+# sampler settings except adapt_delta = 0.95; the RTMB global data object is
+# supplied so the objective can be rebuilt in parallel R sessions.
 
 suppressPackageStartupMessages(library(SparseNUTS))
 
@@ -42,7 +42,7 @@ dir.create(dirname(monitor_file), showWarnings = FALSE, recursive = TRUE)
 
 package_description <- utils::packageDescription("SparseNUTS")
 cat(
-  "Running the base RTMB model with SparseNUTS package defaults.\n",
+  "Running the base RTMB model with SparseNUTS defaults except adapt_delta = 0.95.\n",
   "Package version: ", as.character(utils::packageVersion("SparseNUTS")), "\n",
   "Package commit: ", package_description$RemoteSha %||% "not recorded", "\n",
   "Parallel RTMB globals: model_data exported as 'data'.\n",
@@ -53,7 +53,8 @@ started <- Sys.time()
 fit <- SparseNUTS::sample_snuts(
   obj,
   globals = list(data = model_data),
-  model_name = "EBS pollock base RTMB"
+  model_name = "EBS pollock base RTMB",
+  control = list(adapt_delta = 0.95)
 )
 finished <- Sys.time()
 
@@ -66,9 +67,11 @@ attr(fit, "rtmb_ebswp_sparsenuts") <- list(
   call = paste(
     "SparseNUTS::sample_snuts(obj,",
     "globals = list(data = model_data),",
-    "model_name = 'EBS pollock base RTMB')"
+    "model_name = 'EBS pollock base RTMB',",
+    "control = list(adapt_delta = 0.95))"
   ),
-  sampler_settings = "SparseNUTS package defaults",
+  sampler_settings = "SparseNUTS package defaults except adapt_delta = 0.95",
+  adapt_delta = 0.95,
   execution = "parallel chains using package-default chains and cores",
   globals = "data",
   started = started,
@@ -90,6 +93,7 @@ utils::write.csv(
     package_remote_sha = package_description$RemoteSha %||% NA_character_,
     algorithm = fit$algorithm,
     metric = fit$metric,
+    adapt_delta = 0.95,
     chains = dim(fit$samples)[2],
     warmup_per_chain = fit$warmup,
     post_warmup_per_chain = dim(fit$samples)[1] - fit$warmup,
