@@ -14,12 +14,30 @@ rpm <- function(parms) {
   if (!exists("sel_double_logistic_fsh", inherits = FALSE)) {
     sel_double_logistic_fsh <- matrix(log(c(1.5, 3, 4)), nrow = endyr - styr + 1, ncol = 3, byrow = TRUE)
   }
+  if (!exists("sel_double_logistic_prior_scale", inherits = FALSE)) sel_double_logistic_prior_scale <- c(0.75, 0.75, 0.45)
+  if (!exists("sel_double_logistic_rw_scale", inherits = FALSE)) sel_double_logistic_rw_scale <- c(0.60, 0.60, 0.40)
+  if (!exists("sel_double_logistic_mean_fsh", inherits = FALSE)) sel_double_logistic_mean_fsh <- log(c(1.5, 3, 4))
+  if (!exists("sel_double_logistic_dev_fsh", inherits = FALSE)) sel_double_logistic_dev_fsh <- matrix(0, nrow = endyr - styr + 1, ncol = 3)
+  if (!exists("sel_double_logistic_hierarchical", inherits = FALSE)) sel_double_logistic_hierarchical <- 0L
+  if (!exists("sel_double_logistic_cv", inherits = FALSE)) sel_double_logistic_cv <- 0.05
+  if (!exists("fishery_sel_old_age_cap", inherits = FALSE)) fishery_sel_old_age_cap <- 1L
   if (!exists("sel_richards_fsh", inherits = FALSE)) sel_richards_fsh <- c(log(4), log(1), log(1), log(5), log(0.75), log(1))
   if (!exists("sel_spline_fsh", inherits = FALSE)) sel_spline_fsh <- rep(0, ncol(fishery_sel_spline_basis))
   if (!exists("sel_tv_ar1_fsh", inherits = FALSE)) sel_tv_ar1_fsh <- matrix(0, nrow = endyr - styr + 1, ncol = nages)
   if (!exists("sel_tv_ar1_rho_fsh", inherits = FALSE)) sel_tv_ar1_rho_fsh <- c(0, 0)
   if (!exists("log_sel_tv_ar1_sigma_fsh", inherits = FALSE)) log_sel_tv_ar1_sigma_fsh <- log(0.2)
   if (!exists("sel_tv_ar1_weight_fsh", inherits = FALSE)) sel_tv_ar1_weight_fsh <- 1.0
+
+  sel_double_logistic_effective_fsh <- sel_double_logistic_fsh
+  if (as.integer(sel_double_logistic_hierarchical)[1] == 1L) {
+    sel_double_logistic_effective_fsh <- sel_double_logistic_dev_fsh
+    for (i in 1:nrow(sel_double_logistic_effective_fsh)) {
+      for (j in 1:ncol(sel_double_logistic_effective_fsh)) {
+        sel_double_logistic_effective_fsh[i, j] <-
+          sel_double_logistic_mean_fsh[j] + sel_double_logistic_dev_fsh[i, j]
+      }
+    }
+  }
 
   # sel_devs_fsh <- sel_devs_fsh - mean(sel_devs_fsh) # Centering selectivity deviations
   yrs_ch_fsh_model <- 1965:min(2023, endyr)
@@ -29,11 +47,12 @@ rpm <- function(parms) {
     nages = nages, coffs = sel_coffs_fsh, sel_devs = sel_devs_fsh,
     yrs_ch_fsh = yrs_ch_fsh_model,
     sel_logistic_fsh = sel_logistic_fsh,
-    sel_double_logistic_fsh = sel_double_logistic_fsh,
+    sel_double_logistic_fsh = sel_double_logistic_effective_fsh,
     sel_richards_fsh = sel_richards_fsh,
     sel_spline_fsh = sel_spline_fsh,
     fishery_sel_spline_basis = fishery_sel_spline_basis,
-    sel_tv_ar1_fsh = sel_tv_ar1_fsh
+    sel_tv_ar1_fsh = sel_tv_ar1_fsh,
+    fishery_sel_old_age_cap = fishery_sel_old_age_cap
   )
   log_sel_fsh <- tmp$log_sel
   avgsel_fsh <- tmp$avgsel
@@ -290,12 +309,19 @@ rpm <- function(parms) {
     sel_ch_sig_fsh = sel_ch_sig_fsh, year_index = year_index,
     sel_logistic_fsh = sel_logistic_fsh,
     sel_double_logistic_fsh = sel_double_logistic_fsh,
+    sel_double_logistic_prior_scale = sel_double_logistic_prior_scale,
+    sel_double_logistic_rw_scale = sel_double_logistic_rw_scale,
+    sel_double_logistic_mean_fsh = sel_double_logistic_mean_fsh,
+    sel_double_logistic_dev_fsh = sel_double_logistic_dev_fsh,
+    sel_double_logistic_hierarchical = sel_double_logistic_hierarchical,
+    sel_double_logistic_cv = sel_double_logistic_cv,
     sel_richards_fsh = sel_richards_fsh,
     sel_spline_fsh = sel_spline_fsh,
     sel_tv_ar1_fsh = sel_tv_ar1_fsh,
     sel_tv_ar1_rho_fsh = sel_tv_ar1_rho_fsh,
     log_sel_tv_ar1_sigma_fsh = log_sel_tv_ar1_sigma_fsh,
-    sel_tv_ar1_weight_fsh = sel_tv_ar1_weight_fsh )
+    sel_tv_ar1_weight_fsh = sel_tv_ar1_weight_fsh,
+    fishery_sel_old_age_cap = fishery_sel_old_age_cap )
   
    pen_bts <- selectivity_like_bts(
      styr=styr, endyr=endyr,
@@ -444,6 +470,8 @@ rpm <- function(parms) {
   ADREPORT(sel_devs_fsh)
   ADREPORT(sel_logistic_fsh)
   ADREPORT(sel_double_logistic_fsh)
+  ADREPORT(sel_double_logistic_mean_fsh)
+  ADREPORT(sel_double_logistic_dev_fsh)
   ADREPORT(sel_richards_fsh)
   ADREPORT(sel_spline_fsh)
   ADREPORT(sel_tv_ar1_fsh)

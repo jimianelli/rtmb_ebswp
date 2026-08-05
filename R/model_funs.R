@@ -106,7 +106,8 @@ compute_selectivity_fsh_forms <- function(fishery_sel_form, nsel, stsel, endyr, 
                                           sel_richards_fsh,
                                           sel_spline_fsh,
                                           fishery_sel_spline_basis,
-                                          sel_tv_ar1_fsh) {
+                                          sel_tv_ar1_fsh,
+                                          fishery_sel_old_age_cap = 1L) {
   "c" <- ADoverload("c")
   "[<-" <- ADoverload("[<-")
 
@@ -147,8 +148,14 @@ compute_selectivity_fsh_forms <- function(fishery_sel_form, nsel, stsel, endyr, 
       gamma2 <- 2 * p1 + p2 + p3
       asc <- 1 / (1 + exp(-log(19) * (age_vector - gamma1) / p1))
       desc <- 1 - 1 / (1 + exp(-log(19) * (age_vector - gamma2) / p3))
-      base <- log(asc * desc * 0.95^(-2) + 1e-12)
-      base <- base - max(base)
+      raw_uncapped <- asc * desc * 0.95^(-2)
+      # Smooth approximation to pmin(raw_uncapped, 1). The additive term
+      # makes the transform pass through zero, while kappa controls how
+      # closely it follows the hard cap used in the prior-elicitation page.
+      kappa <- 50.0
+      raw_sel <- 1.0 - log(1.0 + exp(kappa * (1.0 - raw_uncapped))) / kappa +
+        log(1.0 + exp(-kappa)) / kappa
+      base <- log(raw_sel + 1e-12)
       log_sel[i, ] <- center_log_selectivity(base)
     }
   } else if (form == 3L) {
@@ -175,7 +182,9 @@ compute_selectivity_fsh_forms <- function(fishery_sel_form, nsel, stsel, endyr, 
     stop("Unsupported fishery_sel_form: ", form)
   }
 
-  log_sel <- cap_old_age_log_selectivity(log_sel, first_old_age = 11L)
+  if (as.integer(fishery_sel_old_age_cap)[1] == 1L) {
+    log_sel <- cap_old_age_log_selectivity(log_sel, first_old_age = 11L)
+  }
 
   list(avgsel = avgsel, log_sel = log_sel)
 }
@@ -768,12 +777,19 @@ selectivity_like_fsh_forms <- function(fishery_sel_form, log_sel_fsh, styr, endy
                                        sel_devs_fsh, sel_ch_sig_fsh, year_index,
                                        sel_logistic_fsh,
                                        sel_double_logistic_fsh,
+                                       sel_double_logistic_prior_scale = c(0.75, 0.75, 0.45),
+                                       sel_double_logistic_rw_scale = c(0.60, 0.60, 0.40),
+                                       sel_double_logistic_mean_fsh = log(c(1.5, 3, 4)),
+                                       sel_double_logistic_dev_fsh = matrix(0, 1, 3),
+                                       sel_double_logistic_hierarchical = 0L,
+                                       sel_double_logistic_cv = 0.05,
                                        sel_richards_fsh,
                                        sel_spline_fsh,
                                        sel_tv_ar1_fsh,
                                        sel_tv_ar1_rho_fsh,
                                        log_sel_tv_ar1_sigma_fsh,
-                                       sel_tv_ar1_weight_fsh = 1.0) {
+                                       sel_tv_ar1_weight_fsh = 1.0,
+                                       fishery_sel_old_age_cap = 1L) {
   "c" <- ADoverload("c")
   "[<-" <- ADoverload("[<-")
 
@@ -804,9 +820,13 @@ selectivity_like_fsh_forms <- function(fishery_sel_form, log_sel_fsh, styr, endy
     dev <- dev + sum(((sel_logistic_fsh - target) / scale)^2)
   } else if (form == 2L) {
     target <- log(c(1.5, 3, 4))
-    prior_scale <- c(0.75, 0.75, 0.45)
-    rw_scale <- c(0.60, 0.60, 0.40)
-    if (is.null(dim(sel_double_logistic_fsh))) {
+    prior_scale <- sel_double_logistic_prior_scale
+    rw_scale <- sel_double_logistic_rw_scale
+    if (as.integer(sel_double_logistic_hierarchical)[1] == 1L) {
+      log_sd <- sqrt(log(1 + sel_double_logistic_cv^2))
+      dev <- dev + sum(((sel_double_logistic_mean_fsh - target) / prior_scale)^2)
+      dev <- dev - sum(dnorm(sel_double_logistic_dev_fsh, 0, log_sd, log = TRUE))
+    } else if (is.null(dim(sel_double_logistic_fsh))) {
       dev <- dev + sum(((sel_double_logistic_fsh - target) / prior_scale)^2)
     } else {
       for (i in 1:nrow(sel_double_logistic_fsh)) {
@@ -816,7 +836,11 @@ selectivity_like_fsh_forms <- function(fishery_sel_form, log_sel_fsh, styr, endy
         dev <- dev + sum(((sel_double_logistic_fsh[i, ] - sel_double_logistic_fsh[i - 1, ]) / rw_scale)^2) / 2
       }
     }
-    shape_pen <- shape_pen + domFish * norm2(log_sel_fsh[, ncol(log_sel_fsh)] - max(log_sel_fsh[1, ]))
+    if (as.integer(fishery_sel_old_age_cap)[1] == 1L) {
+      shape_pen <- shape_pen + domFish * norm2(
+        log_sel_fsh[, ncol(log_sel_fsh)] - max(log_sel_fsh[1, ])
+      )
+    }
   } else if (form == 3L) {
     target <- c(log(4), log(1), log(1), log(5), log(0.75), log(1))
     dev <- dev + sum(((sel_richards_fsh - target) / 2)^2)
