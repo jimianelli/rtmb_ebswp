@@ -121,6 +121,27 @@ the optimizer stops early. `PROFILE_GRADIENT_TOL` changes that threshold.
 `PROFILE_ALLOW_NONCONVERGED=true` bypasses the check for exploratory debugging,
 but output from such a run should not be used as assessment evidence.
 
+## Time-varying double-logistic fishery selectivity
+
+Form 2 is implemented as an optional two-stage model while the default
+September 2025 bridge path remains unchanged. Stage 1 estimates one
+double-logistic parameter triplet shared by all years. Stage 2 treats annual
+deviations from that triplet as random effects. The current tested treatment
+uses a 20% process CV and does not force ages 11 and older to share one
+selectivity value.
+
+Run the focused implementation test with:
+
+```bash
+Rscript tests/test_double_logistic_form2.R
+```
+
+The complete experiment ladder is in
+`R/run_double_logistic_experiments.R`. Its outputs are written to the ignored
+`analysis/output/double_logistic_experiments/` directory. The fitted comparison
+and selectivity surfaces are documented in
+`docs/fishery_selectivity.html#fishery-selectivity-surfaces`.
+
 Run the focused helper tests with:
 
 ```bash

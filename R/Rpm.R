@@ -6,16 +6,48 @@ rpm <- function(parms) {
   getAll(parms, data, warn = FALSE)
   ## Initialize joint negative log likelihood
   nll <- 0
+  if (!exists("fishery_sel_form", inherits = FALSE)) fishery_sel_form <- 0L
+  if (!exists("sel_double_logistic_mean_fsh", inherits = FALSE)) {
+    sel_double_logistic_mean_fsh <- log(c(1.5, 3, 4))
+  }
+  if (!exists("sel_double_logistic_dev_fsh", inherits = FALSE)) {
+    sel_double_logistic_dev_fsh <- matrix(0, endyr - styr + 1L, 3)
+  }
+  if (!exists("sel_double_logistic_prior_scale", inherits = FALSE)) {
+    sel_double_logistic_prior_scale <- c(0.75, 0.75, 0.45)
+  }
+  if (!exists("sel_double_logistic_cv", inherits = FALSE)) {
+    sel_double_logistic_cv <- 0.20
+  }
+  if (!exists("fishery_sel_old_age_cap", inherits = FALSE)) {
+    fishery_sel_old_age_cap <- 0L
+  }
+
   # sel_devs_fsh <- sel_devs_fsh - mean(sel_devs_fsh) # Centering selectivity deviations
-  tmp <- compute_selectivity_fsh(
-    nsel = n_selages_fsh,
-    stsel = styr,
-    endyr = endyr,
-    nages = nages,
-    coffs = sel_coffs_fsh,
-    sel_devs = sel_devs_fsh,
-    yrs_ch_fsh = 1965:2023
-  )
+  if (as.integer(fishery_sel_form)[1] == 2L) {
+    sel_double_logistic_effective_fsh <- sel_double_logistic_dev_fsh
+    for (i in seq_len(nrow(sel_double_logistic_effective_fsh))) {
+      for (j in seq_len(ncol(sel_double_logistic_effective_fsh))) {
+        sel_double_logistic_effective_fsh[i, j] <-
+          sel_double_logistic_mean_fsh[j] + sel_double_logistic_dev_fsh[i, j]
+      }
+    }
+    tmp <- compute_selectivity_fsh_double_logistic(
+      stsel = styr, endyr = endyr, nages = nages,
+      parameters = sel_double_logistic_effective_fsh,
+      old_age_cap = fishery_sel_old_age_cap
+    )
+  } else {
+    tmp <- compute_selectivity_fsh(
+      nsel = n_selages_fsh,
+      stsel = styr,
+      endyr = endyr,
+      nages = nages,
+      coffs = sel_coffs_fsh,
+      sel_devs = sel_devs_fsh,
+      yrs_ch_fsh = 1965:2023
+    )
+  }
   #--
   log_sel_fsh <- tmp$log_sel
   avgsel_fsh <- tmp$avgsel
@@ -314,11 +346,24 @@ rpm <- function(parms) {
   year_index <- setNames(seq_along(years), years)
 
   nyrs <- length(years)
-  pen_fsh <- selectivity_like_fsh(
-    log_sel_fsh, styr=styr, endyr=endyr, n_selages_fsh,
-    yrs_ch_fsh, nch_fsh, nyrs = length(years),
-    domFish, selTFsh, selCFsh, selCurv,
-    sel_devs_fsh, sel_ch_sig_fsh, year_index )
+  if (as.integer(fishery_sel_form)[1] == 2L) {
+    pen_fsh <- selectivity_like_fsh_double_logistic(
+      log_sel_fsh = log_sel_fsh,
+      selCFsh = selCFsh,
+      domFish = domFish,
+      mean_parameters = sel_double_logistic_mean_fsh,
+      annual_deviations = sel_double_logistic_dev_fsh,
+      prior_scale = sel_double_logistic_prior_scale,
+      process_cv = sel_double_logistic_cv,
+      old_age_cap = fishery_sel_old_age_cap
+    )
+  } else {
+    pen_fsh <- selectivity_like_fsh(
+      log_sel_fsh, styr=styr, endyr=endyr, n_selages_fsh,
+      yrs_ch_fsh, nch_fsh, nyrs = length(years),
+      domFish, selTFsh, selCFsh, selCurv,
+      sel_devs_fsh, sel_ch_sig_fsh, year_index )
+  }
   
   # # bts
   #pen_bts <- list(shape=0, dev_pen=0)
@@ -503,6 +548,10 @@ rpm <- function(parms) {
   ADREPORT(sel_coffs_ats)
   ADREPORT(sel_coffs_fsh)
   ADREPORT(sel_devs_fsh)
+  if (as.integer(fishery_sel_form)[1] == 2L) {
+    ADREPORT(sel_double_logistic_mean_fsh)
+    ADREPORT(sel_double_logistic_dev_fsh)
+  }
   ADREPORT(sel_slp_bts_dev)
   ADREPORT(sel_a50_bts_dev)
   ADREPORT(sel_age_one_bts_dev)

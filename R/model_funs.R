@@ -48,6 +48,58 @@ compute_selectivity_fsh <- function(nsel, stsel, endyr, nages, coffs, sel_devs, 
   return(list(avgsel = avgsel, log_sel = log_sel))
 }
 
+# Form 2 is kept separate from compute_selectivity_fsh() so the accepted
+# ADMB--RTMB bridge calculation remains byte-for-byte unchanged when
+# fishery_sel_form is zero.
+center_log_selectivity <- function(log_sel) {
+  log_sel - log(mean(exp(log_sel)))
+}
+
+cap_old_age_log_selectivity <- function(log_sel, first_old_age = 11L) {
+  "[<-" <- ADoverload("[<-")
+  if (ncol(log_sel) >= first_old_age) {
+    for (i in seq_len(nrow(log_sel))) {
+      log_sel[i, first_old_age:ncol(log_sel)] <- log_sel[i, first_old_age]
+      log_sel[i, ] <- center_log_selectivity(log_sel[i, ])
+    }
+  }
+  log_sel
+}
+
+compute_selectivity_fsh_double_logistic <- function(
+    stsel, endyr, nages, parameters, old_age_cap = 0L) {
+  "c" <- ADoverload("c")
+  "[<-" <- ADoverload("[<-")
+
+  nyrs <- endyr - stsel + 1L
+  ages <- 0.5 + seq_len(nages)
+  log_sel <- matrix(0, nrow = nyrs, ncol = nages)
+  rownames(log_sel) <- as.character(stsel:endyr)
+
+  for (i in seq_len(nyrs)) {
+    p1 <- exp(parameters[i, 1])
+    p2 <- exp(parameters[i, 2])
+    p3 <- exp(parameters[i, 3])
+    gamma1 <- p1 + p2
+    gamma2 <- 2 * p1 + p2 + p3
+    ascending <- 1 / (1 + exp(-log(19) * (ages - gamma1) / p1))
+    descending <- 1 - 1 / (1 + exp(-log(19) * (ages - gamma2) / p3))
+    raw <- ascending * descending * 0.95^(-2)
+
+    # Differentiable approximation to pmin(raw, 1), matching the Form 2
+    # experiment without using min() or max() in the selectivity transform.
+    kappa <- 50
+    smooth_capped <- 1 - log(1 + exp(kappa * (1 - raw))) / kappa +
+      log(1 + exp(-kappa)) / kappa
+    log_sel[i, ] <- center_log_selectivity(log(smooth_capped + 1e-12))
+  }
+
+  if (as.integer(old_age_cap)[1] == 1L) {
+    log_sel <- cap_old_age_log_selectivity(log_sel, first_old_age = 11L)
+  }
+  list(avgsel = 0, log_sel = log_sel)
+}
+
 compute_selectivity_ind <- function(stsel, slp, a50, se, ae, age_vector, endyr) {
   # stsel = styr_bts;
   # slp = sel_slp_bts;
@@ -484,6 +536,32 @@ selectivity_like_fsh <- function( log_sel_fsh,
     sigma <- sel_ch_sig_fsh[k]
     
     dev <- dev + norm2(log_sel_fsh[ip, ] - log_sel_fsh[ik, ]) / (2 * sigma^2)
+  }
+  list(shape = shape_pen, dev = dev, total = shape_pen + dev)
+}
+
+selectivity_like_fsh_double_logistic <- function(
+    log_sel_fsh, selCFsh, domFish,
+    mean_parameters, annual_deviations,
+    prior_scale = c(0.75, 0.75, 0.45),
+    process_cv = 0.20, old_age_cap = 0L) {
+  shape_pen <- 0
+  dev <- 0
+  nyrs <- nrow(log_sel_fsh)
+
+  for (i in seq_len(nyrs)) {
+    dev <- dev + selCFsh / nyrs * norm2(sdiff(log_sel_fsh[i, ]))
+  }
+
+  target <- log(c(1.5, 3, 4))
+  dev <- dev + sum(((mean_parameters - target) / prior_scale)^2)
+  log_sd <- sqrt(log(1 + process_cv^2))
+  dev <- dev - sum(dnorm(annual_deviations, 0, log_sd, log = TRUE))
+
+  if (as.integer(old_age_cap)[1] == 1L) {
+    shape_pen <- shape_pen + domFish * norm2(
+      log_sel_fsh[, ncol(log_sel_fsh)] - max(log_sel_fsh[1, ])
+    )
   }
   list(shape = shape_pen, dev = dev, total = shape_pen + dev)
 }
