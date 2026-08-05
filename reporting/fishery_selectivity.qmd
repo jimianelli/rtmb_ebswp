@@ -94,7 +94,7 @@ safe_logit_rho <- function(x) 2 / (1 + exp(-x)) - 1
 short_label <- function(form) {
   form <- as.integer(form)
   if (form == 0L) return("Base")
-  if (form == 2L) return("Double-logistic")
+  if (form == 2L) return("Double-logistic (20% CV)")
   if (form == 5L) return("2D AR1")
   paste0("Form ", form)
 }
@@ -105,7 +105,13 @@ summary_tbl <- tibble(
   label_short = purrr::map_chr(purrr::map_int(runs, "form"), short_label),
   objective = purrr::map_dbl(runs, "objective"),
   evaluated_total = purrr::map_dbl(runs, ~ .x$evaluated_total %||% .x$report$tot_like %||% NA_real_),
-  n_parameters = purrr::map_int(runs, ~ as.integer(.x$n_parameters %||% NA_integer_)),
+  n_parameters = purrr::map_int(
+    runs,
+    ~ as.integer(.x$n_parameters %||% length(.x$fit$par) %||% NA_integer_)
+  ),
+  n_random = purrr::map_int(runs, ~ if (isTRUE(.x$random_effects)) {
+    length(.x$fitted_parameters$sel_double_logistic_dev_fsh %||% numeric())
+  } else 0L),
   convergence = purrr::map_int(runs, "convergence"),
   max_gradient = purrr::map_dbl(runs, "max_gradient"),
   seconds = purrr::map_dbl(runs, "seconds")
@@ -118,7 +124,10 @@ summary_tbl <- tibble(
       fishery_sel_form == 2L, NA_real_,
       objective - objective[fishery_sel_form == base_form][1]
     ),
-    delta_evaluated_total = evaluated_total - evaluated_total[fishery_sel_form == base_form][1],
+    delta_evaluated_total = if_else(
+      fishery_sel_form == 2L, NA_real_,
+      evaluated_total - evaluated_total[fishery_sel_form == base_form][1]
+    ),
     objective_report_gap = if_else(
       fishery_sel_form == 2L, NA_real_, evaluated_total - objective
     )
@@ -296,10 +305,10 @@ parameter mapping are summarized in the implementation appendix.
 
 ```{r}
 #| label: tbl-fit-summary
-#| tbl-cap: "Model optimization summary by fishery selectivity form. Parameters is the number of free parameters supplied to the optimizer. Optimizer objective is the negative log-likelihood minimized by nlminb; reported total NLL is the likelihood recalculated by the model report at the fitted values. Delta columns are differences from form 0. Report minus optimizer gap is reported total NLL minus optimizer objective and should be near zero when both evaluations use the same data, parameters, and likelihood settings. Convergence 0 indicates normal nlminb completion."
+#| tbl-cap: "Model optimization summary by fishery selectivity form. Fixed parameters is the number supplied to nlminb; random effects is the number integrated by the Laplace approximation. For forms 0 and 5, the optimizer and reported totals are joint NLL values and delta columns are differences from form 0. For form 2, the optimizer objective is marginal while the reported total is conditional joint NLL, so cross-form deltas and the report-minus-optimizer gap are not shown. Convergence 0 indicates normal nlminb completion."
 summary_tbl |>
   select(
-    fishery_sel_form, label_short, n_parameters, objective, evaluated_total,
+    fishery_sel_form, label_short, n_parameters, n_random, objective, evaluated_total,
     delta_objective, delta_evaluated_total, objective_report_gap,
     convergence, max_gradient, seconds
   ) |>
@@ -308,7 +317,8 @@ summary_tbl |>
   cols_label(
     fishery_sel_form = "Form",
     label_short = "Scenario",
-    n_parameters = "Parameters",
+    n_parameters = "Fixed parameters",
+    n_random = "Random effects",
     objective = "Optimizer objective",
     evaluated_total = "Reported total NLL",
     delta_objective = "Delta objective",
@@ -327,7 +337,7 @@ summary_tbl |>
   ) |>
   fmt_number(columns = seconds, decimals = 1) |>
   fmt_scientific(columns = max_gradient, decimals = 2) |>
-  fmt_integer(columns = c(n_parameters, convergence))
+  fmt_integer(columns = c(n_parameters, n_random, convergence))
 ```
 
 The **Report - optimizer gap** is an internal consistency check. A substantial
@@ -392,7 +402,7 @@ It also stores fishery observed (`oac_fsh`) and expected (`eac_fsh`) age-composi
 
 ```{r}
 #| label: fig-age-like
-#| fig-cap: "Change in age-composition NLL relative to the base scenario by fleet. Negative values indicate improved fit relative to base."
+#| fig-cap: "Change in age-composition NLL relative to the base scenario by fleet. Form 2 is the hierarchical double logistic with 20% process CV. These conditional fleet-specific likelihood contributions are comparable as data-fit diagnostics because they use the same observations and likelihood, but they are not marginal overall model objectives. Negative values indicate improved fit relative to base."
 #| fig-width: 8
 #| fig-height: 4.5
 #| out-width: "100%"
