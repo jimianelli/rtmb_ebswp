@@ -5,6 +5,9 @@
 #
 # Usage:
 #   MAXSIM=30 Rscript R/fit_simulated_datasets.R
+#   FISHERY_SEL_FORM=2 FISHERY_SEL_LABEL=double_logistic \
+#     OUTPUT_DIR=analysis/output/simulated/refits_double_logistic \
+#     MAXSIM=30 Rscript R/fit_simulated_datasets.R
 #   FISHERY_SEL_FORM=5 OUTPUT_DIR=analysis/output/simulated/refits_2dar1 \
 #     MAXSIM=30 Rscript R/fit_simulated_datasets.R
 #
@@ -232,11 +235,23 @@ fit_one_simulation <- function(sim_id) {
   model_env$validate_simulated_estimation_data(model_env$data)
 
   obj_sim <- RTMB::MakeADFun(rpm, parms, map = map_obj)
+  lower <- rep(-Inf, length(obj_sim$par))
+  upper <- rep(Inf, length(obj_sim$par))
+  if (fishery_sel_form == 2L) {
+    idx <- which(names(obj_sim$par) == "sel_double_logistic_fsh")
+    if (length(idx) > 0L) {
+      nyrs <- length(idx) / 3L
+      lower[idx] <- rep(log(c(0.25, 1.0, 1.5)), each = nyrs)
+      upper[idx] <- rep(log(c(5.0, 8.0, 25.0)), each = nyrs)
+    }
+  }
   t0 <- Sys.time()
   fit <- nlminb(
     obj_sim$par,
     obj_sim$fn,
     obj_sim$gr,
+    lower = lower,
+    upper = upper,
     control = list(eval.max = eval_max, iter.max = iter_max)
   )
   t1 <- Sys.time()

@@ -49,20 +49,44 @@ rtmb_file <- function(...) normalizePath(file.path(rtmb_root, ...), mustWork = F
 
 results_dir <- rtmb_file(params$results_dir)
 
-run_path <- function(form) file.path(results_dir, sprintf("fishery_sel_form_%d.rds", as.integer(form)))
+run_path <- function(file) file.path(results_dir, file)
 
-load_run <- function(form) {
-  path <- run_path(form)
+load_run <- function(spec) {
+  path <- run_path(spec$result_file)
   if (!file.exists(path)) stop("Missing results file: ", path)
   x <- readRDS(path)
   x$path <- path
+  x$run_key <- spec$run_key
+  x$form <- spec$fishery_sel_form
+  x$label_original <- x$label
+  x$label <- spec$label
+  x$label_short <- spec$label_short
+  x$penalty_weight <- spec$penalty_weight
   x
 }
 
 base_form <- as.integer(params$base_form)
 compare_forms <- as.integer(params$compare_forms)
-forms <- c(base_form, compare_forms)
-runs <- purrr::map(forms, load_run)
+base_run_key <- "form_0"
+run_specs <- tibble(
+  run_key = c("form_0", "form_2", "form_5_w025", "form_5_w100"),
+  fishery_sel_form = c(0L, 2L, 5L, 5L),
+  result_file = c(
+    "fishery_sel_form_0.rds",
+    "fishery_sel_form_2.rds",
+    "fishery_sel_form_5.rds",
+    "fishery_sel_form_5_default_weight.rds"
+  ),
+  label = c(
+    "Base coefficients + change-year deviations",
+    "Time-varying double logistic",
+    "2D AR1 year-age, relaxed penalty",
+    "2D AR1 year-age, default penalty"
+  ),
+  label_short = c("Base", "Double-logistic", "2D AR1 w=0.25", "2D AR1 w=1.0"),
+  penalty_weight = c(NA_real_, NA_real_, 0.25, 1.0)
+)
+runs <- purrr::map(seq_len(nrow(run_specs)), ~load_run(run_specs[.x, ]))
 
 safe_logit_rho <- function(x) 2 / (1 + exp(-x)) - 1
 
@@ -76,42 +100,48 @@ short_label <- function(form) {
 }
 
 summary_tbl <- tibble(
+  run_key = purrr::map_chr(runs, "run_key"),
   fishery_sel_form = purrr::map_int(runs, "form"),
   label = purrr::map_chr(runs, "label"),
-  label_short = purrr::map_chr(purrr::map_int(runs, "form"), short_label),
+  label_short = purrr::map_chr(runs, "label_short"),
+  penalty_weight = purrr::map_dbl(runs, ~.x$penalty_weight %||% NA_real_),
   objective = purrr::map_dbl(runs, "objective"),
   evaluated_total = purrr::map_dbl(runs, ~ .x$evaluated_total %||% .x$report$tot_like %||% NA_real_),
   convergence = purrr::map_int(runs, "convergence"),
   max_gradient = purrr::map_dbl(runs, "max_gradient"),
   seconds = purrr::map_dbl(runs, "seconds")
 ) |>
-  arrange(fishery_sel_form) |>
+  mutate(run_key = factor(run_key, levels = run_specs$run_key)) |>
+  arrange(run_key) |>
   mutate(
-    delta_objective = objective - objective[fishery_sel_form == base_form][1],
-    delta_evaluated_total = evaluated_total - evaluated_total[fishery_sel_form == base_form][1],
+    delta_objective = objective - objective[run_key == base_run_key][1],
+    delta_evaluated_total = evaluated_total - evaluated_total[run_key == base_run_key][1],
     objective_report_gap = evaluated_total - objective
   )
 
-rho_ar1_summary <- {
-  ar1_run <- runs[[which(purrr::map_int(runs, "form") == 5L)[1]]]
-  rho_working <- ar1_run$fixed_parameters$sel_tv_ar1_rho_fsh %||% c(NA_real_, NA_real_)
+rho_ar1_summary <- purrr::map_dfr(runs, function(run) {
+  if (run$form != 5L) return(NULL)
+  rho_working <- run$fixed_parameters$sel_tv_ar1_rho_fsh %||% c(NA_real_, NA_real_)
+  log_sigma <- run$fixed_parameters$log_sel_tv_ar1_sigma_fsh %||% NA_real_
   rho <- safe_logit_rho(as.numeric(rho_working))
   tibble(
-    fishery_sel_form = 5L,
-    label_short = short_label(5L),
+    run_key = run$run_key,
+    fishery_sel_form = run$form,
+    label_short = run$label_short,
+    penalty_weight = run$penalty_weight,
     rho_y = rho[1],
     rho_a = rho[2],
+    sigma = exp(as.numeric(log_sigma[1])),
     working_rho_y = as.numeric(rho_working[1]),
     working_rho_a = as.numeric(rho_working[2])
   )
-}
+})
 
-rho_ar1_caption <- if (nrow(rho_ar1_summary) > 0 && all(is.finite(rho_ar1_summary$rho_y), is.finite(rho_ar1_summary$rho_a))) {
-  sprintf(
-    " For the 2D AR1 form, fitted correlations are rho_y = %.3f and rho_a = %.3f.",
-    rho_ar1_summary$rho_y,
-    rho_ar1_summary$rho_a
-  )
+rho_ar1_caption <- if (nrow(rho_ar1_summary) > 0) {
+  vals <- rho_ar1_summary |>
+    mutate(txt = sprintf("%s: rho_y = %.3f, rho_a = %.3f", label_short, rho_y, rho_a)) |>
+    pull(txt)
+  paste0(" For the 2D AR1 forms, fitted correlations are ", paste(vals, collapse = "; "), ".")
 } else {
   ""
 }
@@ -119,9 +149,11 @@ rho_ar1_caption <- if (nrow(rho_ar1_summary) > 0 && all(is.finite(rho_ar1_summar
 get_ssb_df <- function(run) {
   ssb <- run$report$SSB
   tibble(
+    run_key = run$run_key,
     fishery_sel_form = run$form,
     label = run$label,
-    label_short = short_label(run$form),
+    label_short = run$label_short,
+    penalty_weight = run$penalty_weight,
     year = as.integer(names(ssb)),
     SSB = as.numeric(ssb)
   )
@@ -139,10 +171,12 @@ get_sel_df <- function(run) {
     mutate(year = years, .before = 1) |>
     pivot_longer(-year, names_to = "age", values_to = "selectivity") |>
     mutate(
+      run_key = run$run_key,
       age = as.integer(age),
       fishery_sel_form = run$form,
       label = run$label,
-      label_short = short_label(run$form)
+      label_short = run$label_short,
+      penalty_weight = run$penalty_weight
     )
 }
 
@@ -154,9 +188,11 @@ get_catch_df <- function(run) {
   pred <- run$report$pred_catch
   yrs <- as.integer(names(obs) %||% names(pred) %||% seq_along(obs))
   tibble(
+    run_key = run$run_key,
     fishery_sel_form = run$form,
     label = run$label,
-    label_short = short_label(run$form),
+    label_short = run$label_short,
+    penalty_weight = run$penalty_weight,
     year = yrs,
     obs_catch = as.numeric(obs),
     pred_catch = as.numeric(pred)
@@ -211,10 +247,10 @@ plot_agecomp_fit_comparison <- function(data, fleet_name, ncol = 4) {
 
 # Overview
 
-This report compares three RTMB runs that differ **only** in the fishery selectivity form.
+This report compares RTMB runs that differ **only** in the fishery selectivity form or, for the two 2D AR1 cases, the fixed AR1 penalty multiplier.
 
 - Base: `fishery_sel_form = {params.base_form}`
-- Comparators: `fishery_sel_form = {paste(params.compare_forms, collapse=', ')}`
+- Comparators: `fishery_sel_form = {paste(params.compare_forms, collapse=', ')}`, with Form 5 shown for both `sel_tv_ar1_weight_fsh = 0.25` and `sel_tv_ar1_weight_fsh = 1.0`.
 
 The run outputs were generated by `R/run_fishery_selectivity_forms.R` and saved under:
 
@@ -247,6 +283,19 @@ if (is.finite(gap_max) && gap_max > 1e-3) {
     "`objective_report_gap`. Regenerate the scenario `.rds` files with the ",
     "current `R/run_fishery_selectivity_forms.R` before interpreting the ",
     "selectivity comparison.\n\n",
+    sep = ""
+  )
+}
+
+problem_fits <- summary_tbl |>
+  filter(is.na(convergence) | convergence != 0L | is.na(max_gradient) | max_gradient > 1e-2)
+if (nrow(problem_fits) > 0) {
+  cat(
+    "\n\n> **Optimization diagnostic:** at least one scenario has nonzero ",
+    "convergence code or a large final gradient. Treat those scenarios as ",
+    "failed/sensitivity fits rather than reliable optima. Affected scenarios: ",
+    paste(problem_fits$label_short, collapse = ", "),
+    ".\n\n",
     sep = ""
   )
 }
@@ -295,9 +344,11 @@ It also stores fishery observed (`oac_fsh`) and expected (`eac_fsh`) age-composi
 age_like_df <- bind_rows(purrr::map(runs, function(run) {
   al <- run$report$age_like
   tibble(
+    run_key = run$run_key,
     fishery_sel_form = run$form,
     label = run$label,
-    label_short = short_label(run$form),
+    label_short = run$label_short,
+    penalty_weight = run$penalty_weight,
     fleet = names(al),
     age_like = as.numeric(al)
   )
@@ -309,7 +360,7 @@ age_like_df <- bind_rows(purrr::map(runs, function(run) {
   )
 
 base_vals <- age_like_df |>
-  filter(fishery_sel_form == base_form) |>
+  filter(run_key == base_run_key) |>
   select(fleet, base_age_like = age_like)
 
 age_like_df2 <- age_like_df |>
@@ -317,7 +368,7 @@ age_like_df2 <- age_like_df |>
   mutate(delta_age_like = age_like - base_age_like)
 
 age_like_plot_df <- age_like_df2 |>
-  filter(fishery_sel_form != base_form)
+  filter(run_key != base_run_key)
 
 ggplot(age_like_plot_df, aes(x = label_short, y = delta_age_like, fill = label_short)) +
   geom_hline(yintercept = 0, linewidth = 0.4, color = "gray50") +
@@ -341,7 +392,7 @@ ggplot(age_like_plot_df, aes(x = label_short, y = delta_age_like, fill = label_s
 
 age_like_df2 |>
   mutate(across(c(age_like, base_age_like, delta_age_like), ~round(.x, 0))) |>
-  arrange(fleet, fishery_sel_form) |>
+  arrange(fleet, run_key) |>
   gt_report()
 ```
 
@@ -384,9 +435,11 @@ extract_agecomp_df <- function(run, fleet = c("fsh", "bts", "ats")) {
 
   grid <- tidyr::expand_grid(year = yrs, age = ages) |>
     as.data.frame()
+  grid$run_key <- run$run_key
   grid$fishery_sel_form <- run$form
   grid$label <- run$label
-  grid$label_short <- short_label(run$form)
+  grid$label_short <- run$label_short
+  grid$penalty_weight <- run$penalty_weight
   grid$fleet <- fleet
 
   # Convert to proportions within each year-row to make diagnostics comparable.
@@ -467,8 +520,11 @@ The RTMB report object stores a set of likelihood (or penalty) components. The m
 extract_components <- function(run) {
   r <- run$report
   tibble(
+    run_key = run$run_key,
     fishery_sel_form = run$form,
     label = run$label,
+    label_short = run$label_short,
+    penalty_weight = run$penalty_weight,
     sel_like = sum(r$sel_like, na.rm = TRUE),
     sel_like_dev = sum(r$sel_like_dev, na.rm = TRUE),
     age_like_total = attr(r$age_like, "total") %||% sum(r$age_like, na.rm = TRUE),
@@ -481,11 +537,11 @@ extract_components <- function(run) {
 }
 
 comp_tbl <- bind_rows(purrr::map(runs, extract_components)) |>
-  arrange(fishery_sel_form) |>
+  arrange(run_key) |>
   mutate(
-    delta_nll = nll - nll[fishery_sel_form == base_form][1],
-    delta_sel_like = sel_like - sel_like[fishery_sel_form == base_form][1],
-    delta_sel_like_dev = sel_like_dev - sel_like_dev[fishery_sel_form == base_form][1]
+    delta_nll = nll - nll[run_key == base_run_key][1],
+    delta_sel_like = sel_like - sel_like[run_key == base_run_key][1],
+    delta_sel_like_dev = sel_like_dev - sel_like_dev[run_key == base_run_key][1]
   )
 
 comp_tbl |>
@@ -595,7 +651,18 @@ z \sim \operatorname{AR1}_{\mathrm{year}}(\rho_y)
 \operatorname{AR1}_{\mathrm{age}}(\rho_a),
 $$
 
-with fitted correlations reported in the caption for @fig-sel-ridges. The scenario recipe down-weights the AR1 penalty relative to the default, allowing more interannual variation while still borrowing strength across neighboring years and ages.
+with fitted correlations reported in the caption for @fig-sel-ridges. The relaxed Form 5 scenario fixes `sel_tv_ar1_weight_fsh = 0.25`, allowing more interannual variation while still borrowing strength across neighboring years and ages. The default-penalty scenario fixes `sel_tv_ar1_weight_fsh = 1.0`, so the penalty strength is controlled by the estimated AR1 variance and correlations without the additional down-weighting multiplier. In this run set, the default-penalty fit should be interpreted cautiously unless its convergence diagnostics are acceptable.
+
+```{r}
+#| label: tbl-ar1-hyperparameters
+#| tbl-cap: "Estimated 2D AR1 selectivity hyperparameters and fixed penalty multipliers."
+
+rho_ar1_summary |>
+  select(label_short, penalty_weight, rho_y, rho_a, sigma) |>
+  mutate(across(where(is.numeric), ~round(.x, 4))) |>
+  gt_report() |>
+  tab_header(title = "2D AR1 Selectivity Hyperparameters")
+```
 
 ```{r}
 #| label: fig-sel-ridges
@@ -605,14 +672,14 @@ with fitted correlations reported in the caption for @fig-sel-ridges. The scenar
 #| out-width: "100%"
 
 ridge_df <- sel_df |>
-  group_by(fishery_sel_form, label, year) |>
+  group_by(run_key, label, year) |>
   mutate(relative = selectivity / max(selectivity, na.rm = TRUE)) |>
   ungroup() |>
   mutate(year_factor = factor(year, levels = rev(sort(unique(year)))))
 
 ggplot(ridge_df, aes(x = age, y = year_factor, height = relative, group = year_factor)) +
   geom_density_ridges(stat = "identity", fill = "#1f78b4", alpha = 0.65, rel_min_height = 0.01) +
-  facet_wrap(~label_short, ncol = 3) +
+  facet_wrap(~label_short, ncol = 2) +
   labs(x = "Age", y = "Year") +
   theme(axis.text.y = element_text(size = 7))
 ```
@@ -623,7 +690,7 @@ ggplot(ridge_df, aes(x = age, y = year_factor, height = relative, group = year_f
 #| label: fig-ssb
 #| fig-cap: "Spawning biomass (SSB) trajectories by fishery selectivity form."
 
-ggplot(ssb_df, aes(x = year, y = SSB, color = label)) +
+ggplot(ssb_df, aes(x = year, y = SSB, color = label_short)) +
   geom_line(linewidth = 1) +
   labs(x = "Year", y = "SSB", color = NULL) +
   theme(legend.position = "top")
@@ -637,24 +704,17 @@ key_years <- sort(unique(ssb_df$year))
 key_years <- key_years[key_years %in% c(max(key_years), max(key_years) - 1, 2000, 2010, 2020)]
 if (length(key_years) == 0) key_years <- tail(sort(unique(ssb_df$year)), 5)
 
-ssb_wide <- ssb_df |>
-  filter(year %in% key_years) |>
-  select(fishery_sel_form, label, year, SSB) |>
-  pivot_wider(names_from = fishery_sel_form, values_from = SSB, names_prefix = "form_")
-
-base_col <- paste0("form_", base_form)
-
 ssb_delta <- ssb_df |>
   filter(year %in% key_years) |>
   group_by(year) |>
   mutate(
-    base_SSB = SSB[fishery_sel_form == base_form][1],
+    base_SSB = SSB[run_key == base_run_key][1],
     delta_SSB = SSB - base_SSB,
     pct_delta = 100 * delta_SSB / base_SSB
   ) |>
   ungroup() |>
-  select(label, fishery_sel_form, year, SSB, delta_SSB, pct_delta) |>
-  arrange(year, fishery_sel_form)
+  select(label, label_short, fishery_sel_form, penalty_weight, year, SSB, delta_SSB, pct_delta) |>
+  arrange(year, label_short)
 
 ssb_delta |>
   mutate(across(c(SSB, delta_SSB, pct_delta), ~round(.x, 4))) |>
@@ -662,6 +722,150 @@ ssb_delta |>
   tab_header(title = "SSB deltas vs base")
 ```
 
+
+# Appendix: Double-Logistic SparseNUTS MCMC
+
+This appendix summarizes a saved SparseNUTS run for the time-varying double-logistic fishery selectivity form (`fishery_sel_form = 2`). The run is generated by `R/run_sparsenuts_double_logistic.R`, which rebuilds the same RTMB objective used for the form-comparison fit, starts from the saved double-logistic estimates, and uses the annual double-logistic parameter bounds used in the optimizer. The requested run configuration is six chains, six cores, and 1,000 total iterations, with 500 warmup iterations.
+
+```{r}
+#| label: tbl-sparsenuts-dl-status
+#| tbl-cap: "Saved SparseNUTS run configuration for the time-varying double-logistic fit."
+
+sparsenuts_dir <- rtmb_file("analysis", "output", "sparsenuts", "fishery_sel_forms")
+sparsenuts_fig_dir <- file.path(sparsenuts_dir, "figures")
+sparsenuts_fit_file <- file.path(sparsenuts_dir, "rtmb_ebswp_sparsenuts_form_2.rds")
+sparsenuts_metadata_file <- file.path(sparsenuts_dir, "sparsenuts_metadata_form_2.rds")
+sparsenuts_diagnostics_file <- file.path(sparsenuts_dir, "sparsenuts_diagnostics_form_2.rds")
+sparsenuts_slow_file <- file.path(sparsenuts_dir, "sparsenuts_slow_parameters_form_2.csv")
+
+display_path <- function(path) {
+  sub(paste0("^", gsub("([\\W])", "\\\\\\1", rtmb_root), "/?"), "", normalizePath(path, mustWork = FALSE))
+}
+
+sparsenuts_metadata <- if (file.exists(sparsenuts_metadata_file)) {
+  readRDS(sparsenuts_metadata_file)
+} else {
+  list()
+}
+
+tibble(
+  item = c(
+    "Runner",
+    "Saved fit",
+    "Form",
+    "Chains",
+    "Cores",
+    "Total iterations",
+    "Warmup iterations",
+    "Sampling iterations",
+    "Metric",
+    "Initialization",
+    "Elapsed seconds"
+  ),
+  value = c(
+    "R/run_sparsenuts_double_logistic.R",
+    if (file.exists(sparsenuts_fit_file)) display_path(sparsenuts_fit_file) else "not found",
+    as.character(sparsenuts_metadata$fishery_sel_form %||% 2L),
+    as.character(sparsenuts_metadata$chains %||% 6L),
+    as.character(sparsenuts_metadata$cores %||% 6L),
+    as.character(sparsenuts_metadata$iter %||% 1000L),
+    as.character(sparsenuts_metadata$warmup %||% 500L),
+    as.character(sparsenuts_metadata$num_samples %||% 500L),
+    as.character(sparsenuts_metadata$metric %||% "unit"),
+    as.character(sparsenuts_metadata$init %||% "last.par.best"),
+    as.character(round(sparsenuts_metadata$seconds %||% NA_real_, 1))
+  )
+) |>
+  gt_report() |>
+  tab_header(title = "Double-Logistic SparseNUTS Run")
+```
+
+```{r}
+#| label: tbl-sparsenuts-dl-diagnostics
+#| tbl-cap: "SparseNUTS diagnostic checker output for the double-logistic fit."
+
+sparsenuts_diagnostics <- if (file.exists(sparsenuts_diagnostics_file)) {
+  readRDS(sparsenuts_diagnostics_file)
+} else {
+  NULL
+}
+
+sparsenuts_diagnostics_tbl <- if (!is.null(sparsenuts_diagnostics)) {
+  tibble(
+    diagnostic = names(sparsenuts_diagnostics),
+    value = vapply(
+      sparsenuts_diagnostics,
+      function(x) paste(capture.output(str(x, max.level = 1)), collapse = " "),
+      character(1)
+    )
+  )
+} else {
+  tibble(
+    diagnostic = "diagnostics",
+    value = "No saved diagnostics found. Run R/run_sparsenuts_double_logistic.R to create them."
+  )
+}
+
+sparsenuts_diagnostics_tbl |>
+  gt_report() |>
+  tab_header(title = "Double-Logistic SparseNUTS Diagnostics")
+```
+
+```{r}
+#| label: tbl-sparsenuts-dl-slow-parameters
+#| tbl-cap: "Parameters selected for the double-logistic SparseNUTS pairs.tmbfit diagnostic figure."
+
+sparsenuts_slow_tbl <- if (file.exists(sparsenuts_slow_file)) {
+  read.csv(sparsenuts_slow_file, check.names = FALSE) |>
+    select(any_of(c("variable", "mean", "sd", "rhat", "ess_bulk", "ess_tail"))) |>
+    mutate(across(where(is.numeric), ~round(.x, 4)))
+} else {
+  tibble(note = "No saved slow-parameter table found.")
+}
+
+sparsenuts_slow_tbl |>
+  gt_report() |>
+  tab_header(title = "Slowest SparseNUTS Parameters")
+```
+
+```{r}
+#| label: fig-sparsenuts-dl-pairs-tmbfit
+#| fig-cap: "SparseNUTS `pairs.tmbfit` diagnostic plot for the selected slow-mixing parameters in the time-varying double-logistic fit."
+#| out-width: "100%"
+
+file <- file.path(sparsenuts_fig_dir, "sparsenuts_pairs_tmbfit_form_2.png")
+if (file.exists(file)) {
+  knitr::include_graphics(file)
+} else {
+  cat("(No pairs.tmbfit figure found at: ", display_path(file), ")")
+}
+```
+
+```{r}
+#| label: fig-sparsenuts-dl-marginals
+#| fig-cap: "SparseNUTS marginal diagnostic plots for the selected slow-mixing parameters in the time-varying double-logistic fit."
+#| out-width: "100%"
+
+file <- file.path(sparsenuts_fig_dir, "sparsenuts_marginals_slow_form_2.png")
+if (file.exists(file)) {
+  knitr::include_graphics(file)
+} else {
+  cat("(No marginal diagnostic figure found at: ", display_path(file), ")")
+}
+```
+
+```{r}
+#| label: fig-sparsenuts-dl-sampler
+#| fig-cap: "SparseNUTS sampler-parameter diagnostics for the time-varying double-logistic fit."
+#| out-width: "100%"
+
+file <- file.path(sparsenuts_fig_dir, "sparsenuts_sampler_params_form_2.png")
+if (file.exists(file)) {
+  knitr::include_graphics(file)
+} else {
+  cat("(No sampler diagnostic figure found at: ", display_path(file), ")")
+}
+```
 
 # Appendix: Implementation References {#sec-appendix-implementation}
 

@@ -117,6 +117,59 @@ Run the focused helper tests with:
 Rscript tests/test_profile_components.R
 ```
 
+### Strict RTMBprof stock-scale profile
+
+The Stage 1 RTMBprof workflow profiles `log_q_ats`, the catchability for the
+acoustic-trawl survey, as the default stock-scale diagnostic:
+
+```bash
+Rscript R/run_rtmbprof_stage1.R
+```
+
+The runner refits the default mapped model, requires a converged base fit,
+checks that every named model component sums to the joint objective, profiles
+the focal parameter with nuisance reoptimization, and records changes in
+terminal and mean spawning biomass, unfished spawning biomass, and the
+analytically derived BTS catchability. Outputs are written under the ignored
+`analysis/output/rtmbprof_stage1/` directory.
+
+The model's `log_q_bts` parameter is not a valid profile target in the current
+configuration. It is fixed in the map and the effective BTS catchability is
+subsequently calculated as `mean(ob_bts) / mean(eb_bts)`. Profiling it would
+therefore require changing the fitted model. Short candidate profiles found
+that `log_q_ats` has broader leverage on population scale than `log_q_cpue`.
+`log_q_avo` has somewhat greater leverage on terminal spawning biomass but
+less on mean spawning biomass and represents the shorter acoustic
+vessels-of-opportunity series.
+
+Run the strict component-closure smoke test with:
+
+```bash
+Rscript tests/test_rtmbprof_stage1.R
+```
+
+### Posterior-objective comparison
+
+Stage 2 evaluates the same complete joint objective at the saved SparseNUTS
+draws and compares its binned conditional summaries with the Stage 1
+constrained `log_q_ats` profile:
+
+```bash
+Rscript R/run_rtmbprof_stage2.R
+```
+
+The runner explicitly removes the warmup iterations recorded in the saved
+`tmbfit`, maps sampler columns into the fitted RTMB parameter order, and checks
+component closure at every retained draw. It writes diagnostics, conditional
+summaries, correlations with other scale-related parameters, and profile/MCMC
+figures under `analysis/output/rtmbprof_stage2/`. The MCMC summaries retain
+nuisance-parameter variation and are posterior-objective diagnostics; they are
+not likelihood profiles. In this 1,338-dimensional fit, their raw objective
+values are expected to lie roughly \(1338/2 = 669\) units above the mode under
+a local Gaussian approximation, so the runner also produces a separately
+centred shape comparison. For a quick smoke run, set
+`RTMBPROF_MAX_DRAWS=40`.
+
 See [REPRODUCIBILITY.md](REPRODUCIBILITY.md) for the full workflow and expected
 software dependencies.
 

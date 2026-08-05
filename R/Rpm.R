@@ -458,6 +458,9 @@ rpm <- function(parms) {
   ADREPORT(SSB)
   ADREPORT(recruitment)
   REPORT(SSB)
+  REPORT(Bzero)
+  REPORT(q_bts)
+  REPORT(q_ats)
   REPORT(Priors)
   REPORT(rec_like$rec_like)
   REPORT(age_like)
@@ -470,6 +473,7 @@ rpm <- function(parms) {
   REPORT(cat_like)
   REPORT(sel_like)
   REPORT(sel_like_dev)
+  REPORT(avgsel_like)
   REPORT(wt_like)
   REPORT(nll)
  

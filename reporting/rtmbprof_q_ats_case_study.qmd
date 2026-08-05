@@ -1,0 +1,460 @@
+---
+title: "RTMBprof Case Study: Acoustic-survey Catchability in the EBS Pollock Model"
+subtitle: "Constrained component profiles and posterior-objective evaluations for log q~ATS~"
+date: today
+format:
+  html:
+    toc: true
+    toc-depth: 3
+    number-sections: true
+    embed-resources: true
+    code-fold: true
+    code-summary: "Show code"
+    lightbox: true
+execute:
+  echo: false
+  warning: false
+  message: false
+---
+
+```{r}
+#| label: setup
+#| include: false
+
+suppressPackageStartupMessages({
+  library(RTMBprof)
+  library(ggplot2)
+  library(knitr)
+  library(plotly)
+})
+
+theme_set(theme_minimal(base_size = 12))
+
+repo_root <- normalizePath(
+  if (file.exists("R")) "." else "..",
+  mustWork = TRUE
+)
+stage1_path <- file.path(
+  repo_root, "analysis", "output", "rtmbprof_stage1",
+  "candidate_scale_profiles.rds"
+)
+stage2_path <- file.path(
+  repo_root, "analysis", "output", "rtmbprof_stage2",
+  "rtmbprof_stage2.rds"
+)
+if (!file.exists(stage1_path)) {
+  stop("Missing Stage 1 output. Run R/run_rtmbprof_stage1.R.")
+}
+if (!file.exists(stage2_path)) {
+  stop("Missing Stage 2 output. Run R/run_rtmbprof_stage2.R.")
+}
+
+stage1 <- readRDS(stage1_path)
+stage2 <- readRDS(stage2_path)
+profile <- stage1$profiles$log_q_ats
+mcmc_components <- stage2$mcmc_components
+mcmc_summary <- stage2$mcmc_summary
+profile_components <- attr(profile, "components")
+
+fitted_index <- which.min(profile$value)
+fitted_q <- profile$log_q_ats[fitted_index]
+delta_nll <- profile$value - min(profile$value)
+left_crossed <- any(delta_nll[profile$log_q_ats < fitted_q] >= 1.92)
+right_crossed <- any(delta_nll[profile$log_q_ats > fitted_q] >= 1.92)
+
+fmt <- function(x, digits = 3) {
+  formatC(x, digits = digits, format = "fg")
+}
+```
+
+## Overview {#sec-overview}
+
+This case study applies `RTMBprof` to the RTMB implementation of the eastern
+Bering Sea pollock assessment. The focal parameter is `log_q_ats`, the log
+catchability for the acoustic-trawl survey (ATS). It was selected because
+candidate profiles showed broader leverage on population scale than
+`log_q_cpue`. The effective BTS catchability cannot be profiled in the current
+model because `log_q_bts` is fixed and `q_bts` is calculated analytically.
+
+The analysis has two deliberately distinct parts:
+
+1. a **constrained joint-objective profile**, which fixes `log_q_ats` and
+   reoptimizes all nuisance parameters; and
+2. **posterior-objective evaluations**, which retain the nuisance-parameter
+   values at each saved SparseNUTS draw.
+
+The second calculation is not another likelihood profile. Section
+@sec-profile describes the constrained profile, @sec-components identifies
+which objective terms create its shape, and @sec-posterior compares it with
+the posterior evaluations.
+
+## Model and analysis configuration {#sec-methods}
+
+The fitted RTMB object has no parameters designated as Laplace random effects,
+so both stages evaluate the complete **joint** negative log posterior. At every
+profile point and posterior draw, the reported components must sum to the
+objective within numerical tolerance.
+
+```{r}
+#| label: tbl-analysis
+#| tbl-cap: "Configuration and numerical checks for the qATS case study."
+
+analysis_table <- data.frame(
+  Quantity = c(
+    "Profile target",
+    "Constrained profile points",
+    "Profile objective",
+    "Profile threshold crossed",
+    "Maximum profile closure error",
+    "Posterior chains",
+    "Warmup removed per chain",
+    "Retained posterior draws",
+    "Maximum posterior closure error"
+  ),
+  Value = c(
+    "log_q_ats",
+    nrow(profile),
+    attr(profile, "objective"),
+    if (left_crossed && right_crossed) "Both sides of ΔNLL = 1.92" else "No",
+    format(max(abs(profile$closure_error)), scientific = TRUE, digits = 3),
+    stage2$diagnostics$chains,
+    stage2$diagnostics$warmup_removed_per_chain,
+    stage2$diagnostics$retained_draws,
+    format(
+      stage2$diagnostics$max_abs_closure_error,
+      scientific = TRUE,
+      digits = 3
+    )
+  ),
+  check.names = FALSE
+)
+kable(analysis_table, align = c("l", "l"), row.names = FALSE)
+```
+
+As shown in @tbl-analysis, the component closure checks pass at all 27
+constrained points and all 4,000 retained posterior draws.
+
+## Constrained qATS profile {#sec-profile}
+
+The profile spans `r fmt(min(profile$log_q_ats))` to
+`r fmt(max(profile$log_q_ats))` on the log scale and crosses the conventional
+one-parameter 95% objective cutoff, $\Delta\mathrm{NLL}=1.92$, on both sides
+of its minimum.
+
+```{r}
+#| label: fig-total-profile
+#| fig-cap: "Constrained joint-objective profile for log acoustic-trawl survey catchability. The horizontal line marks ΔNLL = 1.92 and the vertical dotted line marks the profile minimum."
+#| fig-width: 8
+#| fig-height: 5
+
+profile_plot_data <- data.frame(
+  log_q_ats = profile$log_q_ats,
+  delta_nll = delta_nll
+)
+ggplot(profile_plot_data, aes(log_q_ats, delta_nll)) +
+  geom_hline(yintercept = 1.92, linetype = "dashed", colour = "#D55E00") +
+  geom_vline(xintercept = fitted_q, linetype = "dotted", colour = "grey35") +
+  geom_line(linewidth = 1, colour = "#0072B2") +
+  geom_point(size = 1.7, colour = "#0072B2") +
+  labs(
+    x = "log acoustic-trawl survey catchability",
+    y = expression(Delta * " joint negative log posterior")
+  )
+```
+
+@Fig-total-profile establishes that `log_q_ats` is estimable over the explored
+range. The response of biomass-related quantities along that profile is
+summarized in @tbl-scale-response.
+
+```{r}
+#| label: tbl-scale-response
+#| tbl-cap: "Changes in population-scale quantities across the constrained qATS profile."
+
+scale_data <- stage1$scale_diagnostics$log_q_ats
+scale_table <- data.frame(
+  Quantity = c(
+    "Terminal spawning biomass",
+    "Mean spawning biomass",
+    "Unfished spawning biomass (Bzero)",
+    "Analytically derived BTS catchability"
+  ),
+  Minimum = c(
+    min(scale_data$terminal_SSB),
+    min(scale_data$mean_SSB),
+    min(scale_data$Bzero),
+    min(scale_data$q_bts)
+  ),
+  Maximum = c(
+    max(scale_data$terminal_SSB),
+    max(scale_data$mean_SSB),
+    max(scale_data$Bzero),
+    max(scale_data$q_bts)
+  )
+)
+scale_table$`Range change (%)` <-
+  100 * (scale_table$Maximum / scale_table$Minimum - 1)
+kable(
+  scale_table,
+  digits = c(NA, 3, 3, 2),
+  align = c("l", "r", "r", "r"),
+  row.names = FALSE
+)
+```
+
+## Objective-component profiles {#sec-components}
+
+The complete component decomposition in @fig-component-profile shows how
+individual data sources and penalties respond while nuisance parameters are
+reoptimized. Curves are centered separately at the profile minimum so their
+changes, rather than their absolute offsets, are comparable.
+
+```{r}
+#| label: fig-component-profile
+#| fig-cap: "Constrained qATS profile decomposed into all reported objective components. Every curve is expressed relative to its value at the profile minimum; the heavier blue curve is the total joint objective."
+#| fig-width: 10
+#| fig-height: 7
+
+component_columns <- c("value", profile_components)
+component_labels <- c("Total", profile_components)
+component_plot_data <- do.call(
+  rbind,
+  lapply(seq_along(component_columns), function(i) {
+    values <- profile[[component_columns[i]]]
+    data.frame(
+      log_q_ats = profile$log_q_ats,
+      component = component_labels[i],
+      change = values - values[fitted_index]
+    )
+  })
+)
+component_plot_data$component <- factor(
+  component_plot_data$component,
+  levels = component_labels
+)
+component_plot_data$hover <- sprintf(
+  paste(
+    "<b>%s</b>",
+    "log q<sub>ATS</sub>: %.4f",
+    "Change: %.4f",
+    sep = "<br>"
+  ),
+  component_plot_data$component,
+  component_plot_data$log_q_ats,
+  component_plot_data$change
+)
+
+component_ggplot <- ggplot(
+  component_plot_data,
+  aes(
+    log_q_ats,
+    change,
+    colour = component,
+    group = component,
+    linewidth = component,
+    text = hover
+  )
+) +
+  geom_line() +
+  scale_linewidth_manual(
+    values = c(Total = 1.35, setNames(rep(0.65, length(profile_components)),
+                                     profile_components)),
+    guide = "none"
+  ) +
+  labs(
+    x = "log acoustic-trawl survey catchability",
+    y = "Change from value at profile minimum",
+    colour = "Component"
+  ) +
+  theme(legend.position = "right")
+
+ggplotly(component_ggplot, tooltip = "text") |>
+  layout(
+    legend = list(
+      orientation = "v",
+      x = 1.02,
+      y = 1
+    ),
+    margin = list(r = 180)
+  )
+```
+
+To rank component movement without conflating direction, @tbl-component-span
+reports each component's range over the profile.
+
+```{r}
+#| label: tbl-component-span
+#| tbl-cap: "Objective-component ranges across the constrained qATS profile, ordered from largest to smallest."
+
+component_span <- data.frame(
+  Component = profile_components,
+  `Objective range` = vapply(
+    profile[profile_components],
+    function(x) diff(range(x)),
+    numeric(1)
+  ),
+  check.names = FALSE
+)
+component_span <- component_span[
+  order(component_span$`Objective range`, decreasing = TRUE),
+  ,
+  drop = FALSE
+]
+kable(component_span, digits = 4, align = c("l", "r"), row.names = FALSE)
+```
+
+The age-composition and BTS terms have the largest ranges, followed by ATS
+itself. This is a model-wide scale adjustment rather than an isolated response
+of the focal survey likelihood.
+
+## Posterior-objective comparison {#sec-posterior}
+
+The saved SparseNUTS sample has strong diagnostics for the focal parameter
+(@tbl-mcmc-diagnostics). Warmup was removed explicitly before passing the
+iterations-by-chains-by-variables array to `RTMBprof`.
+
+```{r}
+#| label: tbl-mcmc-diagnostics
+#| tbl-cap: "SparseNUTS and RTMBprof posterior-evaluation diagnostics."
+
+d <- stage2$diagnostics
+mcmc_diagnostic_table <- data.frame(
+  Diagnostic = c(
+    "log_q_ats R-hat",
+    "log_q_ats bulk ESS",
+    "log_q_ats tail ESS",
+    "Fitted dimension",
+    "Gaussian expected objective gap (d/2)",
+    "Observed median objective gap",
+    "Maximum component closure error"
+  ),
+  Value = c(
+    fmt(d$log_q_ats_rhat, 6),
+    fmt(d$log_q_ats_ess_bulk, 6),
+    fmt(d$log_q_ats_ess_tail, 6),
+    d$fitted_dimension,
+    fmt(d$gaussian_expected_objective_gap),
+    fmt(d$median_objective_gap_from_profile),
+    format(d$max_abs_closure_error, scientific = TRUE, digits = 3)
+  )
+)
+kable(mcmc_diagnostic_table, align = c("l", "r"), row.names = FALSE)
+```
+
+In a locally Gaussian posterior of dimension $d$, a typical draw lies about
+$d/2$ objective units above the mode. The observed median gap of
+`r fmt(d$median_objective_gap_from_profile)` closely matches the
+`r fmt(d$gaussian_expected_objective_gap)`-unit expectation. Consequently, the
+raw posterior cloud in @fig-profile-posterior is vertically separated from the
+constrained optimum; this separation is expected geometry, not failed
+profiling.
+
+```{r}
+#| label: fig-profile-posterior
+#| fig-cap: "Objective values at individual posterior draws (grey), their binned conditional median (orange), and the constrained joint-objective profile (blue). Posterior draws retain rather than reoptimize nuisance parameters."
+#| fig-width: 9
+#| fig-height: 5.5
+
+plot(
+  mcmc_components,
+  profile = profile,
+  summary = mcmc_summary
+) +
+  labs(
+    x = "log acoustic-trawl survey catchability",
+    y = "Change in joint negative log posterior"
+  )
+```
+
+Separately centering the constrained profile and posterior evaluations exposes
+their one-dimensional shapes without presenting the orange curve as a
+likelihood profile (@fig-centred-shape).
+
+```{r}
+#| label: fig-centred-shape
+#| fig-cap: "Separately centered qATS shape diagnostic. The orange curve and grey interval are binned posterior-objective summaries, whereas the blue curve is the constrained joint-objective profile."
+#| fig-width: 9
+#| fig-height: 5.5
+
+plot_mcmc_shape(
+  mcmc_components,
+  profile = profile,
+  summary = mcmc_summary
+) +
+  labs(x = "log acoustic-trawl survey catchability")
+```
+
+Selected component-level comparisons are shown in
+@fig-component-posterior. The profile curves optimize nuisance parameters at
+each focal value, whereas each grey point preserves a complete posterior
+parameter vector.
+
+```{r}
+#| label: fig-component-posterior
+#| fig-cap: "Posterior evaluations, binned 95% intervals and medians, and constrained profiles for the total objective and the six components with the largest constrained-profile ranges."
+#| fig-width: 10
+#| fig-height: 11
+
+display_components <- c(
+  "value",
+  head(component_span$Component, 6)
+)
+plot(
+  mcmc_summary,
+  component = display_components,
+  profile = profile,
+  evaluations = mcmc_components,
+  ncol = 2
+) +
+  labs(x = "log acoustic-trawl survey catchability")
+```
+
+## Parameter associations {#sec-associations}
+
+The posterior associations in @tbl-correlations support the original choice
+of scale parameter. `log_q_ats` is substantially associated with the AVO
+catchability, but nearly uncorrelated with `log_Rzero`. Thus, in this fitted
+model, `log_Rzero` primarily describes stock--recruitment behavior rather than
+the principal survey-scale trade-off.
+
+```{r}
+#| label: tbl-correlations
+#| tbl-cap: "Posterior correlations of selected parameters with log qATS."
+
+correlation_table <- stage2$posterior_correlations
+names(correlation_table) <- c("Parameter", "Correlation with log_q_ats")
+kable(
+  correlation_table,
+  digits = 3,
+  align = c("l", "r"),
+  row.names = FALSE
+)
+```
+
+## Conclusions {#sec-conclusions}
+
+1. `log_q_ats` produces a well-resolved constrained profile that crosses the
+   one-parameter 95% objective cutoff on both sides.
+2. Its profile changes terminal spawning biomass by approximately
+   `r fmt(100 * (max(scale_data$terminal_SSB) /
+     min(scale_data$terminal_SSB) - 1), 3)`%, demonstrating meaningful
+   population-scale leverage.
+3. Age-composition, BTS, and ATS components contribute most strongly to the
+   profile shape.
+4. All component sums close against the joint objective at numerical
+   precision for both constrained points and posterior draws.
+5. The constrained profile and binned posterior-objective summaries answer
+   different questions. Their comparison is informative only when that
+   distinction—and the expected high-dimensional objective offset—is retained.
+
+## Reproduction {#sec-reproduction}
+
+From the repository root:
+
+```bash
+Rscript R/run_rtmbprof_stage1.R
+Rscript R/run_rtmbprof_stage2.R
+quarto render reporting/rtmbprof_q_ats_case_study.qmd
+```
+
+The Quarto document reads the resulting RDS files and does not refit the model
+or rerun SparseNUTS during rendering.

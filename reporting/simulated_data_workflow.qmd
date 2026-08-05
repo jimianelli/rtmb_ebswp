@@ -17,6 +17,7 @@ params:
   nsim: 30
   sim_file: "analysis/output/simulated/base_simulated_datasets.rds"
   refit_dir: "analysis/output/simulated/refits"
+  refit_double_logistic_dir: "analysis/output/simulated/refits_double_logistic"
   refit_2dar1_dir: "analysis/output/simulated/refits_2dar1"
   base_file: "analysis/output/base.rds"
 ---
@@ -35,10 +36,14 @@ rtmb_file <- function(...) normalizePath(file.path(rtmb_root, ...), mustWork = F
 sim_file <- rtmb_file(params$sim_file)
 base_file <- rtmb_file(params$base_file)
 refit_dir <- rtmb_file(params$refit_dir)
+refit_double_logistic_dir <- rtmb_file(params$refit_double_logistic_dir)
 refit_2dar1_dir <- rtmb_file(params$refit_2dar1_dir)
 timeseries_file <- file.path(refit_dir, "simulated_refit_timeseries.csv")
 diagnostics_file <- file.path(refit_dir, "simulated_refit_diagnostics.csv")
 selectivity_file <- file.path(refit_dir, "simulated_refit_fishery_selectivity.csv")
+timeseries_double_logistic_file <- file.path(refit_double_logistic_dir, "simulated_refit_timeseries.csv")
+diagnostics_double_logistic_file <- file.path(refit_double_logistic_dir, "simulated_refit_diagnostics.csv")
+selectivity_double_logistic_file <- file.path(refit_double_logistic_dir, "simulated_refit_fishery_selectivity.csv")
 timeseries_2dar1_file <- file.path(refit_2dar1_dir, "simulated_refit_timeseries.csv")
 diagnostics_2dar1_file <- file.path(refit_2dar1_dir, "simulated_refit_diagnostics.csv")
 selectivity_2dar1_file <- file.path(refit_2dar1_dir, "simulated_refit_fishery_selectivity.csv")
@@ -148,7 +153,11 @@ plot_scenario_distribution <- function(data, truth, quantity_name, ylab) {
   t <- truth[truth$quantity == quantity_name, , drop = FALSE]
   years <- sort(unique(q$year))
   truth_y <- t$true[match(years, t$year)]
-  cols <- c("Base-form refit" = "#1f5f8b", "2D AR1 refit" = "#2f7d4f")
+  cols <- c(
+    "Base-form refit" = "#1f5f8b",
+    "Double-logistic refit" = "#8a5a2b",
+    "2D AR1 refit" = "#2f7d4f"
+  )
   yrange <- range(c(q$q05, q$q95, truth_y), finite = TRUE)
   plot(years, truth_y, type = "n", ylim = yrange, xlab = "Year", ylab = ylab)
   for (sc in names(cols)) {
@@ -257,6 +266,15 @@ FISHERY_SEL_FORM=5 FISHERY_SEL_LABEL=2dar1 \
   MAXSIM=30 Rscript R/fit_simulated_datasets.R
 ```
 
+To refit the same simulated data sets with the time-varying 3-parameter double-logistic fishery selectivity form (`fishery_sel_form = 2`), run:
+
+```{bash}
+#| eval: false
+FISHERY_SEL_FORM=2 FISHERY_SEL_LABEL=double_logistic \
+  OUTPUT_DIR=analysis/output/simulated/refits_double_logistic \
+  MAXSIM=30 Rscript R/fit_simulated_datasets.R
+```
+
 The script rebuilds the RTMB objective for each simulated data set, runs `nlminb()`, and writes:
 
 - `simulated_refits.rds`
@@ -266,8 +284,8 @@ The script rebuilds the RTMB objective for each simulated data set, runs `nlminb
 
 ```{r}
 diagnostics <- read_scenario_csv(
-  c(diagnostics_file, diagnostics_2dar1_file),
-  c("Base-form refit", "2D AR1 refit")
+  c(diagnostics_file, diagnostics_double_logistic_file, diagnostics_2dar1_file),
+  c("Base-form refit", "Double-logistic refit", "2D AR1 refit")
 )
 if (!is.null(diagnostics)) {
   print(diagnostics)
@@ -329,16 +347,16 @@ if (file.exists(timeseries_file)) {
 }
 ```
 
-### Base Form and 2D AR1 Comparison
+### Base Form, Double Logistic, and 2D AR1 Comparison
 
-These panels compare estimates from refitting the same 30 simulated data sets with the base fishery selectivity form and with the 2D AR1 fishery selectivity form. The red line is the original base-model value used as the data-generating truth.
+These panels compare estimates from refitting the same 30 simulated data sets with the base fishery selectivity form, the time-varying 3-parameter double-logistic form, and the 2D AR1 fishery selectivity form. The red line is the original base-model value used as the data-generating truth.
 
 ```{r}
 #| fig-width: 9
 #| fig-height: 5
 scenario_series <- read_scenario_csv(
-  c(timeseries_file, timeseries_2dar1_file),
-  c("Base-form refit", "2D AR1 refit")
+  c(timeseries_file, timeseries_double_logistic_file, timeseries_2dar1_file),
+  c("Base-form refit", "Double-logistic refit", "2D AR1 refit")
 )
 if (!is.null(scenario_series)) {
   plot_scenario_distribution(scenario_series, true_series, "SSB", "Spawning biomass")
@@ -401,18 +419,22 @@ if (file.exists(selectivity_file)) {
 }
 ```
 
-### Fishery Selectivity, Base Form vs 2D AR1
+### Fishery Selectivity, Base Form vs Double Logistic vs 2D AR1
 
 ```{r}
 #| fig-width: 9
 #| fig-height: 10
 scenario_sel <- read_scenario_csv(
-  c(selectivity_file, selectivity_2dar1_file),
-  c("Base-form refit", "2D AR1 refit")
+  c(selectivity_file, selectivity_double_logistic_file, selectivity_2dar1_file),
+  c("Base-form refit", "Double-logistic refit", "2D AR1 refit")
 )
 if (!is.null(scenario_sel)) {
   ages <- 3:8
-  cols <- c("Base-form refit" = "#1f5f8b", "2D AR1 refit" = "#2f7d4f")
+  cols <- c(
+    "Base-form refit" = "#1f5f8b",
+    "Double-logistic refit" = "#8a5a2b",
+    "2D AR1 refit" = "#2f7d4f"
+  )
   op <- par(mfrow = c(length(ages), 1), mar = c(2.2, 4.2, 1.3, 0.8), oma = c(2.2, 0, 1.5, 0), las = 1)
   for (a in ages) {
     d <- scenario_sel[scenario_sel$age == a, , drop = FALSE]
@@ -441,7 +463,7 @@ if (!is.null(scenario_sel)) {
     }
   }
   mtext("Year", side = 1, outer = TRUE, line = 0.8)
-  mtext("Fishery selectivity estimates: base form and 2D AR1 refits", side = 3, outer = TRUE, line = 0.2, font = 2)
+  mtext("Fishery selectivity estimates: base form, double logistic, and 2D AR1 refits", side = 3, outer = TRUE, line = 0.2, font = 2)
   par(op)
 } else {
   plot.new()
