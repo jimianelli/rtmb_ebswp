@@ -25,8 +25,8 @@ run_paths <- c(
     rtmb_root, "analysis", "output", "fishery_sel_forms", "fishery_sel_form_0.rds"
   ),
   "Time-age varying double logistic (20% CV)" = file.path(
-    dirname(rtmb_root), "rtmb_ebswp_form2", "analysis", "output",
-    "double_logistic_experiments", "cv0p2_no_old_age_cap_stage2_random.rds"
+    rtmb_root, "analysis", "output", "double_logistic_experiments",
+    "cv0p2_no_old_age_cap_stage2_random.rds"
   ),
   "2D AR1" = file.path(
     rtmb_root, "analysis", "output", "fishery_sel_forms", "fishery_sel_form_5.rds"
@@ -64,6 +64,8 @@ validate_common_inputs <- function(reports, spec, gear) {
   fields <- c(spec$obs, spec$n, spec$years)
   for (field in fields) {
     for (i in seq_along(reports)[-1]) {
+      # Compact random-effects checkpoints do not duplicate common inputs.
+      if (is.null(reports[[i]][[field]])) next
       same <- isTRUE(all.equal(reference[[field]], reports[[i]][[field]],
                                tolerance = 1e-10))
       if (!same) stop("Input mismatch for ", gear, " field ", field)
@@ -94,17 +96,19 @@ all_summaries <- list()
 for (gear in names(gear_specs)) {
   spec <- gear_specs[[gear]]
   validate_common_inputs(reports, spec, gear)
+  common_report <- reports[[1]]
   gear_outputs <- imap(reports, function(report, approach) {
     bins <- spec$bins
-    obs <- report[[spec$obs]][, bins, drop = FALSE]
+    obs <- common_report[[spec$obs]][, bins, drop = FALSE]
     expected <- report[[spec$pred]][, bins, drop = FALSE]
-    sample_size <- report[[spec$n]]
+    sample_size <- common_report[[spec$n]]
+    years <- common_report[[spec$years]]
     rounded_n <- rowSums(round(sample_size * obs / rowSums(obs), 0))
     keep <- is.finite(rounded_n) & rounded_n >= 1
     if (any(!keep)) {
       message(
         gear, ": omitting composition year(s) with zero rounded counts: ",
-        paste(report[[spec$years]][!keep], collapse = ", ")
+        paste(years[!keep], collapse = ", ")
       )
     }
     afscOSA::run_osa(
@@ -113,7 +117,7 @@ for (gear in names(gear_specs)) {
       N = sample_size[keep],
       fleet = approach,
       index = bins,
-      years = report[[spec$years]][keep],
+      years = years[keep],
       index_label = "Age",
       seed = 202508L,
       nonfinite_action = "truncate",
@@ -154,6 +158,13 @@ saveRDS(
     ),
     seed = 202508L,
     run_paths = run_paths,
+    run_md5 = unname(tools::md5sum(run_paths)),
+    form2_configuration = list(
+      hierarchical_stage = runs[[2]]$hierarchical_stage,
+      process_cv = runs[[2]]$cv,
+      old_age_cap = runs[[2]]$old_age_cap,
+      random_effects = runs[[2]]$random_effects
+    ),
     outputs = all_outputs,
     summary = summary
   ),
