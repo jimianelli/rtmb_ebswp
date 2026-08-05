@@ -44,6 +44,7 @@ pollock_profile_components <- function(report) {
     Fpen = profile_component_sum(report, "Fpen_like"),
     Selectivity = profile_component_sum(report, "sel_like"),
     `Selectivity dev` = profile_component_sum(report, "sel_like_dev"),
+    `Average selectivity` = profile_component_sum(report, "avgsel_like"),
     Weight = profile_component_sum(report, "wt_like")
   )
 }
