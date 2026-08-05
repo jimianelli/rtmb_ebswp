@@ -1,6 +1,7 @@
 #!/usr/bin/env Rscript
 
-# Run SparseNUTS MCMC for fishery selectivity scenarios (forms 0, 2, 5)
+# Run SparseNUTS MCMC for fishery selectivity scenarios. Form 2 uses the
+# accepted two-stage hierarchical double-logistic configuration.
 # and write plots (marginals + pairs) for slow-mixing parameters.
 #
 # Usage:
@@ -44,7 +45,17 @@ resolve_pollock_root <- function(rtmb_dir) {
 }
 pollock_root <- resolve_pollock_root(rtmb_dir)
 
-forms <- c(0L, 2L, 5L)
+forms <- as.integer(strsplit(Sys.getenv("SPARSENUTS_FORMS", "2"), ",", fixed = TRUE)[[1]])
+chains <- as.integer(Sys.getenv("SPARSENUTS_CHAINS", "8"))
+cores <- as.integer(Sys.getenv("SPARSENUTS_CORES", as.character(min(chains, 8L))))
+iter <- as.integer(Sys.getenv("SPARSENUTS_ITER", "2000"))
+warmup <- as.integer(Sys.getenv("SPARSENUTS_WARMUP", as.character(floor(iter / 2))))
+seed <- as.integer(Sys.getenv("SPARSENUTS_SEED", "123"))
+form2_cv <- as.numeric(Sys.getenv("FORM2_CV", "0.20"))
+build_only <- tolower(Sys.getenv("SPARSENUTS_BUILD_ONLY", "false")) %in%
+  c("1", "true", "yes")
+stopifnot(length(forms) > 0L, all(forms %in% c(0L, 2L, 5L)))
+stopifnot(chains > 0L, cores > 0L, iter > 1L, warmup >= 0L, warmup < iter)
 out_dir <- file.path("analysis", "output", "sparsenuts", "fishery_sel_forms")
 fig_dir <- file.path(out_dir, "figures")
 dir.create(fig_dir, recursive = TRUE, showWarnings = FALSE)
@@ -67,8 +78,30 @@ make_obj_for_form <- function(form) {
   # Override form in data (used by inactive_fishery_selectivity_parameters())
   rtmb_env$data$fishery_sel_form <- as.integer(form)
 
+  if (form == 2L) {
+    rtmb_env$data$sel_double_logistic_hierarchical <- 1L
+    rtmb_env$data$sel_double_logistic_cv <- form2_cv
+    rtmb_env$data$fishery_sel_old_age_cap <- 0L
+  }
+
   # Ensure parameter blocks exist
   rtmb_env$parms <- rtmb_env$add_fishery_selectivity_parameters(rtmb_env$parms, rtmb_env$data)
+
+  start_file <- Sys.getenv(
+    "FORM2_START_FILE",
+    file.path(rtmb_dir, "analysis", "output", "double_logistic_experiments",
+              "cv0p2_no_old_age_cap_stage2_random.rds")
+  )
+  if (form == 2L && file.exists(start_file)) {
+    saved <- readRDS(start_file)
+    fitted <- saved$fitted_parameters
+    for (nm in intersect(names(fitted), names(rtmb_env$parms))) {
+      if (identical(dim(fitted[[nm]]), dim(rtmb_env$parms[[nm]])) &&
+          length(fitted[[nm]]) == length(rtmb_env$parms[[nm]])) {
+        rtmb_env$parms[[nm]] <- fitted[[nm]]
+      }
+    }
+  }
 
   # Recreate map_obj + obj exactly as config.R does, but respecting new form
   fixed_params <- c(
@@ -85,6 +118,7 @@ make_obj_for_form <- function(form) {
     "resid_temp_x1", "resid_temp_x2",
     "log_q_std_area", "bt_slope", "sigr", "steepness",
     "sel_coffs_bts",
+    if (form == 2L) "sel_double_logistic_fsh" else character(0),
     "M_dev",
     "log_a_II", "log_b_II", "log_a_II_vec", "log_b_II_vec",
     "log_rho", "log_resid_M",
@@ -97,7 +131,8 @@ make_obj_for_form <- function(form) {
     exclude_patterns = "xxx"
   )
 
-  obj <- MakeADFun(rtmb_env$rpm, rtmb_env$parms, map = map_obj)
+  random <- if (form == 2L) "sel_double_logistic_dev_fsh" else NULL
+  obj <- MakeADFun(rtmb_env$rpm, rtmb_env$parms, map = map_obj, random = random)
 
   list(obj = obj, data = rtmb_env$data, parms = rtmb_env$parms)
 }
@@ -108,22 +143,39 @@ run_one <- function(form) {
   obj <- built$obj
   data <- built$data
 
+  if (build_only) {
+    objective <- obj$fn(obj$par)
+    gradient <- obj$gr(obj$par)
+    cat("Build-only check passed; objective =", objective,
+        "; max fixed-effect gradient =", max(abs(gradient)), "\n")
+    return(invisible(list(objective = objective, max_gradient = max(abs(gradient)))))
+  }
+
   fit_file <- file.path(out_dir, sprintf("rtmb_ebswp_sparsenuts_form_%d.rds", form))
 
   # Run MCMC
-  # Default SparseNUTS runs can be heavy (memory/time). We run a lighter configuration
-  # for scenario comparison; adjust as needed.
+  cat("Configuration:", chains, "chains;", iter, "iterations;", warmup,
+      "warmup;", cores, "cores.\n")
   fit <- SparseNUTS::sample_snuts(
     obj,
-    chains = 2,
-    cores = 1,
-    iter = 1000,
-    warmup = 500,
+    chains = chains,
+    cores = cores,
+    iter = iter,
+    warmup = warmup,
+    seed = seed,
+    init = "last.par.best",
     metric = "diag",
     globals = list(data = data)
   )
   attr(fit, "rtmb_ebswp_sparsenuts") <- list(
     fishery_sel_form = form,
+    hierarchical_form2 = form == 2L,
+    form2_cv = if (form == 2L) form2_cv else NA_real_,
+    old_age_cap = if (form == 2L) FALSE else NA,
+    chains = chains,
+    iter = iter,
+    warmup = warmup,
+    seed = seed,
     created = Sys.time(),
     execution = "serial chains requested with cores=1"
   )
