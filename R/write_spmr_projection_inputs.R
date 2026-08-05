@@ -154,11 +154,20 @@ write_spmr_projection_inputs <- function(model_file = file.path("analysis", "out
   }
   source(config_path, local = env)
 
-  rtmb_dir <- env$rtmb_dir
+  rtmb_dir <- env$rtmb_dir %||% dirname(dirname(config_path))
+  pollock_root <- env$pollock_root %||% dirname(rtmb_dir)
   data <- env$data
 
-  model_path <- normalizePath(file.path(rtmb_dir, model_file), mustWork = TRUE)
-  output_dir <- normalizePath(file.path(rtmb_dir, output_dir), mustWork = FALSE)
+  model_path <- if (file.exists(model_file)) {
+    normalizePath(model_file, mustWork = TRUE)
+  } else {
+    normalizePath(file.path(rtmb_dir, model_file), mustWork = TRUE)
+  }
+  output_dir <- if (grepl("^(/|[A-Za-z]:[/\\\\])", output_dir)) {
+    normalizePath(output_dir, mustWork = FALSE)
+  } else {
+    normalizePath(file.path(rtmb_dir, output_dir), mustWork = FALSE)
+  }
   dir.create(output_dir, recursive = TRUE, showWarnings = FALSE)
 
   saved <- readRDS(model_path)
@@ -181,7 +190,7 @@ write_spmr_projection_inputs <- function(model_file = file.path("analysis", "out
   )
 
   if (is.null(template_dir)) {
-    template_dir <- file.path(env$pollock_root, "admb", "runs", "for_rtmb", "proj")
+    template_dir <- file.path(pollock_root, "admb", "runs", "for_rtmb", "proj")
   }
   if (file.exists(file.path(template_dir, "tacpar.dat"))) {
     file.copy(file.path(template_dir, "tacpar.dat"), tacpar, overwrite = TRUE)
@@ -204,7 +213,18 @@ write_spmr_projection_inputs <- function(model_file = file.path("analysis", "out
   )
   utils::write.csv(manifest, file.path(output_dir, "manifest.csv"), row.names = FALSE)
 
-  invisible(list(output_dir = output_dir, manifest = manifest))
+  fixed_catch_years <- if (is.null(names(fixed_catches))) {
+    as.integer(data$endyr) + seq_along(fixed_catches)
+  } else {
+    as.integer(names(fixed_catches))
+  }
+  invisible(list(
+    output_dir = output_dir,
+    manifest = manifest,
+    begin_year = as.integer(data$endyr) + 1L,
+    fixed_catch_years = fixed_catch_years,
+    alternatives = as.integer(alt_list)
+  ))
 }
 
 is_rscript_call <- function() {

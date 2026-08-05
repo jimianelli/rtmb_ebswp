@@ -1,0 +1,3 @@
+scenario,seed,pooled,random_effects,prior_scale,rw_scale,objective,evaluated_total,objective_report_gap,convergence,message,max_gradient,at_bound,hessian_ok,min_hessian_eigen,finite_se,seconds
+uncapped_stage1,NA,FALSE,FALSE,0.75/0.75/0.45,0.6/0.6/0.4,8652.967875,8652.967875,0,0,relative convergence (4),0.0004454602,0,TRUE,0.1312341,TRUE,1.3
+cv020_no_old_age_cap_stage2_random,NA,FALSE,TRUE,0.75/0.75/0.45,0.6/0.6/0.4,8482.565,8173.363,NA,0,relative convergence (4),0.00006752551,0,TRUE,0.1349393,TRUE,154.964

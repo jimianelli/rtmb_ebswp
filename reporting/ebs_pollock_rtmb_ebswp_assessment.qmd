@@ -1201,6 +1201,46 @@ spmr_alt_desc |>
   tab_header(title = "SPM Projection Alternatives")
 ```
 
+## Seven Tier-3 Scenario Results
+
+The installed `spmR` package is attached by the reproducible projection script
+`R/run_spmr_tier3_projection.R`. That script converts the saved RTMB pollock
+fit to the standard SPM inputs, runs all seven alternatives through the ADMB
+projection engine, and calls `spmR::tier3_scenario_table()` to produce the
+assessment-ready comparison below. The table begins with 2027 because catches
+for 2025 and 2026 are fixed at 1,350 thousand t in every alternative.
+
+```{r}
+#| label: tbl-spmr-tier3-seven-scenarios
+#| tbl-cap: 'Tier-3 projection results for all seven FMP alternatives using inputs generated from the RTMB EBS pollock model. Values are simulation means; catch and biomass quantities are in thousand t. $B/B_{35\%}$ is spawning biomass relative to the Tier-3 $B_{35\%}$ proxy.'
+#| echo: false
+
+tier3_table_file <- file.path(
+  display_path(spmr_projection$output_dir),
+  "tier3_seven_scenario_table.csv"
+)
+
+if (file.exists(tier3_table_file)) {
+  readr::read_csv(tier3_table_file, show_col_types = FALSE) |>
+    gt_report() |>
+    fmt_number(
+      columns = matches("^(Catch|ABC|OFL|SSB)_"),
+      decimals = 0,
+      use_seps = TRUE
+    ) |>
+    fmt_number(columns = matches("^F_"), decimals = 3) |>
+    fmt_number(columns = matches("^B_B35_"), decimals = 2) |>
+    tab_spanner(label = "2027", columns = ends_with("_2027")) |>
+    tab_spanner(label = "2028", columns = ends_with("_2028")) |>
+    tab_header(title = "Seven Tier-3 Projection Alternatives")
+} else {
+  tibble(note = paste(
+    "Run R/run_spmr_tier3_projection.R to create", tier3_table_file
+  )) |>
+    gt_report()
+}
+```
+
 ```{r}
 #| label: tbl-spmr-projection-age-schedules
 #| tbl-cap: "Key age-specific schedules used in the generated SPM projection input files."
@@ -1402,79 +1442,149 @@ if (nrow(spmr_detail) > 0) {
 }
 ```
 
+## Projection Figures
+
+The following figures summarize all 1,000 simulations in `spm_detail.csv` for
+each of the seven Tier 3 alternatives. The lines show simulation medians and
+the shaded intervals show the central 90% of the simulated outcomes.
+
 ```{r}
-#| label: fig-spmr-projection-ssb-catch
-#| fig-cap: "Mean SPM projected spawning biomass and catch by alternative, read from spm_detail.csv when available."
-#| fig-width: 9
-#| fig-height: 5
+#| label: fig-spmr-projection-stock-status
+#| fig-cap: "Projected spawning biomass and stock status under all seven Tier 3 alternatives. Lines are simulation medians and shaded bands span the 5th to 95th percentiles of the 1,000 SPM simulations. Spawning biomass is in thousand metric tons; the dashed line in the status panels marks B/B35% = 1."
+#| fig-width: 11
+#| fig-height: 12
 if (nrow(spmr_detail) > 0) {
-  spmr_detail |>
-    group_by(Alt, Year) |>
-    summarize(
-      SSB = mean(SSB, na.rm = TRUE),
-      Catch = mean(Catch, na.rm = TRUE),
-      .groups = "drop"
+  spmr_alt_names <- setNames(
+    paste0("Alt ", spmr_alt_desc$Alternative, ": ", spmr_alt_desc$Name),
+    spmr_alt_desc$Alternative
+  )
+
+  spmr_stock_plot <- spmr_detail |>
+    mutate(
+      scenario = factor(
+        spmr_alt_names[as.character(Alt)],
+        levels = unname(spmr_alt_names)
+      ),
+      `Spawning biomass` = SSB,
+      `Spawning biomass / B35%` = SSB / B35
     ) |>
-    pivot_longer(c(SSB, Catch), names_to = "quantity", values_to = "value") |>
-    ggplot(aes(x = Year, y = value, color = factor(Alt))) +
-    geom_line(linewidth = 0.8) +
-    facet_wrap(~quantity, scales = "free_y", ncol = 1) +
-    scale_y_continuous(limits = c(0, NA), labels = scales::label_comma()) +
-    labs(x = "Year", y = "Mean value", color = "Alternative", title = "SPM Projection Means")
+    select(scenario, Year, `Spawning biomass`, `Spawning biomass / B35%`) |>
+    pivot_longer(
+      c(`Spawning biomass`, `Spawning biomass / B35%`),
+      names_to = "quantity",
+      values_to = "value"
+    ) |>
+    group_by(scenario, Year, quantity) |>
+    summarize(
+      lower = quantile(value, 0.05, na.rm = TRUE),
+      median = median(value, na.rm = TRUE),
+      upper = quantile(value, 0.95, na.rm = TRUE),
+      .groups = "drop"
+    )
+
+  ggplot(spmr_stock_plot, aes(x = Year, y = median)) +
+    geom_hline(
+      data = tibble(quantity = "Spawning biomass / B35%", reference = 1),
+      aes(yintercept = reference),
+      linetype = "dashed",
+      color = "#b03a2e",
+      linewidth = 0.45,
+      inherit.aes = FALSE
+    ) +
+    geom_ribbon(aes(ymin = lower, ymax = upper), fill = "#2b7a9b", alpha = 0.22) +
+    geom_line(color = "#155a78", linewidth = 0.75) +
+    facet_grid(scenario ~ quantity, scales = "free_y") +
+    scale_y_continuous(labels = scales::label_comma()) +
+    labs(x = "Year", y = NULL, title = "Projected Stock Status by Tier 3 Alternative")
 } else {
   plot.new()
-  text(0.5, 0.5, "Run SPM to create spm_detail.csv for projection plots.", cex = 0.9)
+  text(0.5, 0.5, "SPM projection results are unavailable.", cex = 0.9)
 }
 ```
 
 ```{r}
-#| label: fig-spmr-projection-alt2-trajectories
-#| fig-cap: "Alternative 2 SPM projected spawning biomass and catch means with 10 simulated trajectories overlaid as thin gray lines."
-#| fig-width: 9
-#| fig-height: 5
+#| label: fig-spmr-projection-removals
+#| fig-cap: "Projected catch and calculated ABC and OFL under all seven Tier 3 alternatives. Lines show simulation medians and the catch ribbons span the 5th to 95th percentiles of the 1,000 simulations. All quantities are thousand metric tons. ABC and OFL are reference quantities and need not equal realized catch under every alternative."
+#| fig-width: 11
+#| fig-height: 11
 if (nrow(spmr_detail) > 0) {
-  alt2_detail <- spmr_detail |>
-    filter(Alt == 2)
-
-  alt2_sims <- sort(unique(alt2_detail$Sim))
-  alt2_sims <- alt2_sims[seq(1, length(alt2_sims), length.out = min(10, length(alt2_sims)))] |>
-    round() |>
-    unique()
-
-  alt2_sim_plot <- alt2_detail |>
-    filter(Sim %in% alt2_sims) |>
-    select(Sim, Year, SSB, Catch) |>
-    pivot_longer(c(SSB, Catch), names_to = "quantity", values_to = "value")
-
-  alt2_mean_plot <- alt2_detail |>
-    group_by(Year) |>
-    summarize(
-      SSB = mean(SSB, na.rm = TRUE),
-      Catch = mean(Catch, na.rm = TRUE),
-      .groups = "drop"
+  spmr_removal_plot <- spmr_detail |>
+    mutate(
+      scenario = factor(
+        spmr_alt_names[as.character(Alt)],
+        levels = unname(spmr_alt_names)
+      )
     ) |>
-    pivot_longer(c(SSB, Catch), names_to = "quantity", values_to = "value")
+    select(scenario, Year, Catch, ABC, OFL) |>
+    pivot_longer(c(Catch, ABC, OFL), names_to = "quantity", values_to = "value") |>
+    group_by(scenario, Year, quantity) |>
+    summarize(
+      lower = quantile(value, 0.05, na.rm = TRUE),
+      median = median(value, na.rm = TRUE),
+      upper = quantile(value, 0.95, na.rm = TRUE),
+      .groups = "drop"
+    )
 
-  ggplot() +
-    geom_line(
-      data = alt2_sim_plot,
-      aes(x = Year, y = value, group = interaction(quantity, Sim)),
-      color = "gray65",
-      linewidth = 0.25,
-      alpha = 0.75
+  removal_plot_max <- max(spmr_removal_plot$upper, na.rm = TRUE) * 1.03
+
+  ggplot(spmr_removal_plot, aes(x = Year, y = median, color = quantity)) +
+    geom_ribbon(
+      data = filter(spmr_removal_plot, quantity == "Catch"),
+      aes(ymin = lower, ymax = upper),
+      fill = "#5b8c5a",
+      color = NA,
+      alpha = 0.2
     ) +
-    geom_line(
-      data = alt2_mean_plot,
-      aes(x = Year, y = value),
-      color = "#1b9e77",
-      linewidth = 0.9
-    ) +
-    facet_wrap(~quantity, scales = "free_y", ncol = 1) +
-    scale_y_continuous(limits = c(0, NA), labels = scales::label_comma()) +
-    labs(x = "Year", y = "Value", title = "Alternative 2 Projection Means and Simulated Trajectories")
+    geom_line(linewidth = 0.72) +
+    facet_wrap(~scenario, ncol = 2) +
+    scale_color_manual(values = c(Catch = "#2d6a4f", ABC = "#2b7a9b", OFL = "#c45a3c")) +
+    scale_y_continuous(labels = scales::label_comma()) +
+    coord_cartesian(ylim = c(0, removal_plot_max)) +
+    labs(
+      x = "Year",
+      y = "Thousand metric tons",
+      color = NULL,
+      title = "Projected Catch and Harvest Reference Quantities"
+    )
 } else {
   plot.new()
-  text(0.5, 0.5, "Run SPM to create spm_detail.csv for Alternative 2 projection plots.", cex = 0.9)
+  text(0.5, 0.5, "SPM projection results are unavailable.", cex = 0.9)
+}
+```
+
+```{r}
+#| label: fig-spmr-projection-fishing-mortality
+#| fig-cap: "Projected fishing mortality under all seven Tier 3 alternatives. Lines are simulation medians and shaded bands span the 5th to 95th percentiles of the 1,000 simulations."
+#| fig-width: 11
+#| fig-height: 10
+if (nrow(spmr_detail) > 0) {
+  spmr_f_plot <- spmr_detail |>
+    mutate(
+      scenario = factor(
+        spmr_alt_names[as.character(Alt)],
+        levels = unname(spmr_alt_names)
+      )
+    ) |>
+    group_by(scenario, Year) |>
+    summarize(
+      lower = quantile(F, 0.05, na.rm = TRUE),
+      median = median(F, na.rm = TRUE),
+      upper = quantile(F, 0.95, na.rm = TRUE),
+      .groups = "drop"
+    )
+
+  f_plot_max <- max(spmr_f_plot$upper, na.rm = TRUE) * 1.03
+
+  ggplot(spmr_f_plot, aes(x = Year, y = median)) +
+    geom_ribbon(aes(ymin = lower, ymax = upper), fill = "#d18b2c", alpha = 0.24) +
+    geom_line(color = "#945f16", linewidth = 0.75) +
+    facet_wrap(~scenario, ncol = 2) +
+    scale_y_continuous(labels = scales::label_number(accuracy = 0.01)) +
+    coord_cartesian(ylim = c(0, f_plot_max)) +
+    labs(x = "Year", y = "Fishing mortality", title = "Projected Fishing Mortality")
+} else {
+  plot.new()
+  text(0.5, 0.5, "SPM projection results are unavailable.", cex = 0.9)
 }
 ```
 

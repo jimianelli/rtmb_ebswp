@@ -1,0 +1,4 @@
+scenario,seed,pooled,random_effects,prior_scale,rw_scale,objective,evaluated_total,objective_report_gap,convergence,message,max_gradient,at_bound,hessian_ok,min_hessian_eigen,finite_se,seconds
+random_proposed_0p50,NA,FALSE,TRUE,0.25/0.25/0.175,0.125/0.125/0.1,NA,NA,NA,99,NA/NaN gradient evaluation,NA,NA,FALSE,NA,FALSE,NA
+random_proposed_0p75,NA,FALSE,TRUE,0.375/0.375/0.2625,0.1875/0.1875/0.15,NA,NA,NA,99,NA/NaN gradient evaluation,NA,NA,FALSE,NA,FALSE,NA
+random_proposed_1p00,NA,FALSE,TRUE,0.5/0.5/0.35,0.25/0.25/0.2,NA,NA,NA,99,NA/NaN gradient evaluation,NA,NA,FALSE,NA,FALSE,NA
