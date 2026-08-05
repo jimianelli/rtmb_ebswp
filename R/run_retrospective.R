@@ -1,7 +1,12 @@
-# Run five-peel retrospective fits for the RTMB-ADMB bridge model.
+# Run retrospective fits for the RTMB-ADMB bridge model.
 # Usage: Rscript R/run_retrospective.R
 
 source(file.path("R", "config.R"))
+
+rtmb_dir <- normalizePath(getwd(), mustWork = TRUE)
+fixed_params <- names(map_obj)[vapply(
+  map_obj, function(x) all(is.na(x)), logical(1)
+)]
 
 trim_rows <- function(x, keep) {
   if (is.null(x)) {
@@ -32,6 +37,7 @@ trim_rtmb_data <- function(data, peel) {
   out[names(out) == "endyr"] <- rep(list(new_endyr), sum(names(out) == "endyr"))
   out[names(out) == "endyr_est"] <- rep(list(new_endyr - out$omitSR), sum(names(out) == "endyr_est"))
   out$nyrs <- length(year_keep)
+  out$endyr_wt <- min(out$endyr_wt, new_endyr)
 
   annual_names <- c(
     "wt_fsh", "wt_ssb", "obs_catch", "obs_effort", "ew_ind"
@@ -141,9 +147,10 @@ trim_rtmb_parms <- function(parms, data) {
     out[[nm]] <- trim_rows_n(out[[nm]], nyrs)
   }
 
-  for (nm in c("M_dev", "yr_eff")) {
-    out[[nm]] <- trim_rows_n(out[[nm]], nyrs - 1)
-  }
+  out$M_dev <- trim_rows_n(out$M_dev, nyrs - 1)
+  out$yr_eff <- trim_rows_n(
+    out$yr_eff, data$endyr_wt - data$styr_wt + 1
+  )
 
   for (nm in c("sel_slp_bts_dev", "sel_a50_bts_dev", "sel_age_one_bts_dev")) {
     out[[nm]] <- trim_rows_n(out[[nm]], nyrs_bts)
@@ -159,30 +166,54 @@ trim_rtmb_parms <- function(parms, data) {
 fit_one_peel <- function(peel) {
   message("Running RTMB retrospective peel ", peel)
   data <<- trim_rtmb_data(full_data, peel)
-  parms_peel <- trim_rtmb_parms(full_parms, data)
+  parms_peel <- trim_rtmb_parms(start_parms, data)
   map_peel <- create_map_from_par(
     parms_peel, parms_peel,
     exact_names = fixed_params,
     exclude_patterns = "xxx"
   )
-  obj_peel <- RTMB::MakeADFun(rpm, parms_peel, map = map_peel)
+  obj_peel <- RTMB::MakeADFun(rpm, parms_peel, map = map_peel, silent = TRUE)
   fit <- nlminb(
     obj_peel$par,
     obj_peel$fn,
     obj_peel$gr,
-    control = list(eval.max = 300, iter.max = 300)
+    control = list(eval.max = 5000, iter.max = 3000)
   )
+  first_gradient <- max(abs(obj_peel$gr(fit$par)), na.rm = TRUE)
+  optimization_passes <- 1L
+  if (is.finite(first_gradient) && first_gradient > 1e-3) {
+    fit_restart <- nlminb(
+      fit$par,
+      obj_peel$fn,
+      obj_peel$gr,
+      control = list(
+        eval.max = 5000,
+        iter.max = 3000,
+        rel.tol = 1e-12,
+        x.tol = 1e-10
+      )
+    )
+    if (is.finite(fit_restart$objective) &&
+        fit_restart$objective <= fit$objective + 1e-8) {
+      fit <- fit_restart
+      optimization_passes <- 2L
+    }
+  }
   obj_peel$fn(fit$par)
   report <- obj_peel$report()
   fitted_parms <- obj_peel$env$parList(fit$par)
+  start_parms <<- fitted_parms
   if (!is.list(report) || is.null(report$SSB) || is.null(report$N)) {
-    return_nll_only <<- FALSE
-    data$return_nll_only <- 0
-    data[names(data) == "return_nll_only"] <- rep(list(0), sum(names(data) == "return_nll_only"))
+    data_report <- data
+    data_report$return_nll_only <- 0
+    data_report[names(data_report) == "return_nll_only"] <-
+      rep(list(0), sum(names(data_report) == "return_nll_only"))
+    data <<- data_report
     report <- rpm(fitted_parms)
-    return_nll_only <<- TRUE
-    data$return_nll_only <- 1
-    data[names(data) == "return_nll_only"] <- rep(list(1), sum(names(data) == "return_nll_only"))
+    data_report$return_nll_only <- 1
+    data_report[names(data_report) == "return_nll_only"] <-
+      rep(list(1), sum(names(data_report) == "return_nll_only"))
+    data <<- data_report
   }
   if (is.list(report) && !is.null(report$rtmb)) {
     report <- report$rtmb
@@ -194,18 +225,25 @@ fit_one_peel <- function(peel) {
     convergence = fit$convergence,
     objective = fit$objective,
     max_gradient = max(abs(obj_peel$gr(fit$par)), na.rm = TRUE),
+    optimization_passes = optimization_passes,
     report = report
   )
 }
 
 full_data <- data
 full_parms <- parms
-peel_spec <- Sys.getenv("RTMB_RETRO_PEELS", unset = "0:5")
+start_parms <- full_parms
+peel_spec <- Sys.getenv("RTMB_RETRO_PEELS", unset = "0:9")
 peels <- eval(parse(text = peel_spec))
+stop_on_error <- tolower(Sys.getenv("RTMB_RETRO_STOP_ON_ERROR", "false")) %in%
+  c("1", "true", "yes")
 retro <- lapply(peels, function(peel) {
-  tryCatch(
-    fit_one_peel(peel),
-    error = function(e) {
+  if (stop_on_error) {
+    fit_one_peel(peel)
+  } else {
+    tryCatch(
+      fit_one_peel(peel),
+      error = function(e) {
       message("RTMB retrospective peel ", peel, " failed: ", conditionMessage(e))
       list(
         peel = peel,
@@ -216,8 +254,9 @@ retro <- lapply(peels, function(peel) {
         error = conditionMessage(e),
         report = NULL
       )
-    }
-  )
+      }
+    )
+  }
 })
 
 series <- do.call(rbind, lapply(retro, function(x) {
@@ -245,20 +284,56 @@ diagnostics <- do.call(rbind, lapply(retro, function(x) {
     convergence = x$convergence,
     objective = x$objective,
     max_gradient = x$max_gradient,
+    optimization_passes = if (!is.null(x$optimization_passes)) {
+      x$optimization_passes
+    } else NA_integer_,
     error = if (!is.null(x$error)) x$error else NA_character_,
     stringsAsFactors = FALSE
   )
 }))
+
+mohn <- NULL
+if (!is.null(series) && nrow(series) > 0 && any(series$peel == 0)) {
+  full_series <- series[series$peel == 0, c("year", "SSB", "Recruitment")]
+  peel_terminal <- series[series$peel > 0 & series$year == series$terminal_year, ]
+  comparisons <- merge(
+    peel_terminal,
+    full_series,
+    by = "year",
+    suffixes = c("_peel", "_full")
+  )
+  comparisons$SSB_relative_difference <-
+    (comparisons$SSB_peel - comparisons$SSB_full) / comparisons$SSB_full
+  comparisons$Recruitment_relative_difference <-
+    (comparisons$Recruitment_peel - comparisons$Recruitment_full) /
+    comparisons$Recruitment_full
+  mohn <- list(
+    comparisons = comparisons,
+    rho = data.frame(
+      quantity = c("SSB", "Recruitment"),
+      rho = c(
+        mean(comparisons$SSB_relative_difference, na.rm = TRUE),
+        mean(comparisons$Recruitment_relative_difference, na.rm = TRUE)
+      ),
+      n_peels = nrow(comparisons),
+      stringsAsFactors = FALSE
+    )
+  )
+}
 
 out <- list(
   created = Sys.time(),
   peels = peels,
   series = series,
   diagnostics = diagnostics,
+  mohn = mohn,
   fits = retro
 )
 
-output_path <- file.path(rtmb_dir, "analysis", "output", "retro_5_peel.rds")
+max_peel <- max(peels)
+output_path <- file.path(
+  rtmb_dir, "analysis", "output", sprintf("retro_%d_peel.rds", max_peel)
+)
 dir.create(dirname(output_path), showWarnings = FALSE, recursive = TRUE)
 saveRDS(out, output_path)
 cat("Wrote RTMB retrospective output:", output_path, "\n")

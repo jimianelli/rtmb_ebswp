@@ -100,6 +100,39 @@ compute_selectivity_fsh_double_logistic <- function(
   list(avgsel = 0, log_sel = log_sel)
 }
 
+#' Build a centered year-by-age selectivity surface from a latent field.
+compute_selectivity_fsh_tv_ar1 <- function(
+    field, stsel, endyr, old_age_cap = 0L) {
+  log_sel <- field
+  rownames(log_sel) <- as.character(stsel:endyr)
+  for (i in seq_len(nrow(log_sel))) {
+    log_sel[i, ] <- center_log_selectivity(log_sel[i, ])
+  }
+  if (as.integer(old_age_cap)[1] == 1L) {
+    log_sel <- cap_old_age_log_selectivity(log_sel, first_old_age = 11L)
+  }
+  list(avgsel = 0, log_sel = log_sel)
+}
+
+safe_logit_rho <- function(x) 2 / (1 + exp(-x)) - 1
+
+#' Proper separable AR1 density for a latent year-by-age field.
+#'
+#' The density is evaluated on the unconstrained field. Any old-age display
+#' constraint belongs in the observation transform, not in the latent density.
+selectivity_like_fsh_tv_ar1 <- function(
+    field, rho_working, log_sigma, weight = 1) {
+  rho_y <- safe_logit_rho(rho_working[1])
+  rho_a <- safe_logit_rho(rho_working[2])
+  scale <- exp(log_sigma) /
+    sqrt(1 - rho_y^2 + 1e-12) / sqrt(1 - rho_a^2 + 1e-12)
+  f_year <- function(x) dautoreg(x, phi = rho_y, log = TRUE)
+  f_age <- function(x) dautoreg(x, phi = rho_a, log = TRUE)
+  dev <- -weight * dseparable(f_year, f_age)(field, scale = scale)
+  dev <- dev + 0.01 * norm2(rho_working) + 0.01 * log_sigma^2
+  list(shape = 0, dev = dev, total = dev)
+}
+
 compute_selectivity_ind <- function(stsel, slp, a50, se, ae, age_vector, endyr) {
   # stsel = styr_bts;
   # slp = sel_slp_bts;

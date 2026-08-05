@@ -17,7 +17,7 @@ format:
 params:
   model_file: "analysis/output/base.rds"
   only_bts_file: "analysis/output/only_bts.rds"
-  retro_file: "analysis/output/retro_5_peel.rds"
+  retro_file: "analysis/output/retro_9_peel.rds"
   sparsenuts_file: "analysis/output/sparsenuts/rtmb_ebswp_sparsenuts_default.rds"
   projection_dir: "analysis/output/spmR_projection"
   projection_alt2_dir: "analysis/output/spmR_projection_alt2_fixed1300"
@@ -46,7 +46,7 @@ if (!exists("params", inherits = FALSE)) {
   params <- list(
     model_file = "analysis/output/base.rds",
     only_bts_file = "analysis/output/only_bts.rds",
-    retro_file = "analysis/output/retro_5_peel.rds",
+    retro_file = "analysis/output/retro_9_peel.rds",
     sparsenuts_file = "analysis/output/sparsenuts/rtmb_ebswp_sparsenuts_default.rds",
     projection_dir = "analysis/output/spmR_projection",
     projection_alt2_dir = "analysis/output/spmR_projection_alt2_fixed1300",
@@ -128,7 +128,7 @@ display_path <- function(path) {
 
 model_file <- rtmb_file(params$model_file)
 only_bts_file <- rtmb_file(params$only_bts_file %||% "analysis/output/only_bts.rds")
-retro_file <- rtmb_file(params$retro_file %||% "analysis/output/retro_5_peel.rds")
+retro_file <- rtmb_file(params$retro_file %||% "analysis/output/retro_9_peel.rds")
 sparsenuts_file <- rtmb_file(params$sparsenuts_file)
 projection_dir <- rtmb_file(params$projection_dir %||% "analysis/output/spmR_projection")
 projection_alt2_dir <- rtmb_file(params$projection_alt2_dir %||% "analysis/output/spmR_projection_alt2_fixed1300")
@@ -181,10 +181,16 @@ if (file.exists(only_bts_file)) {
 retro_saved <- NULL
 retro_diagnostics <- tibble()
 retro_series <- tibble()
+retro_mohn <- tibble()
+retro_mohn_comparisons <- tibble()
 if (file.exists(retro_file)) {
   retro_saved <- readRDS(retro_file)
   retro_diagnostics <- as_tibble(retro_saved$diagnostics)
   retro_series <- as_tibble(retro_saved$series %||% data.frame())
+  retro_mohn <- as_tibble(retro_saved$mohn$rho %||% data.frame())
+  retro_mohn_comparisons <- as_tibble(
+    retro_saved$mohn$comparisons %||% data.frame()
+  )
 }
 
 years <- data$styr:data$endyr
@@ -1687,11 +1693,11 @@ nll_tbl |>
 
 ### Retrospective Peels
 
-The RTMB retrospective script was run for peels 0 through 5, where peel 0 is the full 2024 model and peels 1--5 remove terminal years through 2019. The BTS index has no 2020 observation in these inputs; the final BTS years are `r paste(data$yrs_bts_data[data$yrs_bts_data >= 2018], collapse = ", ")`. This matters for the deeper peels because peel 4 terminates in 2020 and peel 5 terminates in 2019, crossing the missing-2020 BTS data gap.
+The RTMB retrospective script was run for peel 0 (the full 2024 model) and nine retrospective peels terminating in 2023 through 2015. Each peel removes observations and weight-at-age inputs after its terminal year, shortens the corresponding annual parameter vectors, and starts from the preceding fitted peel. The BTS index has no 2020 observation in these inputs; the peeling code retains that data gap rather than treating 2020 as an observed BTS year.
 
 ```{r}
 #| label: tbl-retrospective-status
-#| tbl-cap: "RTMB retrospective peel run status. Convergence code 1 indicates that the current short optimizer run stopped before convergence; missing values indicate peels that failed before an optimizer result was available."
+#| tbl-cap: "RTMB retrospective run status for the full model (peel 0) and nine terminal-year peels. A convergence code of 0 indicates normal optimizer completion. Peels with an initial maximum gradient above 0.001 received one tighter restart; optimization passes records whether that restart was used."
 if (nrow(retro_diagnostics) > 0) {
   retro_diagnostics |>
     mutate(
@@ -1702,7 +1708,10 @@ if (nrow(retro_diagnostics) > 0) {
       ),
       error = coalesce(error, "")
     ) |>
-    select(peel, terminal_year, status, objective, max_gradient, error) |>
+    select(
+      peel, terminal_year, status, optimization_passes,
+      objective, max_gradient, error
+    ) |>
     gt_report() |>
     fmt_number(columns = any_of(c("objective", "max_gradient")), decimals = 3) |>
     tab_header(title = "RTMB Retrospective Peel Status")
@@ -1713,8 +1722,21 @@ if (nrow(retro_diagnostics) > 0) {
 ```
 
 ```{r}
+#| label: tbl-retrospective-mohn
+#| tbl-cap: "Mohn's rho for spawning biomass and recruitment across nine retrospective peels. For each peel, the terminal-year estimate is compared with the estimate for the same year from the full model; rho is the mean relative difference. Positive values indicate that the truncated assessments estimate the quantity above the corresponding full-model estimate."
+if (nrow(retro_mohn) > 0) {
+  retro_mohn |>
+    mutate(quantity = recode(quantity, SSB = "Spawning biomass")) |>
+    gt_report() |>
+    fmt_number(columns = rho, decimals = 3) |>
+    cols_label(quantity = "Quantity", rho = "Mohn's rho", n_peels = "Peels") |>
+    tab_header(title = "Nine-Peel Retrospective Summary")
+}
+```
+
+```{r}
 #| label: fig-retrospective-ssb-recruitment
-#| fig-cap: "RTMB retrospective spawning biomass and recruitment trajectories for peels with extractable report series."
+#| fig-cap: "RTMB spawning-biomass and recruitment trajectories for the full model and nine retrospective peels. Each trajectory ends in its peel-specific terminal year."
 if (nrow(retro_series) > 0) {
   retro_series |>
     pivot_longer(c(SSB, Recruitment), names_to = "quantity", values_to = "value") |>
@@ -1734,7 +1756,7 @@ if (nrow(retro_series) > 0) {
 }
 ```
 
-The current retrospective output should be treated as a failed/partial diagnostic rather than an interpretable retrospective pattern. Peels 0--3 produced optimizer results but did not converge under the current `eval.max = 300` and `iter.max = 300` settings, and peels 4--5 failed during RTMB taping with an invalid `advector` error after the data and parameter dimensions were peeled. The missing 2020 BTS observation is a likely contributor to the deeper-peel edge case and should be handled explicitly before using Mohn's rho or retrospective trajectories for inference.
+All nine peels completed and produced trajectory estimates. Nine of the ten fits including peel 0 ended with convergence code 0. Peel 2 ended its tighter restart with code 1, but its maximum gradient was `r scales::number(retro_diagnostics$max_gradient[retro_diagnostics$peel == 2], accuracy = 0.000001)`, below the report's 0.001 gradient criterion. The largest maximum gradient across all fits was `r scales::number(max(retro_diagnostics$max_gradient, na.rm = TRUE), accuracy = 0.0001)`. Mohn's rho was `r scales::number(retro_mohn$rho[retro_mohn$quantity == "SSB"], accuracy = 0.001)` for spawning biomass and `r scales::number(retro_mohn$rho[retro_mohn$quantity == "Recruitment"], accuracy = 0.001)` for recruitment. Both are positive, and the spawning-biomass value is driven particularly by the deeper peels terminating in 2015--2020. These results indicate a substantial positive retrospective pattern and should be considered when evaluating stability and uncertainty.
 
 # Bridge Comparison With ADMB
 
@@ -1929,6 +1951,48 @@ assumptions_tbl |>
 ## SparseNUTS MCMC
 
 The RTMB object can be passed directly to `SparseNUTS`. This appendix uses the library defaults for chains, iterations, warmup, metric selection, initialization, and sampler control. The RTMB parallel worker setup requires explicit globals; on this model the parallel default fails during worker setup, so the saved run is executed as serial chains with `cores = 1` and `globals = list(data = data)`. Because this run can be computationally expensive, the document reads a saved default run when available and only launches the sampler when rendered with `run_sparsenuts: true`. To regenerate the saved run, render with both `run_sparsenuts: true` and `force_sparsenuts: true`.
+
+### Sparse-metric pilot comparison
+
+The eight-chain Form 2 run used `metric = "diag"`, so it did not use the sparse Cholesky preconditioner even though SparseNUTS constructed an 804 by 804 sparse precision-matrix object. That matrix contained 30.44% structural zeros (69.56% nonzero entries), so its potential computational advantage was not obvious in advance. A matched pilot compared `diag` and `sparse` metrics using the same Form 2 model, saved precision matrix, initial values, seed, two serial chains, and 500 iterations per chain (250 warmup). Reusing the precision matrix isolates the sampling transformation from its one-time construction cost.
+
+```{r}
+#| label: tbl-sparsenuts-metric-pilot
+#| tbl-cap: "Matched SparseNUTS pilot comparing diagonal and sparse metrics for the hierarchical Form 2 model. Times are means per serial chain. Speedup is diagonal total time divided by the metric-specific total time. The pilot is intended to compare computation and is too short for inference."
+sparsenuts_metric_pilot <- readr::read_csv(
+  rtmb_file("reporting", "data", "sparsenuts_metric_pilot.csv"),
+  show_col_types = FALSE
+)
+
+sparsenuts_metric_pilot |>
+  transmute(
+    Metric = metric,
+    Chains = chains,
+    Iterations = iterations,
+    `Mean warmup (s)` = mean_warmup_seconds,
+    `Mean sampling (s)` = mean_sampling_seconds,
+    `Mean total (s)` = mean_total_seconds,
+    `Total-time speedup` = speedup_total_vs_diag,
+    Divergences = divergences,
+    `Divergences (%)` = divergence_percent,
+    `Maximum R-hat` = max_rhat,
+    `Minimum bulk ESS` = min_bulk_ess,
+    `Median bulk ESS` = median_bulk_ess
+  ) |>
+  gt_report() |>
+  fmt_number(
+    columns = c(
+      `Mean warmup (s)`, `Mean sampling (s)`, `Mean total (s)`,
+      `Minimum bulk ESS`, `Median bulk ESS`
+    ),
+    decimals = 1
+  ) |>
+  fmt_number(columns = `Total-time speedup`, decimals = 2, pattern = "{x}x") |>
+  fmt_number(columns = c(`Divergences (%)`, `Maximum R-hat`), decimals = 3) |>
+  tab_header(title = "SparseNUTS Metric Pilot")
+```
+
+Sparse preconditioning reduced mean total chain time from 42.4 to 14.2 seconds, a 2.99-fold speedup, and improved the pilot's worst R-hat and minimum bulk effective sample size. It also produced 9 post-warmup divergences (1.8%), whereas the diagonal pilot produced none. Thus the model demonstrably uses sparse factorization when `metric = "sparse"`, and doing so was substantially faster in this pilot, but the sparse configuration is not yet suitable for inference. A longer tuned run should address the divergences and compare effective samples per second before replacing the current diagonal-metric result. The original full Form 2 run spent about 474 seconds constructing the precision matrix and its statistics; that one-time setup cost was deliberately excluded from both pilot timings by reusing the same matrix.
 
 ```{r}
 #| label: sparsenuts-default-run

@@ -51,6 +51,15 @@ cores <- as.integer(Sys.getenv("SPARSENUTS_CORES", as.character(min(chains, 8L))
 iter <- as.integer(Sys.getenv("SPARSENUTS_ITER", "2000"))
 warmup <- as.integer(Sys.getenv("SPARSENUTS_WARMUP", as.character(floor(iter / 2))))
 seed <- as.integer(Sys.getenv("SPARSENUTS_SEED", "123"))
+metric <- Sys.getenv("SPARSENUTS_METRIC", "diag")
+output_tag <- Sys.getenv("SPARSENUTS_OUTPUT_TAG", "")
+reuse_q_file <- Sys.getenv("SPARSENUTS_REUSE_Q_FILE", "")
+skip_plots <- tolower(Sys.getenv("SPARSENUTS_SKIP_PLOTS", "false")) %in%
+  c("1", "true", "yes")
+skip_cor_env <- Sys.getenv("SPARSENUTS_SKIP_COR", "")
+skip_cor <- if (nzchar(skip_cor_env)) {
+  tolower(skip_cor_env) %in% c("1", "true", "yes")
+} else NULL
 form2_cv <- as.numeric(Sys.getenv("FORM2_CV", "0.20"))
 build_only <- tolower(Sys.getenv("SPARSENUTS_BUILD_ONLY", "false")) %in%
   c("1", "true", "yes")
@@ -151,11 +160,19 @@ run_one <- function(form) {
     return(invisible(list(objective = objective, max_gradient = max(abs(gradient)))))
   }
 
-  fit_file <- file.path(out_dir, sprintf("rtmb_ebswp_sparsenuts_form_%d.rds", form))
+  tag <- if (nzchar(output_tag)) paste0("_", output_tag) else ""
+  fit_file <- file.path(
+    out_dir, sprintf("rtmb_ebswp_sparsenuts_form_%d%s.rds", form, tag)
+  )
+  reused_q <- NULL
+  if (nzchar(reuse_q_file) && file.exists(reuse_q_file)) {
+    reused_q <- readRDS(reuse_q_file)$mle$Q
+    if (is.null(reused_q)) stop("No precision matrix Q found in ", reuse_q_file)
+  }
 
   # Run MCMC
   cat("Configuration:", chains, "chains;", iter, "iterations;", warmup,
-      "warmup;", cores, "cores.\n")
+      "warmup;", cores, "cores; metric", metric, ".\n")
   fit <- SparseNUTS::sample_snuts(
     obj,
     chains = chains,
@@ -164,7 +181,9 @@ run_one <- function(form) {
     num_warmup = warmup,
     seed = seed,
     init = "last.par.best",
-    metric = "diag",
+    metric = metric,
+    Q = reused_q,
+    skip_cor = skip_cor,
     globals = list(data = data)
   )
   attr(fit, "rtmb_ebswp_sparsenuts") <- list(
@@ -176,6 +195,8 @@ run_one <- function(form) {
     iter = iter,
     warmup = warmup,
     seed = seed,
+    metric = metric,
+    reused_q_file = if (nzchar(reuse_q_file)) reuse_q_file else NA_character_,
     created = Sys.time(),
     execution = paste0("parallel sampling requested with cores=", cores)
   )
@@ -188,13 +209,15 @@ run_one <- function(form) {
   )
   saveRDS(
     diagnostics,
-    file.path(out_dir, sprintf("sparsenuts_diagnostics_form_%d.rds", form))
+    file.path(out_dir, sprintf("sparsenuts_diagnostics_form_%d%s.rds", form, tag))
   )
   utils::write.csv(
     as.data.frame(fit$monitor),
-    file.path(out_dir, sprintf("sparsenuts_monitor_form_%d.csv", form)),
+    file.path(out_dir, sprintf("sparsenuts_monitor_form_%d%s.csv", form, tag)),
     row.names = FALSE
   )
+
+  if (skip_plots) return(invisible(fit))
 
   # Identify slow parameters from monitor
   slow_idx <- integer(0)

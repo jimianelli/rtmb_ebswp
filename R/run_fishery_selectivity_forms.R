@@ -24,6 +24,15 @@ rtmb_root <- normalizePath(getwd(), mustWork = TRUE)
 
 out_dir <- file.path(rtmb_root, "analysis", "output", "fishery_sel_forms")
 dir.create(out_dir, recursive = TRUE, showWarnings = FALSE)
+form5_random <- tolower(Sys.getenv("FORM5_RANDOM_EFFECTS", "false")) %in%
+  c("1", "true", "yes")
+form5_estimate_hyper <- tolower(Sys.getenv("FORM5_ESTIMATE_HYPER", "false")) %in%
+  c("1", "true", "yes")
+form5_fix_sigma <- tolower(Sys.getenv("FORM5_FIX_SIGMA", "false")) %in%
+  c("1", "true", "yes")
+form5_random_field_only <- tolower(Sys.getenv(
+  "FORM5_RANDOM_FIELD_ONLY", "false"
+)) %in% c("1", "true", "yes")
 
 # Build a completely fresh model environment for each form to avoid any RTMB/env contamination.
 make_fresh_env <- function() {
@@ -79,6 +88,21 @@ fit_one <- function(form_id, label) {
     nyrs <- as.integer(data$endyr - data$styr + 1)
     nages <- as.integer(data$nages)
     parms$sel_tv_ar1_fsh <- matrix(rnorm(nyrs * nages, sd = 0.05), nrow = nyrs, ncol = nages)
+    if (form5_random) {
+      data$fishery_sel_old_age_cap <- 0L
+      data$sel_tv_ar1_weight_fsh <- 1
+      fixed_start <- file.path(out_dir, "fishery_sel_form_5.rds")
+      if (file.exists(fixed_start)) {
+        saved <- readRDS(fixed_start)$fixed_parameters
+        compatible <- intersect(names(saved), names(parms))
+        for (nm in compatible) {
+          same_length <- length(saved[[nm]]) == length(parms[[nm]])
+          same_dims <- identical(dim(saved[[nm]]), dim(parms[[nm]]))
+          if (same_length && same_dims) parms[[nm]] <- saved[[nm]]
+        }
+      }
+      if (form5_fix_sigma) parms$log_sel_tv_ar1_sigma_fsh <- log(0.2368)
+    }
   }
 
   # rpm() reads `data` from its function environment via getAll(); make the
@@ -105,6 +129,11 @@ fit_one <- function(form_id, label) {
     "sel_dif2_fsh", "sel_dif1_fsh_dev", "sel_a501_fsh_dev", "sel_trm2_fsh_dev",
     # Fix all fishery selectivity parameter blocks that are inactive under this form
     e$inactive_fishery_selectivity_parameters(data$fishery_sel_form),
+    if (form_id == 5L && form5_random && !form5_estimate_hyper) {
+      c("sel_tv_ar1_rho_fsh", "log_sel_tv_ar1_sigma_fsh")
+    } else if (form_id == 5L && form5_random && form5_fix_sigma) {
+      "log_sel_tv_ar1_sigma_fsh"
+    } else character(0),
     # Other fixed
     "log_q_std_area", "bt_slope", "sigr", "steepness",
     "sel_coffs_bts",
@@ -114,6 +143,11 @@ fit_one <- function(form_id, label) {
     "log_rho", "log_resid_M",
     "log_alpha"
   )
+  if (form_id == 5L && form5_random && form5_random_field_only) {
+    # Diagnostic checkpoint: integrate only the AR1 field while holding every
+    # outer/model parameter at the saved fixed-effects Form 5 estimates.
+    fixed_params <- setdiff(names(parms), "sel_tv_ar1_fsh")
+  }
 
   map_obj <- e$create_map_from_par(
     parms, parms,
@@ -123,7 +157,8 @@ fit_one <- function(form_id, label) {
 
   rpm <- e$rpm
   environment(rpm) <- e
-  obj <- RTMB::MakeADFun(rpm, parms, map = map_obj, data = data)
+  random <- if (form_id == 5L && form5_random) "sel_tv_ar1_fsh" else NULL
+  obj <- RTMB::MakeADFun(rpm, parms, map = map_obj, data = data, random = random)
 
   lower <- rep(-Inf, length(obj$par))
   upper <- rep(Inf, length(obj$par))
@@ -137,14 +172,27 @@ fit_one <- function(form_id, label) {
   }
 
   t0 <- Sys.time()
-  fit <- nlminb(
-    obj$par, obj$fn, obj$gr,
-    lower = lower,
-    upper = upper,
-    control = list(eval.max = 5000, iter.max = 3000)
-  )
+  if (length(obj$par) == 0L) {
+    fit <- list(
+      par = obj$par,
+      objective = obj$fn(obj$par),
+      convergence = 0L,
+      message = "Random-field diagnostic with all outer parameters fixed"
+    )
+  } else {
+    fit <- nlminb(
+      obj$par, obj$fn, obj$gr,
+      lower = lower,
+      upper = upper,
+      control = list(eval.max = 5000, iter.max = 3000)
+    )
+  }
   t1 <- Sys.time()
 
+  # parList() expects the outer/fixed vector. For random-effects models it
+  # inserts that vector into the full parameter vector and retains the latest
+  # conditional modes for the random block.
+  if (!is.null(random)) obj$fn(fit$par)
   fitted_parms <- obj$env$parList(fit$par)
   e$data$return_nll_only <- 0
   report <- rpm(fitted_parms)
@@ -158,13 +206,34 @@ fit_one <- function(form_id, label) {
     convergence = fit$convergence,
     message = fit$message,
     n_parameters = length(fit$par),
-    max_gradient = max(abs(obj$gr(fit$par)), na.rm = TRUE),
+    max_gradient = if (length(fit$par)) {
+      max(abs(obj$gr(fit$par)), na.rm = TRUE)
+    } else 0,
     seconds = as.numeric(difftime(t1, t0, units = "secs")),
+    random_effects = !is.null(random),
+    random_effect_names = random,
+    old_age_cap = if (form_id == 5L) data$fishery_sel_old_age_cap %||% 1L else NA,
+    ar1_weight = if (form_id == 5L) data$sel_tv_ar1_weight_fsh else NA_real_,
+    estimate_ar1_hyperparameters = if (form_id == 5L) {
+      form5_estimate_hyper
+    } else NA,
+    sigma_fixed = if (form_id == 5L) form5_fix_sigma else NA,
+    random_field_only = form_id == 5L && form5_random_field_only,
     fixed_parameters = fitted_parms,
+    optimizer_parameters = fit$par,
     report = report
   )
 
-  saveRDS(res, file.path(out_dir, sprintf("fishery_sel_form_%d.rds", form_id)))
+  suffix <- if (form_id == 5L && form5_random) {
+    if (form5_random_field_only) {
+      "_random_field_only"
+    } else if (form5_estimate_hyper && form5_fix_sigma) {
+      "_random_sigma_fixed"
+    } else if (form5_estimate_hyper) "_random" else "_random_fixed_hyper"
+  } else ""
+  saveRDS(res, file.path(
+    out_dir, sprintf("fishery_sel_form_%d%s.rds", form_id, suffix)
+  ))
   res
 }
 
@@ -173,6 +242,12 @@ runs <- list(
   list(id = 2L, label = "Time-varying double logistic (annual p1/p2/p3)"),
   list(id = 5L, label = "2D AR1 year×age (all years)" )
 )
+
+requested_forms <- as.integer(strsplit(
+  Sys.getenv("FISHERY_SEL_FORMS", if (form5_random) "5" else "0,2,5"),
+  ",", fixed = TRUE
+)[[1]])
+runs <- keep(runs, ~ .x$id %in% requested_forms)
 
 results <- purrr::map(runs, ~fit_one(.x$id, .x$label))
 

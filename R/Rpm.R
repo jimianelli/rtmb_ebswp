@@ -22,6 +22,18 @@ rpm <- function(parms) {
   if (!exists("fishery_sel_old_age_cap", inherits = FALSE)) {
     fishery_sel_old_age_cap <- 0L
   }
+  if (!exists("sel_tv_ar1_fsh", inherits = FALSE)) {
+    sel_tv_ar1_fsh <- matrix(0, endyr - styr + 1L, nages)
+  }
+  if (!exists("sel_tv_ar1_rho_fsh", inherits = FALSE)) {
+    sel_tv_ar1_rho_fsh <- c(0, 0)
+  }
+  if (!exists("log_sel_tv_ar1_sigma_fsh", inherits = FALSE)) {
+    log_sel_tv_ar1_sigma_fsh <- log(0.2)
+  }
+  if (!exists("sel_tv_ar1_weight_fsh", inherits = FALSE)) {
+    sel_tv_ar1_weight_fsh <- 1
+  }
 
   # sel_devs_fsh <- sel_devs_fsh - mean(sel_devs_fsh) # Centering selectivity deviations
   if (as.integer(fishery_sel_form)[1] == 2L) {
@@ -37,6 +49,11 @@ rpm <- function(parms) {
       parameters = sel_double_logistic_effective_fsh,
       old_age_cap = fishery_sel_old_age_cap
     )
+  } else if (as.integer(fishery_sel_form)[1] == 5L) {
+    tmp <- compute_selectivity_fsh_tv_ar1(
+      field = sel_tv_ar1_fsh, stsel = styr, endyr = endyr,
+      old_age_cap = fishery_sel_old_age_cap
+    )
   } else {
     tmp <- compute_selectivity_fsh(
       nsel = n_selages_fsh,
@@ -45,7 +62,7 @@ rpm <- function(parms) {
       nages = nages,
       coffs = sel_coffs_fsh,
       sel_devs = sel_devs_fsh,
-      yrs_ch_fsh = 1965:2023
+      yrs_ch_fsh = 1965:min(2023, endyr)
     )
   }
   #--
@@ -80,7 +97,7 @@ rpm <- function(parms) {
  # ( exp(log_sel_bts) / ((pm$sel_bts)))
   # dim(log_sel_bts)
 
-  yrs_ch_ats <- 1995:2024
+  yrs_ch_ats <- 1995:min(2024, endyr)
   tmp <- compute_selectivity_ats_devs(
     nsel = n_selages_ats,
     nages = nages,
@@ -338,10 +355,10 @@ rpm <- function(parms) {
   obs_avo_var <- ob_avo_std^2
 
   # Surv_Likelihood()
-  yrs_ch_fsh <- 1965:2023 # length 59
+  yrs_ch_fsh <- 1965:min(2023, endyr)
   nch_fsh <- length(yrs_ch_fsh) # length 59
   sel_ch_sig_fsh <- rep(0.5, nch_fsh) # length 59, all 0.5
-  sel_ch_sig_fsh[55:56] <- 1.9 # length 59, all 0.5
+  sel_ch_sig_fsh[intersect(55:56, seq_len(nch_fsh))] <- 1.9
   # sel_ch_sig_fsh[nch_fsh]   <- 0.000001  # length 59, all 0.5
   year_index <- setNames(seq_along(years), years)
 
@@ -356,6 +373,13 @@ rpm <- function(parms) {
       prior_scale = sel_double_logistic_prior_scale,
       process_cv = sel_double_logistic_cv,
       old_age_cap = fishery_sel_old_age_cap
+    )
+  } else if (as.integer(fishery_sel_form)[1] == 5L) {
+    pen_fsh <- selectivity_like_fsh_tv_ar1(
+      field = sel_tv_ar1_fsh,
+      rho_working = sel_tv_ar1_rho_fsh,
+      log_sigma = log_sel_tv_ar1_sigma_fsh,
+      weight = sel_tv_ar1_weight_fsh
     )
   } else {
     pen_fsh <- selectivity_like_fsh(
@@ -389,7 +413,7 @@ rpm <- function(parms) {
      sel_age_one_bts_dev = sel_age_one_bts_dev )
    
   # pm# ats
-  yrs_ch_ats <- 1995:2024
+  yrs_ch_ats <- 1995:min(2024, endyr)
   
   sel_ch_sig_ats <- rep(0.138, length(yrs_ch_ats)) # length 30, all 0.5
   year_index <- setNames(seq_along(styr_ats:endyr), styr_ats:endyr)
@@ -418,7 +442,8 @@ rpm <- function(parms) {
   Priors[1] <- -((srprior_a - 1.) * log(steepness) + (srprior_b - 1) * log(1. - steepness))
   bts_like <- BTS_likelihood(
     ob_bts, ot_bts, eb_bts, et_bts, # observed and expected values
-    inv_bts_cov,  var_ob_bts = ob_bts_std^2,  DoCovBTS = 1, do_bts_bio = TRUE  )
+    inv_bts_cov, var_ob_bts = ob_bts_std^2,
+    DoCovBTS = DoCovBTS, do_bts_bio = TRUE)
   ats_like <- ATS_likelihood(
     ob_ats, ot_ats, eb_ats, et_ats, # observed and expected values
     lvar_ats, lvarb_ats,  do_ats_bio = TRUE # flag for biology likelihood type) {
@@ -431,7 +456,7 @@ rpm <- function(parms) {
   avo_like <- AVO_likelihood( ob_avo, pred_avo, obs_avo_var  )
   cat_like <- catBio * catch_like(obs_catch, pred_catch)
 
-  #--Weight-age fixed effects-----------
+#--Weight-age fixed effects-----------
   sigma_coh <- exp(log_sd_coh)
   sigma_yr <- exp(log_sd_yr)
   K <- exp(log_K)
@@ -551,6 +576,11 @@ rpm <- function(parms) {
   if (as.integer(fishery_sel_form)[1] == 2L) {
     ADREPORT(sel_double_logistic_mean_fsh)
     ADREPORT(sel_double_logistic_dev_fsh)
+  }
+  if (as.integer(fishery_sel_form)[1] == 5L) {
+    ADREPORT(sel_tv_ar1_fsh)
+    ADREPORT(sel_tv_ar1_rho_fsh)
+    ADREPORT(log_sel_tv_ar1_sigma_fsh)
   }
   ADREPORT(sel_slp_bts_dev)
   ADREPORT(sel_a50_bts_dev)
