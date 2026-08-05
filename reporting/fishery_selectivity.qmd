@@ -1170,26 +1170,12 @@ but support continued evaluation of the smooth section-2.6 20% CV
 random-effects model. The next step is to compare its residuals and assessment
 trajectories with the base and 2D AR1 alternatives.
 
-::: {.callout-warning title="Double-logistic estimability"}
-The current form-2 run is not converged: its optimizer convergence code is
-`1` and its maximum absolute gradient is `1.84`. The existing penalty provides
-some shrinkage, but estimating three unrelated parameters in every model year
-still leaves a weakly identified, highly correlated surface.
-
-The next fit should test a modestly informative hierarchical parameterization.
-Write each annual log-parameter as
-\(\theta_{t,j}=\mu_j+\eta_{t,j}\), give the three means priors centered at
-\(\log(1.5,3,4)\) with standard deviations approximately
-\((0.50,0.50,0.35)\), and give annual increments in \(\eta\) zero-centered
-normal priors with standard deviations approximately
-\((0.25,0.25,0.20)\). Constraining each deviation series to sum to zero—or
-integrating it as a random effect—would further separate the mean curve from
-annual variation.
-
-These values are a proposed estimability sensitivity, not part of the results
-shown on this page. The revised form should be accepted only if it attains a
-small gradient, a usable Hessian, stable recovery in simulation self-tests,
-and biologically plausible selectivity trajectories.
+::: {.callout-note title="Double-logistic estimability"}
+The failed run described above estimated 183 unrelated annual fixed effects.
+It has been superseded by the two-stage hierarchical fit shown here. In the
+accepted Stage 2 configuration, the annual deviations are random effects with
+a fixed 20% process CV around the shared three-parameter mean curve. This fit
+passed the optimizer, gradient, Hessian, and finite-standard-error checks.
 :::
 
 ## Form 5: 2D AR1 time-varying surface
@@ -1217,16 +1203,10 @@ with fitted correlations reported in the caption for @fig-sel-ridges. The scenar
 #| fig-height: 10
 #| out-width: "100%"
 
-form2_result_dir <- file.path(
-  dirname(rtmb_root), "rtmb_ebswp_form2", "analysis", "output",
-  "double_logistic_experiments"
-)
-
 ridge_runs <- list(
   "Base coefficients" = runs[[which(forms == 0L)]],
-  "Time-age varying double logistic (stage 2)" = readRDS(file.path(
-    form2_result_dir, "cv0p2_no_old_age_cap_stage2_random.rds"
-  )),
+  "Time-age varying double logistic (20% CV)" =
+    runs[[which(forms == 2L)]],
   "2D AR1" = runs[[which(forms == 5L)]]
 )
 
