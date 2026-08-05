@@ -160,8 +160,8 @@ run_one <- function(form) {
     obj,
     chains = chains,
     cores = cores,
-    iter = iter,
-    warmup = warmup,
+    num_samples = iter - warmup,
+    num_warmup = warmup,
     seed = seed,
     init = "last.par.best",
     metric = "diag",
@@ -177,10 +177,24 @@ run_one <- function(form) {
     warmup = warmup,
     seed = seed,
     created = Sys.time(),
-    execution = "serial chains requested with cores=1"
+    execution = paste0("parallel sampling requested with cores=", cores)
   )
   saveRDS(fit, fit_file)
   cat("Saved fit: ", fit_file, "\n", sep = "")
+
+  diagnostics <- tryCatch(
+    SparseNUTS::check_snuts_diagnostics(fit, print = FALSE),
+    error = function(e) list(error = conditionMessage(e))
+  )
+  saveRDS(
+    diagnostics,
+    file.path(out_dir, sprintf("sparsenuts_diagnostics_form_%d.rds", form))
+  )
+  utils::write.csv(
+    as.data.frame(fit$monitor),
+    file.path(out_dir, sprintf("sparsenuts_monitor_form_%d.csv", form)),
+    row.names = FALSE
+  )
 
   # Identify slow parameters from monitor
   slow_idx <- integer(0)
