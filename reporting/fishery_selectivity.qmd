@@ -530,18 +530,27 @@ These figures follow the observed-versus-expected age-composition layout used fo
 extract_agecomp_df <- function(run, fleet = c("fsh", "bts", "ats")) {
   fleet <- match.arg(fleet)
 
-  oac <- run$report[[paste0("oac_", fleet)]]
+  # Observations and their years are common to every scenario. Some compact
+  # Stage 2 checkpoints retain predictions but omit duplicated input arrays.
+  reference_report <- runs[[which(vapply(
+    runs,
+    function(x) !is.null(x$report[[paste0("oac_", fleet)]]),
+    logical(1)
+  ))[1]]]$report
+  oac <- run$report[[paste0("oac_", fleet)]] %||%
+    reference_report[[paste0("oac_", fleet)]]
   eac <- run$report[[paste0("phat_", fleet)]]
   stopifnot(!is.null(oac), !is.null(eac))
 
   yrs_key <- paste0("yrs_", fleet, "_data")
-  yrs <- run$report[[yrs_key]]
+  yrs <- run$report[[yrs_key]] %||% reference_report[[yrs_key]]
   if (is.null(yrs) || length(yrs) != nrow(oac)) {
     # Fallback if years weren't saved (shouldn't happen): use row index
     yrs <- seq_len(nrow(oac))
   }
 
-  sample_size <- run$report[[paste0("sam_", fleet)]]
+  sample_size <- run$report[[paste0("sam_", fleet)]] %||%
+    reference_report[[paste0("sam_", fleet)]]
   if (is.null(sample_size) || length(sample_size) != nrow(oac)) {
     sample_size <- rep(NA_real_, nrow(oac))
   }
