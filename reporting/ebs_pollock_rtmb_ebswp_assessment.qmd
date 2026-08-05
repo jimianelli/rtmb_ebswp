@@ -1950,49 +1950,9 @@ assumptions_tbl |>
 
 ## SparseNUTS MCMC
 
-The RTMB object can be passed directly to `SparseNUTS`. This appendix uses the library defaults for chains, iterations, warmup, metric selection, initialization, and sampler control. The RTMB parallel worker setup requires explicit globals; on this model the parallel default fails during worker setup, so the saved run is executed as serial chains with `cores = 1` and `globals = list(data = data)`. Because this run can be computationally expensive, the document reads a saved default run when available and only launches the sampler when rendered with `run_sparsenuts: true`. To regenerate the saved run, render with both `run_sparsenuts: true` and `force_sparsenuts: true`.
+This analysis applies the current `SparseNUTS` package to the **accepted base RTMB model** (`fishery_sel_form = 0`), not to the experimental Form 2 double-logistic model. The call leaves chains, cores, sampling iterations, warmup, initialization, metric selection, and sampler controls at the package defaults. Only the model name and `globals = list(data = model_data)` are supplied. Exporting that RTMB data object lets the package rebuild the objective in its parallel R workers, so the package-default chains can run concurrently.
 
-### Sparse-metric pilot comparison
-
-The eight-chain Form 2 run used `metric = "diag"`, so it did not use the sparse Cholesky preconditioner even though SparseNUTS constructed an 804 by 804 sparse precision-matrix object. That matrix contained 30.44% structural zeros (69.56% nonzero entries), so its potential computational advantage was not obvious in advance. A matched pilot compared `diag` and `sparse` metrics using the same Form 2 model, saved precision matrix, initial values, seed, two serial chains, and 500 iterations per chain (250 warmup). Reusing the precision matrix isolates the sampling transformation from its one-time construction cost.
-
-```{r}
-#| label: tbl-sparsenuts-metric-pilot
-#| tbl-cap: "Matched SparseNUTS pilot comparing diagonal and sparse metrics for the hierarchical Form 2 model. Times are means per serial chain. Speedup is diagonal total time divided by the metric-specific total time. The pilot is intended to compare computation and is too short for inference."
-sparsenuts_metric_pilot <- readr::read_csv(
-  rtmb_file("reporting", "data", "sparsenuts_metric_pilot.csv"),
-  show_col_types = FALSE
-)
-
-sparsenuts_metric_pilot |>
-  transmute(
-    Metric = metric,
-    Chains = chains,
-    Iterations = iterations,
-    `Mean warmup (s)` = mean_warmup_seconds,
-    `Mean sampling (s)` = mean_sampling_seconds,
-    `Mean total (s)` = mean_total_seconds,
-    `Total-time speedup` = speedup_total_vs_diag,
-    Divergences = divergences,
-    `Divergences (%)` = divergence_percent,
-    `Maximum R-hat` = max_rhat,
-    `Minimum bulk ESS` = min_bulk_ess,
-    `Median bulk ESS` = median_bulk_ess
-  ) |>
-  gt_report() |>
-  fmt_number(
-    columns = c(
-      `Mean warmup (s)`, `Mean sampling (s)`, `Mean total (s)`,
-      `Minimum bulk ESS`, `Median bulk ESS`
-    ),
-    decimals = 1
-  ) |>
-  fmt_number(columns = `Total-time speedup`, decimals = 2, pattern = "{x}x") |>
-  fmt_number(columns = c(`Divergences (%)`, `Maximum R-hat`), decimals = 3) |>
-  tab_header(title = "SparseNUTS Metric Pilot")
-```
-
-Sparse preconditioning reduced mean total chain time from 42.4 to 14.2 seconds, a 2.99-fold speedup, and improved the pilot's worst R-hat and minimum bulk effective sample size. It also produced 9 post-warmup divergences (1.8%), whereas the diagonal pilot produced none. Thus the model demonstrably uses sparse factorization when `metric = "sparse"`, and doing so was substantially faster in this pilot, but the sparse configuration is not yet suitable for inference. A longer tuned run should address the divergences and compare effective samples per second before replacing the current diagonal-metric result. The original full Form 2 run spent about 474 seconds constructing the precision matrix and its statistics; that one-time setup cost was deliberately excluded from both pilot timings by reusing the same matrix.
+The completed fit is saved outside the rendered document. Every render reads that fit and rebuilds all MCMC tables and figures, preventing diagnostics from an older run from remaining in the report. The reproducible runner is `R/run_sparsenuts_default.R`.
 
 ```{r}
 #| label: sparsenuts-default-run
@@ -2001,28 +1961,23 @@ sparsenuts_available <- requireNamespace("SparseNUTS", quietly = TRUE)
 sparsenuts_fit <- NULL
 sparsenuts_error <- NULL
 
-if (file.exists(sparsenuts_file) && !param_is_true(params$force_sparsenuts)) {
-  sparsenuts_fit <- readRDS(sparsenuts_file)
-} else if (param_is_true(params$run_sparsenuts)) {
+if (param_is_true(params$run_sparsenuts) &&
+    (param_is_true(params$force_sparsenuts) || !file.exists(sparsenuts_file))) {
   if (!sparsenuts_available) {
     sparsenuts_error <- "SparseNUTS is not installed."
   } else {
-    dir.create(dirname(sparsenuts_file), showWarnings = FALSE, recursive = TRUE)
-    sparsenuts_fit <- tryCatch(
-      SparseNUTS::sample_snuts(
-        obj,
-        cores = 1,
-        globals = list(data = data)
-      ),
-      error = function(e) {
-        sparsenuts_error <<- conditionMessage(e)
-        NULL
-      }
+    run_status <- system2(
+      file.path(R.home("bin"), "Rscript"),
+      rtmb_file("R", "run_sparsenuts_default.R")
     )
-    if (!is.null(sparsenuts_fit)) {
-      saveRDS(sparsenuts_fit, sparsenuts_file)
+    if (!identical(run_status, 0L)) {
+      sparsenuts_error <- paste("SparseNUTS runner exited with status", run_status)
     }
   }
+}
+
+if (file.exists(sparsenuts_file)) {
+  sparsenuts_fit <- readRDS(sparsenuts_file)
 }
 
 sparsenuts_diagnostics <- NULL
@@ -2049,36 +2004,40 @@ sparsenuts_run_metadata <- attr(sparsenuts_fit, "rtmb_ebswp_sparsenuts") %||% li
 
 sparsenuts_status <- tibble(
   metric = c(
+    "Model configuration",
     "SparseNUTS installed",
+    "SparseNUTS version",
+    "SparseNUTS GitHub commit",
     "Default call",
-    "Run enabled for this render",
-    "Force rerun for this render",
     "Saved default output",
     "Output path",
     "Algorithm",
     "Metric",
     "Chains",
-    "Configured cores",
+    "Parallel cores",
     "Execution mode",
     "Warmup iterations per chain",
     "Post-warmup samples per chain",
+    "Elapsed time (minutes)",
     "Diagnostic object available",
     "Error"
   ),
   value = c(
+    sparsenuts_run_metadata$model %||% "base RTMB model",
     as.character(sparsenuts_available),
-    "SparseNUTS::sample_snuts(obj)",
-    as.character(param_is_true(params$run_sparsenuts)),
-    as.character(param_is_true(params$force_sparsenuts)),
+    sparsenuts_run_metadata$package_version %||% if (sparsenuts_available) as.character(packageVersion("SparseNUTS")) else NA_character_,
+    sparsenuts_run_metadata$package_remote_sha %||% NA_character_,
+    "SparseNUTS::sample_snuts(obj, globals = list(data = model_data))",
     as.character(file.exists(sparsenuts_file)),
     display_path(sparsenuts_file),
     as.character(sparsenuts_fit$algorithm %||% NA_character_),
     as.character(sparsenuts_fit$metric %||% NA_character_),
     as.character(chains),
-    "1",
-    sparsenuts_run_metadata$execution %||% "serial chains requested with cores = 1 for RTMB worker compatibility",
+    as.character(chains),
+    sparsenuts_run_metadata$execution %||% "package-default parallel chains",
     as.character(warmup),
     as.character(post_warmup),
+    if (is.null(sparsenuts_run_metadata$elapsed_seconds)) NA_character_ else sprintf("%.1f", sparsenuts_run_metadata$elapsed_seconds / 60),
     as.character(!is.null(sparsenuts_diagnostics)),
     sparsenuts_error %||% ""
   )
@@ -2091,11 +2050,30 @@ sparsenuts_status |>
 
 ```{r}
 #| label: tbl-sparsenuts-diagnostics
-#| tbl-cap: "SparseNUTS diagnostic summary returned by the package default diagnostic checker."
-if (!is.null(sparsenuts_diagnostics)) {
+#| tbl-cap: "Diagnostics for the current package-default SparseNUTS run of the base RTMB model. R-hat values near 1 and larger effective sample sizes indicate good between-chain mixing. Divergences identify transitions that did not adequately explore the posterior geometry and should be resolved before using the draws for final inference."
+if (!is.null(sparsenuts_fit) && !is.null(sparsenuts_fit$monitor)) {
+  diag_values <- sparsenuts_diagnostics %||% data.frame(
+    perc_divergent = NA_real_, perc_treedepth = NA_real_,
+    num_below_threshold = NA_real_
+  )
+  post_warmup_total <- chains * post_warmup
+  divergence_percent <- diag_values$perc_divergent[1] %||% NA_real_
   diag_tbl <- tibble(
-    diagnostic = names(sparsenuts_diagnostics),
-    value = vapply(sparsenuts_diagnostics, function(x) paste(capture.output(str(x, max.level = 1)), collapse = " "), character(1))
+    diagnostic = c(
+      "Post-warmup draws", "Divergences", "Divergent transitions (%)",
+      "Maximum R-hat", "Minimum bulk ESS", "Median bulk ESS",
+      "Minimum tail ESS", "Maximum-treedepth transitions (%)"
+    ),
+    value = c(
+      post_warmup_total,
+      round(post_warmup_total * divergence_percent / 100),
+      divergence_percent,
+      max(sparsenuts_fit$monitor$rhat, na.rm = TRUE),
+      min(sparsenuts_fit$monitor$ess_bulk, na.rm = TRUE),
+      median(sparsenuts_fit$monitor$ess_bulk, na.rm = TRUE),
+      min(sparsenuts_fit$monitor$ess_tail, na.rm = TRUE),
+      diag_values$perc_treedepth[1] %||% NA_real_
+    )
   )
 } else {
   diag_tbl <- tibble(
@@ -2106,8 +2084,11 @@ if (!is.null(sparsenuts_diagnostics)) {
 
 diag_tbl |>
   gt_report() |>
-  tab_header(title = "SparseNUTS Diagnostics")
+  fmt_number(columns = value, decimals = 3) |>
+  tab_header(title = "SparseNUTS Base-Model Diagnostics")
 ```
+
+The default run provides good overall chain mixing, but any post-warmup divergences mean that the affected posterior regions were not traversed reliably. These draws are therefore useful for diagnosing the base model and selecting the next sampler adjustment, but they should not yet replace the deterministic uncertainty estimates in assessment decisions.
 
 ```{r}
 #| label: sparsenuts-plot-data
@@ -2152,6 +2133,8 @@ sparsenuts_figures <- list(
 )
 
 if (!is.null(sparsenuts_fit) && sparsenuts_available) {
+  # Remove any previous-run graphics before recreating the complete set.
+  unlink(unlist(sparsenuts_figures), force = TRUE)
   make_sparsenuts_pairs_plot(sparsenuts_fit, slow_parameter_indices, sparsenuts_figures$pairs_slow)
 
   png(sparsenuts_figures$marginals_slow, width = 1800, height = 1400, res = 180)

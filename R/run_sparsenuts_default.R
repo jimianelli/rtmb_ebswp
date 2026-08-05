@@ -1,8 +1,12 @@
-# Re-run the default SparseNUTS sampler for the RTMB-ADMB model.
+#!/usr/bin/env Rscript
 
-suppressPackageStartupMessages({
-  library(SparseNUTS)
-})
+# Run SparseNUTS for the accepted base RTMB model. SparseNUTS controls all
+# sampler settings; the only additional argument is the RTMB global data object
+# needed to rebuild the objective in parallel R sessions.
+
+suppressPackageStartupMessages(library(SparseNUTS))
+
+`%||%` <- function(x, y) if (is.null(x) || length(x) == 0) y else x
 
 script_file <- tryCatch(
   normalizePath(sys.frame(1)$ofile, mustWork = TRUE),
@@ -13,64 +17,95 @@ rtmb_root <- if (!is.na(script_file)) {
 } else {
   normalizePath(getwd(), mustWork = TRUE)
 }
+
 rtmb_env <- new.env(parent = globalenv())
 rtmb_env$rm <- function(...) invisible(NULL)
 rtmb_env$source <- function(file, ...) {
   base::source(file, local = parent.frame(), ...)
 }
 source(file.path(rtmb_root, "R", "config.R"), local = rtmb_env)
+
 obj <- rtmb_env$obj
+model_data <- rtmb_env$data
+if (!identical(as.integer(model_data$fishery_sel_form %||% 0L), 0L)) {
+  stop("The SparseNUTS default runner must use fishery_sel_form = 0 (base RTMB model).")
+}
 
-output_file <- file.path(rtmb_root, "analysis", "output", "sparsenuts", "rtmb_ebswp_sparsenuts_default.rds")
-figure_dir <- file.path(rtmb_root, "analysis", "output", "figures")
-pairs_file <- file.path(figure_dir, "rtmb_ebswp_sparsenuts_pairs_slow.png")
-marginals_file <- file.path(figure_dir, "rtmb_ebswp_sparsenuts_marginals_slow.png")
-
+output_file <- file.path(
+  rtmb_root, "analysis", "output", "sparsenuts",
+  "rtmb_ebswp_sparsenuts_default.rds"
+)
+monitor_file <- file.path(rtmb_root, "reporting", "data", "sparsenuts_base_monitor.csv")
+summary_file <- file.path(rtmb_root, "reporting", "data", "sparsenuts_base_run_summary.csv")
 dir.create(dirname(output_file), showWarnings = FALSE, recursive = TRUE)
-dir.create(figure_dir, showWarnings = FALSE, recursive = TRUE)
+dir.create(dirname(monitor_file), showWarnings = FALSE, recursive = TRUE)
 
-cat("Running SparseNUTS::sample_snuts(obj) with package defaults except cores = 1 for RTMB serial execution...\n")
+package_description <- utils::packageDescription("SparseNUTS")
+cat(
+  "Running the base RTMB model with SparseNUTS package defaults.\n",
+  "Package version: ", as.character(utils::packageVersion("SparseNUTS")), "\n",
+  "Package commit: ", package_description$RemoteSha %||% "not recorded", "\n",
+  "Parallel RTMB globals: model_data exported as 'data'.\n",
+  sep = ""
+)
+
+started <- Sys.time()
 fit <- SparseNUTS::sample_snuts(
   obj,
-  cores = 1,
-  globals = list(data = rtmb_env$data)
+  globals = list(data = model_data),
+  model_name = "EBS pollock base RTMB"
 )
+finished <- Sys.time()
+
 attr(fit, "rtmb_ebswp_sparsenuts") <- list(
   runner = "R/run_sparsenuts_default.R",
-  r_version = R.version.string,
-  call = "SparseNUTS::sample_snuts(obj, cores = 1, globals = list(data = data))",
-  execution = "serial chains because RTMB parallel worker globals failed",
-  created = Sys.time()
+  model = "accepted base RTMB model (fishery_sel_form = 0)",
+  fishery_sel_form = 0L,
+  package_version = as.character(utils::packageVersion("SparseNUTS")),
+  package_remote_sha = package_description$RemoteSha %||% NA_character_,
+  call = paste(
+    "SparseNUTS::sample_snuts(obj,",
+    "globals = list(data = model_data),",
+    "model_name = 'EBS pollock base RTMB')"
+  ),
+  sampler_settings = "SparseNUTS package defaults",
+  execution = "parallel chains using package-default chains and cores",
+  globals = "data",
+  started = started,
+  finished = finished,
+  elapsed_seconds = as.numeric(difftime(finished, started, units = "secs"))
 )
 
 tmp_file <- paste0(output_file, ".tmp")
 saveRDS(fit, tmp_file)
-file.rename(tmp_file, output_file)
-cat("Saved SparseNUTS fit:", output_file, "\n")
-
-slow_names <- character()
-slow_indices <- integer()
-if (!is.null(fit$monitor) && !is.null(fit$samples)) {
-  slow_names <- fit$monitor |>
-    dplyr::arrange(dplyr::desc(rhat), ess_bulk) |>
-    dplyr::filter(is.finite(rhat)) |>
-    dplyr::slice_head(n = 12) |>
-    dplyr::pull(variable)
-  slow_indices <- match(slow_names, dimnames(fit$samples)[[3]])
-  slow_indices <- slow_indices[is.finite(slow_indices)]
+if (!file.rename(tmp_file, output_file)) {
+  stop("Could not move completed SparseNUTS fit into place: ", output_file)
 }
-
-if (length(slow_indices) > 0) {
-  pairs_indices <- slow_indices[seq_len(min(length(slow_indices), 6))]
-  png(pairs_file, width = 1800, height = 1800, res = 180)
-  pairs(fit, pars = pairs_indices, order = "slow", diag = "hist", plot = TRUE)
-  dev.off()
-  cat("Saved SparseNUTS pairs.tmbfit plot:", pairs_file, "\n")
-
-  png(marginals_file, width = 1800, height = 1400, res = 180)
-  SparseNUTS::plot_marginals(fit, pars = slow_indices, order = "slow", mfrow = c(3, 4))
-  dev.off()
-  cat("Saved SparseNUTS marginal plot:", marginals_file, "\n")
-} else {
-  warning("No SparseNUTS monitor diagnostics were available for slow-order plots.")
-}
+diagnostics <- SparseNUTS::check_snuts_diagnostics(fit, print = FALSE)
+utils::write.csv(as.data.frame(fit$monitor), monitor_file, row.names = FALSE)
+utils::write.csv(
+  data.frame(
+    model = "accepted base RTMB model (fishery_sel_form = 0)",
+    package_version = as.character(utils::packageVersion("SparseNUTS")),
+    package_remote_sha = package_description$RemoteSha %||% NA_character_,
+    algorithm = fit$algorithm,
+    metric = fit$metric,
+    chains = dim(fit$samples)[2],
+    warmup_per_chain = fit$warmup,
+    post_warmup_per_chain = dim(fit$samples)[1] - fit$warmup,
+    divergences = round(
+      dim(fit$samples)[2] * (dim(fit$samples)[1] - fit$warmup) *
+        diagnostics$perc_divergent[1] / 100
+    ),
+    divergence_percent = diagnostics$perc_divergent[1],
+    maximum_rhat = max(fit$monitor$rhat, na.rm = TRUE),
+    minimum_bulk_ess = min(fit$monitor$ess_bulk, na.rm = TRUE),
+    median_bulk_ess = median(fit$monitor$ess_bulk, na.rm = TRUE),
+    minimum_tail_ess = min(fit$monitor$ess_tail, na.rm = TRUE),
+    elapsed_seconds = attr(fit, "rtmb_ebswp_sparsenuts")$elapsed_seconds
+  ),
+  summary_file,
+  row.names = FALSE
+)
+cat("Saved completed SparseNUTS fit: ", output_file, "\n", sep = "")
+cat("Saved current monitor and run summary tables in reporting/data.\n")

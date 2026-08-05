@@ -1,0 +1,2 @@
+"model","package_version","package_remote_sha","algorithm","metric","chains","warmup_per_chain","post_warmup_per_chain","divergences","divergence_percent","maximum_rhat","minimum_bulk_ess","median_bulk_ess","minimum_tail_ess","elapsed_seconds"
+"accepted base RTMB model (fishery_sel_form = 0)","1.0.2","2f3f1626219afce68fa2da0d884d4f2dca138117","SNUTS","dense",4,150,1000,30,0.75,1.00900525708473,1257.19845380986,7733.88825484232,1011.9011068151,161.494607925415

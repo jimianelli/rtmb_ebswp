@@ -1,3 +1,0 @@
-metric,chains,iterations,warmup,parameters,q_zero_percent,mean_warmup_seconds,mean_sampling_seconds,mean_total_seconds,speedup_total_vs_diag,divergences,divergence_percent,max_rhat,min_bulk_ess,median_bulk_ess
-diag,2,500,250,804,30.44,25.017,17.377,42.394,1.000,0,0.0,1.269616,6.166866,368.3311
-sparse,2,500,250,804,30.44,7.180,6.992,14.172,2.991,9,1.8,1.120307,22.794850,370.8172

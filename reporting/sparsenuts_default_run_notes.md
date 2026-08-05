@@ -1,78 +1,50 @@
-# SparseNUTS Default Run Notes
+# SparseNUTS base-model run notes
 
-Date: 2026-04-26
-
-Current RTMB configuration: steepness is fixed at `0.67`.
-
-The RTMB-ADMB SparseNUTS run was created by rendering:
-
-```bash
-quarto render reporting/ebs_pollock_rtmb_ebswp_assessment.qmd -P run_sparsenuts:true
-```
-
-The report calls the library default:
+The current MCMC result was generated from the accepted base RTMB model
+(`fishery_sel_form = 0`) with:
 
 ```r
-SparseNUTS::sample_snuts(obj)
+SparseNUTS::sample_snuts(
+  obj,
+  globals = list(data = model_data),
+  model_name = "EBS pollock base RTMB"
+)
 ```
 
-## Serial/Parallel
+No sampler setting is overridden. The `globals` argument exports the RTMB data
+object required to rebuild the objective in the package-default parallel worker
+sessions. Run the analysis from the repository root with:
 
-The call was not configured as serial. `SparseNUTS::sample_snuts()` defaults to
-`chains = 4` and `cores = chains`. The saved object has four chains:
+```sh
+Rscript R/run_sparsenuts_default.R
+quarto render reporting/ebs_pollock_rtmb_ebswp_assessment.qmd
+cp reporting/ebs_pollock_rtmb_ebswp_assessment.html docs/
+```
 
-- samples dimension: `1150 x 4 x 1339`
-- warmup: `150`
-- post-warmup samples per chain: `1000`
-- algorithm: `SNUTS`
-- metric: `dense`
+## Current run
 
-Each chain is still internally sequential, but the run was not requested with
-`cores = 1`.
+- SparseNUTS 1.0.2, GitHub commit
+  `2f3f1626219afce68fa2da0d884d4f2dca138117`
+- automatic dense metric
+- four chains running on four parallel workers
+- 150 warmup and 1,000 retained iterations per chain
+- maximum R-hat: 1.009
+- minimum bulk effective sample size: 1,257
+- 30 divergences among 4,000 retained transitions (0.75%)
 
-## Saved Output
+The divergences need to be resolved before these posterior draws are used for
+final assessment inference. The run is currently retained as a diagnostic of
+the base-model posterior and of the package-default configuration.
 
-- SparseNUTS RDS:
+## Outputs
+
+- full local fit:
   `analysis/output/sparsenuts/rtmb_ebswp_sparsenuts_default.rds`
-- Rendered report:
-  `reporting/ebs_pollock_rtmb_ebswp_assessment.html`
+- tracked run summary:
+  `reporting/data/sparsenuts_base_run_summary.csv`
+- tracked parameter monitor:
+  `reporting/data/sparsenuts_base_monitor.csv`
 
-## Diagnostics
-
-Summary from the saved object after fixing steepness at `0.67`:
-
-- maximum Rhat: `1.009443`
-- minimum bulk ESS: `526.8279`
-- minimum tail ESS: `183.0811`
-- percent divergent: `0.68`
-- percent treedepth: `0`
-- number below diagnostic threshold: `0`
-
-The slowest parameters by Rhat/ESS were headed by:
-
-| Parameter | Rhat | Bulk ESS | Tail ESS |
-|---|---:|---:|---:|
-| `sel_a50_bts_dev[8]` | 1.009443 | 526.8279 | 183.0811 |
-| `sel_slp_bts_dev[8]` | 1.008453 | 559.7373 | 187.1109 |
-
-Treat this default run as a computational diagnostic, not accepted posterior
-inference.
-
-## Completed MCMC Plots
-
-The report now includes the following default-run plots:
-
-- Slow-order pairs-style plot:
-  `analysis/output/figures/rtmb_ebswp_sparsenuts_pairs_slow.png`
-- `SparseNUTS::plot_marginals(..., order = "slow")`:
-  `analysis/output/figures/rtmb_ebswp_sparsenuts_marginals_slow.png`
-- `SparseNUTS::plot_sampler_params()`:
-  `analysis/output/figures/rtmb_ebswp_sparsenuts_sampler_params.png`
-- `SparseNUTS::plot_Q()`:
-  `analysis/output/figures/rtmb_ebswp_sparsenuts_Q.png`
-- `SparseNUTS::plot_uncertainties()`:
-  `analysis/output/figures/rtmb_ebswp_sparsenuts_uncertainties.png`
-
-No installed namespace in this workspace exposes a callable `pairs_admb()`
-function. The report therefore includes an equivalent slow-order pairs-style
-plot from the saved SparseNUTS samples and labels that limitation explicitly.
+The Quarto report reads the full fit and regenerates every MCMC table and figure
+on each render, so a new completed run cannot leave old MCMC graphics in the
+published assessment page.
