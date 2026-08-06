@@ -1371,7 +1371,7 @@ for 2025 and 2026 are fixed at 1,350 thousand t in every alternative.
 
 ```{r}
 #| label: tbl-spmr-tier3-seven-scenarios
-#| tbl-cap: 'Tier-3 projection results for all seven FMP alternatives using inputs generated from the RTMB EBS pollock model. Values are simulation means; catch and biomass quantities are in thousand t. $B/B_{35\%}$ is spawning biomass relative to the Tier-3 $B_{35\%}$ proxy.'
+#| tbl-cap: 'Tier-3 projection results for all seven FMP alternatives using inputs generated from the RTMB EBS pollock model. Values are simulation means; catch and biomass quantities are in thousand t. $B/B_{35\\%}$ is spawning biomass relative to the Tier-3 $B_{35\\%}$ proxy.'
 #| echo: false
 
 tier3_table_file <- file.path(
