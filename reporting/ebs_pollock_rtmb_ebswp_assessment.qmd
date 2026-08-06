@@ -392,7 +392,10 @@ osa_helper_ready <- osa_helper_loaded &&
   requireNamespace("cowplot", quietly = TRUE)
 
 osa_residual_method <- if (isTRUE(osa_precomputed_available)) {
-  "Precomputed afscOSA::run_osa output from R 4.6"
+  paste0(
+    "afscOSA ", osa_output$afscOSA_version %||% "version not recorded",
+    " output generated from the accepted RTMB base model"
+  )
 } else if (isTRUE(osa_helper_ready)) {
   "R/plot_osa_comps.R with afscOSA::resMulti"
 } else {
@@ -405,8 +408,7 @@ osa_residual_df <- if (isTRUE(osa_precomputed_available)) {
     mutate(
       age = as.integer(index),
       residual = as.numeric(resid),
-      sign = ifelse(residual < 0, "Negative", "Positive"),
-      outlier = ifelse(abs(residual) > 3, "|residual| > 3", "|residual| <= 3")
+      sign = ifelse(residual < 0, "Negative", "Positive")
     ) |>
     filter(!(fleet %in% c("BTS", "ATS") & age == 1))
 } else {
@@ -994,7 +996,6 @@ diagnostic_sdnr_df <- diagnostic_residual_df |>
     sdnr = sd(residual, na.rm = TRUE),
     min_residual = min(residual, na.rm = TRUE),
     max_residual = max(residual, na.rm = TRUE),
-    outliers_abs_gt_3 = sum(abs(residual) > 3, na.rm = TRUE),
     n = sum(is.finite(residual)),
     .groups = "drop"
   )
@@ -1087,96 +1088,70 @@ plot_agecomp_fit(agecomp_df, "ATS", ncol = 3)
 
 ### OSA Residual Diagnostics
 
-The report now uses saved `afscOSA::run_osa()` output when available, generated under R 4.6 from the current RTMB composition inputs. In this render, the residual method is `r osa_residual_method`. When saved OSA output is unavailable, the same chunks fall back to the workspace helper `R/plot_osa_comps.R` if its dependencies are available, then to Pearson residual bubble diagnostics.
+The age-composition diagnostics follow the updated [afscOSA guidance](https://noaa-afsc.github.io/afscOSA/) incorporated through [afscOSA pull request 10](https://github.com/noaa-afsc/afscOSA/pull/10). The diagnostics were regenerated from the accepted September 2025 bridge base model rather than from a selectivity sensitivity. In this render, the method is `r osa_residual_method`.
+
+The four rows in @fig-osa-age-diagnostics should be read together. The aggregate composition is the first check for systematic lack of fit, such as a selectivity pattern that consistently misses particular ages. The Q-Q plot assesses whether OSA residuals behave approximately as standard normal values and reports the SDNR and lower and upper 2.5% quantiles with their expected intervals. The OSA and Pearson bubble plots then help locate temporal, age-specific, or cohort patterns. A statistic outside its interval is a clue to investigate, not a stand-alone rule for accepting or rejecting an assessment configuration.
 
 ```{r}
 #| label: tbl-osa-residual-status
-#| tbl-cap: "Composition residual diagnostic status for the RTMB-ADMB report."
+#| tbl-cap: "Source and software checks for the updated OSA diagnostics. The base-model checksum ties these diagnostics to the same accepted RTMB object used elsewhere in this report. The ATS 2020 placeholder was excluded because it contains no rounded multinomial observations and therefore supplies no information to an OSA calculation."
 tibble(
   item = c(
-    "Saved OSA output",
-    "OSA R version",
-    "Helper sourceable",
-    "afscOSA installed in render R",
-    "resMulti loaded",
-    "Residual method",
+    "afscOSA version",
+    "R version used for OSA calculations",
+    "Accepted base-model checksum (MD5)",
+    "OSA input checksum (MD5)",
+    "Excluded zero-information composition row",
     "Fleets",
-    "Residual rows"
+    "OSA residuals"
   ),
   value = c(
-    as.character(osa_precomputed_available),
+    if (isTRUE(osa_precomputed_available)) osa_output$afscOSA_version else NA_character_,
     if (isTRUE(osa_precomputed_available)) osa_output$r_version else NA_character_,
-    as.character(osa_helper_loaded),
-    as.character(requireNamespace("afscOSA", quietly = TRUE)),
-    as.character(osa_res_multi_loaded),
-    osa_residual_method,
+    if (isTRUE(osa_precomputed_available)) osa_output$lineage$base_md5 else NA_character_,
+    if (isTRUE(osa_precomputed_available)) osa_output$input_md5 else NA_character_,
+    if (isTRUE(osa_precomputed_available)) "ATS 2020" else NA_character_,
     paste(sort(unique(diagnostic_residual_df$fleet)), collapse = ", "),
     as.character(nrow(diagnostic_residual_df))
   )
 ) |>
   gt_report() |>
-  tab_header(title = "OSA Residual Diagnostic Status")
+  tab_header(title = "OSA Diagnostic Source Check")
 ```
 
 ```{r}
 #| label: tbl-osa-sdnr-summary
-#| tbl-cap: "Summary statistics for RTMB-ADMB composition residual diagnostics. SDNR is the standard deviation of normalized residuals by fleet."
-diagnostic_sdnr_df |>
+#| tbl-cap: "Summary of one-step-ahead residual distributions. Under a correctly specified composition model, OSA residuals are expected to be approximately standard normal: mean near zero, SDNR near one, and 2.5% tail quantiles near -1.96 and 1.96. Formal expected intervals are shown in the Q-Q panels of Figure @fig-osa-age-diagnostics; these summaries are diagnostic context rather than model-selection tests."
+osa_output$summary |>
   arrange(fleet) |>
   select(
     Fleet = fleet,
-    `Residual rows` = n,
-    `Mean residual` = mean_residual,
+    `OSA residuals` = residuals,
+    `Mean residual` = mean,
     SDNR = sdnr,
-    `Minimum residual` = min_residual,
-    `Maximum residual` = max_residual,
-    `|residual| > 3` = outliers_abs_gt_3
+    `Lower 2.5% quantile` = lower_2.5_pct,
+    `Upper 97.5% quantile` = upper_97.5_pct
   ) |>
   gt_report() |>
   fmt_number(
-    columns = c(`Mean residual`, SDNR, `Minimum residual`, `Maximum residual`),
-    decimals = 3
+    columns = c(`Mean residual`, SDNR, `Lower 2.5% quantile`, `Upper 97.5% quantile`),
+    decimals = 2
   ) |>
-  fmt_number(columns = c(`Residual rows`, `|residual| > 3`), decimals = 0) |>
-  tab_header(title = "OSA Residual SDNR Summary")
+  fmt_number(columns = `OSA residuals`, decimals = 0) |>
+  tab_header(title = "OSA Residual Distribution Summary")
 ```
 
 ```{r}
-#| label: fig-osa-aggregate
-#| fig-cap: "Aggregate afscOSA age-composition diagnostics for Fishery, BTS, and ATS. The panel shows QQ diagnostics with SDNR annotations and sample-size weighted aggregate observed and expected composition fits."
+#| label: fig-osa-age-diagnostics
+#| fig-cap: "Age-composition diagnostics produced with afscOSA for the fishery, bottom trawl survey (BTS), and acoustic-trawl survey (ATS). Top row: observed aggregate proportions (blue bars), expected proportions (red points and line), and 95% intervals for data expected from the fitted model (red vertical lines); the intervals condition on fitted parameters and are neither confidence intervals nor posterior predictive intervals. ISS and ESS are the aggregate input and effective sample sizes. Second row: OSA residual Q-Q plots with SDNR and 2.5% tail quantiles; parentheses give their expected 95% intervals. Third and fourth rows: OSA and Pearson residual bubbles by year and age, with red positive and blue negative residuals and bubble area increasing with absolute magnitude. Bubble sizes are standardized across fleets; two Pearson residuals greater than 6 were truncated to 6 for display only. The diagnostics should be interpreted jointly and do not constitute a stand-alone model acceptance or rejection test."
+#| fig-alt: "Four-row diagnostic figure with columns for Fishery, BTS, and ATS. Aggregate fits are generally close, with localized age-bin discrepancies. Q-Q plots show SDNR values of 0.87 for Fishery, 0.96 for BTS, and 0.82 for ATS. OSA and Pearson bubble plots show residual sign and magnitude across years and ages, providing checks for temporal, age-specific, and cohort patterns."
 #| fig-width: 12
-#| fig-height: 6
+#| fig-height: 9
 #| out-width: "100%"
-plot_osa_aggregate_panel(
-  residual_data = diagnostic_residual_df,
-  aggregate_data = weighted_aggregate_agecomp_df,
-  osa_output = osa_output
-)
+knitr::include_graphics(osa_plot_file)
 ```
 
-```{r}
-#| label: fig-osa-residual-fishery
-#| fig-cap: "Composition residual diagnostics for the fishery age-composition fit. Saved afscOSA OSA residuals are used when available; otherwise the report falls back to Pearson residual bubbles."
-#| fig-width: 10
-#| fig-height: 4
-plot_osa_comps_for_fleet("Fishery")
-```
-
-```{r}
-#| label: fig-osa-residual-bts
-#| fig-cap: "Composition residual diagnostics for the BTS age-composition fit. Saved afscOSA OSA residuals are used when available; otherwise the report falls back to Pearson residual bubbles."
-#| fig-width: 10
-#| fig-height: 4
-plot_osa_comps_for_fleet("BTS")
-```
-
-```{r}
-#| label: fig-osa-residual-ats
-#| fig-cap: "Composition residual diagnostics for the ATS age-composition fit. Saved afscOSA OSA residuals are used when available; otherwise the report falls back to Pearson residual bubbles."
-#| fig-width: 10
-#| fig-height: 4
-plot_osa_comps_for_fleet("ATS")
-```
+The aggregate panels show generally close observed and expected patterns, with localized departures that deserve attention rather than a wholesale failure of the composition model. The BTS SDNR (0.96) lies within its displayed expected interval. Fishery (0.87) and ATS (0.82) have narrower OSA residual distributions than standard normal expectations; this can reflect composition weighting, residual dependence, or other model structure and should be considered alongside the aggregate and bubble patterns. The fishery upper tail is also lighter than expected, while the other tail estimates are close to or within their displayed intervals. These results identify where follow-up work may be useful, but they do not by themselves determine the preferred assessment model.
 
 ### Selectivity Curves
 

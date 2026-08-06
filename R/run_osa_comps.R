@@ -22,6 +22,7 @@ suppressPackageStartupMessages({
 })
 
 osa_inputs <- readRDS(osa_input_file)
+input_lineage <- attr(osa_inputs, "lineage")
 dir.create(osa_output_dir, recursive = TRUE, showWarnings = FALSE)
 
 osa_runs <- lapply(names(osa_inputs), function(fleet_name) {
@@ -45,12 +46,32 @@ osa_plots <- afscOSA::plot_osa(
   figwidth = 12
 )
 
+osa_summary <- dplyr::bind_rows(lapply(osa_runs, function(x) x$res)) |>
+  dplyr::group_by(fleet) |>
+  dplyr::summarise(
+    residuals = dplyr::n(),
+    mean = mean(resid, na.rm = TRUE),
+    sdnr = stats::sd(resid, na.rm = TRUE),
+    lower_2.5_pct = stats::quantile(resid, 0.025, na.rm = TRUE),
+    upper_97.5_pct = stats::quantile(resid, 0.975, na.rm = TRUE),
+    .groups = "drop"
+  )
+utils::write.csv(
+  osa_summary,
+  file.path(osa_output_dir, "osa_summary.csv"),
+  row.names = FALSE
+)
+
 saveRDS(
   list(
     runs = osa_runs,
     plots = osa_plots,
+    summary = osa_summary,
     created = Sys.time(),
-    r_version = R.version.string
+    r_version = R.version.string,
+    afscOSA_version = as.character(utils::packageVersion("afscOSA")),
+    input_md5 = unname(tools::md5sum(osa_input_file)),
+    lineage = input_lineage
   ),
   osa_output_file
 )
