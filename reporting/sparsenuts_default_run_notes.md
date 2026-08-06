@@ -31,14 +31,14 @@ cp reporting/ebs_pollock_rtmb_ebswp_assessment.html docs/
 - four chains running on four parallel workers
 - 150 warmup and 1,000 retained iterations per chain
 - `adapt_delta = 0.95`
-- maximum R-hat: 1.007
-- minimum bulk effective sample size: 1,281
-- 7 warmup divergences and 0 divergences among 4,000 retained transitions
+- maximum R-hat: 1.006
+- minimum bulk effective sample size: 1,569
+- 7 warmup divergences and 1 divergence among 4,000 retained transitions
 
-The increased target acceptance probability eliminated the post-warmup
-divergences found under the unmodified default. Substantive posterior checks
-and comparison with deterministic uncertainty are still needed before final
-assessment use.
+The increased target acceptance probability reduced the post-warmup
+divergences from 30 in the original untuned run to one in this rerun. The
+remaining transition should be located and substantive posterior checks and
+comparison with deterministic uncertainty remain necessary before final use.
 
 ## Outputs
 

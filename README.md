@@ -66,6 +66,17 @@ To render the diagnostics report after generating required outputs:
 quarto render reporting/ebs_pollock_rtmb_ebswp_assessment.qmd
 ```
 
+To rebuild the fixed-parameter September 2025 bridge and every published
+downstream product from the same base file—including the bridge test, nine-peel
+retrospective, both projection suites, tuned SparseNUTS run, and Quarto report—run:
+
+```bash
+Rscript R/rebuild_bridge_products.R
+```
+
+The rebuild stops if any downstream product records a different `base.rds`
+checksum.
+
 ## Likelihood profiles
 
 The profile workflow fixes a selected parameter at each grid point and either

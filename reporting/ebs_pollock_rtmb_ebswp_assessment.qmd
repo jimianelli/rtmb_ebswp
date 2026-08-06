@@ -149,6 +149,12 @@ rpm <- rtmb_env$rpm
 parms <- rtmb_env$parms
 admb_rep_path <- rtmb_env$admb_rep_path
 admb_par_path <- rtmb_env$admb_par_path
+if (is.null(admb_rep_path)) {
+  admb_rep_path <- rtmb_file("admb", "runs", "for_rtmb", "pm.rep")
+}
+if (is.null(admb_par_path)) {
+  admb_par_path <- rtmb_file("admb", "runs", "for_rtmb", "pm.par")
+}
 compare_max_pct <- rtmb_env$compare_max_pct
 
 if (isTRUE(params$refit)) {
@@ -167,6 +173,11 @@ if (isTRUE(params$refit)) {
   saved <- readRDS(model_file)
   rtmb_report <- saved$report
   rtmb_metadata <- saved$metadata
+}
+rtmb_bridge_comparison <- if (exists("saved") && !is.null(saved$bridge_comparison)) {
+  as_tibble(saved$bridge_comparison)
+} else {
+  as_tibble(compare_max_pct(rtmb_report, pm, tolerance = 1e-5))
 }
 
 only_bts_saved <- NULL
@@ -705,6 +716,173 @@ saveRDS(
   list(report = rtmb_result$rtmb, metadata = list(model = "rtmb_ebswp")),
   "analysis/output/base.rds"
 )
+```
+
+# Bridging ADMB to RTMB {#sec-admb-rtmb-bridge}
+
+This is the same fixed-parameter bridge demonstrated in the September 2025
+[EBS pollock development report](https://noaa-afsc.github.io/EBS_pollock/doc/Sept_2025.html#bridging-admb-to-rtmb). The modified ADMB model's maximum-likelihood parameter estimates are injected into RTMB, and the two implementations are evaluated at that identical parameter point. This isolates the code translation from optimization behavior or later model alternatives.
+
+The refreshed `base.rds` is the authoritative starting point for every result below. Its configuration label, bridge statistics, and file identity are carried into the projections, retrospectives, and SparseNUTS metadata so those analyses cannot silently use a different selectivity form or an older base run.
+
+```{r}
+#| label: tbl-bridge-summary
+#| tbl-cap: "Summary of the fixed-parameter ADMB-to-RTMB bridge, recalculated from the September 2025 configuration. The absolute NLL difference is on the negative-log-likelihood scale; the key-output difference is the largest absolute percentage difference among state, prediction, selectivity, composition, and likelihood quantities."
+bridge_metrics <- rtmb_metadata$bridge_metrics
+tibble(
+  measure = c(
+    "ADMB total negative log-likelihood",
+    "RTMB total negative log-likelihood",
+    "Absolute total NLL difference",
+    "Maximum key-output difference (%)",
+    "Maximum absolute RTMB gradient"
+  ),
+  value = c(
+    bridge_metrics$admb_total_nll,
+    bridge_metrics$rtmb_total_nll,
+    bridge_metrics$absolute_total_nll_difference,
+    bridge_metrics$maximum_key_percent_difference,
+    bridge_metrics$maximum_absolute_gradient
+  )
+) |>
+  gt_report() |>
+  fmt_number(columns = value, decimals = 9) |>
+  tab_header(title = "September 2025 ADMB–RTMB Bridge")
+```
+
+The total negative log-likelihoods differ by only `r sprintf("%.9f", bridge_metrics$absolute_total_nll_difference)`. The maximum difference among key outputs is `r sprintf("%.9f%%", bridge_metrics$maximum_key_percent_difference)`, and the largest absolute RTMB gradient at the ADMB estimates is `r format(bridge_metrics$maximum_absolute_gradient, scientific = TRUE, digits = 7)`. These reproduce the near-perfect September bridge and pass the repository's automated bridge tolerances.
+
+```{r}
+#| label: tbl-downstream-lineage
+#| tbl-cap: "Base-model lineage for downstream analyses. Matching checksums confirm that projections, retrospectives, and SparseNUTS were regenerated from the same refreshed September 2025 bridge output."
+current_base_md5 <- unname(tools::md5sum(model_file))
+projection_lineage <- readr::read_csv(
+  file.path(projection_dir, "base_lineage.csv"), show_col_types = FALSE
+)
+alt2_lineage <- readr::read_csv(
+  file.path(projection_alt2_dir, "base_lineage.csv"), show_col_types = FALSE
+)
+mcmc_lineage <- readr::read_csv(
+  rtmb_file("reporting", "data", "sparsenuts_base_run_summary.csv"),
+  show_col_types = FALSE
+)
+lineage_tbl <- tibble(
+  analysis = c(
+    "Authoritative base bridge", "Nine-peel retrospective",
+    "Seven-scenario Tier 3 projections", "Alternative 2 fixed-catch projections",
+    "SparseNUTS MCMC"
+  ),
+  base_md5 = c(
+    current_base_md5,
+    retro_saved$base_lineage$md5 %||% NA_character_,
+    projection_lineage$model_md5[1] %||% NA_character_,
+    alt2_lineage$model_md5[1] %||% NA_character_,
+    mcmc_lineage$base_md5[1] %||% NA_character_
+  )
+) |>
+  mutate(matches_authoritative_base = base_md5 == current_base_md5)
+
+lineage_tbl |>
+  gt_report() |>
+  tab_header(title = "Common September-Bridge Lineage")
+```
+
+```{r}
+#| label: tbl-bridge-comparison
+#| tbl-cap: "Object-by-object comparison of RTMB and ADMB results at the shared ADMB maximum-likelihood parameter point. `Equal` is the result of the numerical comparison at tolerance 1e-5; correlation is shown for compatible nonconstant vectors."
+rtmb_bridge_comparison |>
+  filter(is.finite(max_abs_diff) | !is.na(equal)) |>
+  arrange(desc(max_abs_pct_diff)) |>
+  rename(
+    Quantity = variable,
+    Equal = equal,
+    Elements = length,
+    `Maximum absolute difference` = max_abs_diff,
+    `Maximum absolute difference (%)` = max_abs_pct_diff,
+    Correlation = cor
+  ) |>
+  gt_report() |>
+  fmt_number(
+    columns = c(
+      `Maximum absolute difference`,
+      `Maximum absolute difference (%)`, Correlation
+    ),
+    decimals = 7
+  ) |>
+  tab_header(title = "RTMB and ADMB Object Comparison")
+```
+
+```{r}
+#| label: tbl-bridge-gradients
+#| tbl-cap: "Twenty largest RTMB gradients at the ADMB maximum-likelihood parameter estimates. Values close to zero confirm that the injected ADMB solution is also stationary in RTMB."
+tibble(
+  parameter = names(obj$par),
+  gradient = as.numeric(obj$gr())
+) |>
+  mutate(absolute_gradient = abs(gradient)) |>
+  arrange(desc(absolute_gradient)) |>
+  slice_head(n = 20) |>
+  select(parameter, gradient, absolute_gradient) |>
+  gt_report() |>
+  fmt_scientific(columns = c(gradient, absolute_gradient), decimals = 4) |>
+  tab_header(title = "Largest RTMB Gradients at ADMB Estimates")
+```
+
+```{r}
+#| label: fig-bridge-ssb-recruitment
+#| fig-cap: "Spawning biomass and age-1 recruitment from RTMB and ADMB at the same ADMB maximum-likelihood parameter estimates. The two implementations are visually indistinguishable at the plotted scale. Select the figure to open it in the lightbox."
+bridge_years <- data$styr:data$endyr
+bridge_series <- bind_rows(
+  tibble(
+    year = bridge_years,
+    quantity = "Spawning biomass",
+    model = "RTMB",
+    value = as.numeric(rtmb_report$SSB)
+  ),
+  tibble(
+    year = bridge_years,
+    quantity = "Spawning biomass",
+    model = "ADMB",
+    value = as.numeric(pm$SSB)
+  ),
+  tibble(
+    year = bridge_years,
+    quantity = "Age-1 recruitment",
+    model = "RTMB",
+    value = as.numeric(rtmb_report$N[, 1])
+  ),
+  tibble(
+    year = bridge_years,
+    quantity = "Age-1 recruitment",
+    model = "ADMB",
+    value = as.numeric(pm$N[, 1])
+  )
+)
+
+ggplot(bridge_series, aes(year, value, color = model, linetype = model)) +
+  geom_line(linewidth = 0.9) +
+  facet_wrap(~quantity, scales = "free_y", ncol = 1) +
+  scale_color_manual(values = c(ADMB = "#1f78b4", RTMB = "#d95f02")) +
+  scale_linetype_manual(values = c(ADMB = "22", RTMB = "solid")) +
+  scale_y_continuous(labels = scales::label_comma()) +
+  labs(x = "Year", y = "Estimate", color = "Implementation", linetype = "Implementation")
+```
+
+```{r}
+#| label: fig-bridge-relative-differences
+#| fig-cap: "Absolute relative differences between RTMB and ADMB spawning biomass and age-1 recruitment at the shared ADMB estimates. Values are percentages; the very small vertical scale is intentional. Select the figure to open it in the lightbox."
+bridge_difference <- bridge_series |>
+  pivot_wider(names_from = model, values_from = value) |>
+  mutate(
+    absolute_relative_difference =
+      100 * abs(RTMB - ADMB) / pmax(abs(ADMB), .Machine$double.eps)
+  )
+
+ggplot(bridge_difference, aes(year, absolute_relative_difference)) +
+  geom_line(color = "#4d4d4d", linewidth = 0.8) +
+  facet_wrap(~quantity, scales = "free_y", ncol = 1) +
+  scale_y_continuous(labels = scales::label_number(accuracy = 0.00001)) +
+  labs(x = "Year", y = "Absolute relative difference (%)")
 ```
 
 # Results
@@ -1758,7 +1936,7 @@ if (nrow(retro_series) > 0) {
 
 All nine peels completed and produced trajectory estimates. Nine of the ten fits including peel 0 ended with convergence code 0. Peel 2 ended its tighter restart with code 1, but its maximum gradient was `r scales::number(retro_diagnostics$max_gradient[retro_diagnostics$peel == 2], accuracy = 0.000001)`, below the report's 0.001 gradient criterion. The largest maximum gradient across all fits was `r scales::number(max(retro_diagnostics$max_gradient, na.rm = TRUE), accuracy = 0.0001)`. Mohn's rho was `r scales::number(retro_mohn$rho[retro_mohn$quantity == "SSB"], accuracy = 0.001)` for spawning biomass and `r scales::number(retro_mohn$rho[retro_mohn$quantity == "Recruitment"], accuracy = 0.001)` for recruitment. Both are positive, and the spawning-biomass value is driven particularly by the deeper peels terminating in 2015--2020. These results indicate a substantial positive retrospective pattern and should be considered when evaluating stability and uncertainty.
 
-# Bridge Comparison With ADMB
+# Additional Bridge Diagnostics and Only-BTS Sensitivity
 
 The bridge comparison uses shared numeric objects from the saved RTMB report and the ADMB report loaded by `R/config.R`. The `Only BTS` curve is a separate RTMB fit from the same bridge configuration with the ATS biomass index, ATS age-1 index, and AVO index likelihood components excluded; BTS, CPUE, catch, composition, recruitment, selectivity, and weight-at-age components remain active. Differences should be interpreted as implementation diagnostics rather than assessment conclusions.
 
@@ -2098,7 +2276,7 @@ diag_tbl |>
   tab_header(title = "SparseNUTS Base-Model Diagnostics")
 ```
 
-With `adapt_delta = 0.95`, the run produced `r warmup_divergences` divergences during adaptation and **`r sampling_divergences` divergences among the `r format(post_warmup_total, big.mark = ",")` retained transitions**. Maximum R-hat was `r sprintf("%.3f", max(sparsenuts_fit$monitor$rhat, na.rm = TRUE))`, and minimum bulk effective sample size was `r format(round(min(sparsenuts_fit$monitor$ess_bulk, na.rm = TRUE)), big.mark = ",")`. The retained draws therefore pass the reported divergence and chain-mixing checks; substantive posterior checks and comparison with deterministic uncertainty remain appropriate before using them in assessment decisions.
+With `adapt_delta = 0.95`, the run produced `r warmup_divergences` divergences during adaptation and **`r sampling_divergences` divergences among the `r format(post_warmup_total, big.mark = ",")` retained transitions**. Maximum R-hat was `r sprintf("%.3f", max(sparsenuts_fit$monitor$rhat, na.rm = TRUE))`, and minimum bulk effective sample size was `r format(round(min(sparsenuts_fit$monitor$ess_bulk, na.rm = TRUE)), big.mark = ",")`. `r if (sampling_divergences == 0) "The retained draws pass the reported divergence and chain-mixing checks." else paste0("The chain-mixing statistics are good, but ", sampling_divergences, " retained divergence", if (sampling_divergences == 1) " remains" else "s remain", "; its location should be checked before treating the posterior as final.")` Substantive posterior checks and comparison with deterministic uncertainty remain appropriate before using the draws in assessment decisions.
 
 ```{r}
 #| label: sparsenuts-plot-data

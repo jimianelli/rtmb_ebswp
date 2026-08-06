@@ -53,3 +53,27 @@ print(tier3_table, n = Inf, width = Inf)
 message("Tier 3 table written to ", file.path(
   handoff$output_dir, "tier3_seven_scenario_table.csv"
 ))
+
+# Recreate the separately displayed Alternative 2 fixed-catch trajectory from
+# the same refreshed bridge output.
+alt2_output_dir <- file.path(
+  rtmb_root, "analysis", "output", "spmR_projection_alt2_fixed1300"
+)
+alt2_fixed_catches <- stats::setNames(rep(1300, length(2025:2032)), 2025:2032)
+alt2_handoff <- writer_env$write_spmr_projection_inputs(
+  model_file = model_file,
+  output_dir = alt2_output_dir,
+  config_path = file.path(rtmb_root, "R", "config.R"),
+  alt_list = 2L,
+  fixed_catches = alt2_fixed_catches,
+  nproj_years = length(alt2_fixed_catches),
+  run_name = "rtmb_alt2_fixed1300"
+)
+alt2_detail <- spmR::runSPM(alt2_handoff$output_dir, run = TRUE, engine = "admb")
+readr::write_csv(
+  alt2_detail,
+  file.path(alt2_handoff$output_dir, "spm_detail.csv")
+)
+message("Alternative 2 fixed-catch detail written to ", file.path(
+  alt2_handoff$output_dir, "spm_detail.csv"
+))

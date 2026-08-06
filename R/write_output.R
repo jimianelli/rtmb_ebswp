@@ -14,6 +14,18 @@ if (length(file_arg) > 0) {
 
 source(config_path)
 
+# config.R intentionally clears its sourcing environment to reproduce the
+# historical bridge setup, so resolve the repository root again afterward.
+rtmb_dir <- normalizePath(getwd(), mustWork = TRUE)
+admb_rep_path <- normalizePath(
+  file.path(rtmb_dir, "admb", "runs", "for_rtmb", "pm.rep"),
+  mustWork = TRUE
+)
+admb_par_path <- normalizePath(
+  file.path(rtmb_dir, "admb", "runs", "for_rtmb", "pm.par"),
+  mustWork = TRUE
+)
+
 return_nll_only <- FALSE
 data$return_nll_only <- 0
 rtmb_result <- rpm(parms)
@@ -39,17 +51,48 @@ output_dir <- file.path(rtmb_dir, "analysis", "output")
 dir.create(output_dir, showWarnings = FALSE, recursive = TRUE)
 
 output_path <- file.path(output_dir, "base.rds")
+bridge_comparison <- compare_max_pct(rtmb_report, pm, tolerance = 1e-5)
+key_variables <- c(
+  "N", "Z", "F", "M", "S", "pred_catch", "SSB", "pred_cpue",
+  "pred_avo", "eb_bts", "eb_ats", "sel_fsh", "sel_bts", "sel_ats",
+  "phat_fsh", "phat_bts", "phat_ats", "age_like", "cat_like",
+  "bts_like", "ats_like", "rec_like", "sel_like", "sel_like_dev",
+  "Priors", "tot_like"
+)
+key_comparison <- bridge_comparison[
+  bridge_comparison$variable %in% key_variables, , drop = FALSE
+]
+bridge_metrics <- list(
+  admb_total_nll = as.numeric(pm$tot_like),
+  rtmb_total_nll = as.numeric(rtmb_report$tot_like),
+  absolute_total_nll_difference = abs(
+    as.numeric(rtmb_report$tot_like) - as.numeric(pm$tot_like)
+  ),
+  maximum_key_percent_difference = max(
+    key_comparison$max_abs_pct_diff, na.rm = TRUE
+  ),
+  maximum_absolute_gradient = max(abs(obj$gr()), na.rm = TRUE)
+)
 saveRDS(
   list(
     report = rtmb_report,
+    bridge_comparison = bridge_comparison,
     metadata = list(
       model = "rtmb_ebswp",
+      configuration = "September 2025 fixed-parameter ADMB-to-RTMB bridge",
       created = Sys.time(),
       admb_rep = admb_rep_path,
-      admb_par = admb_par_path
+      admb_par = admb_par_path,
+      bridge_metrics = bridge_metrics
     )
   ),
   output_path
 )
 
 cat("Wrote RTMB-ADMB output:", output_path, "\n")
+cat(sprintf(
+  "Bridge: |delta NLL| = %.9f; max key difference = %.9f%%; max gradient = %.9g\n",
+  bridge_metrics$absolute_total_nll_difference,
+  bridge_metrics$maximum_key_percent_difference,
+  bridge_metrics$maximum_absolute_gradient
+))

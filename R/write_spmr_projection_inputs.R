@@ -172,6 +172,7 @@ write_spmr_projection_inputs <- function(model_file = file.path("analysis", "out
 
   saved <- readRDS(model_path)
   report <- saved$report %||% saved$rtmb %||% saved
+  model_md5 <- unname(tools::md5sum(model_path))
 
   pm_prj <- file.path(output_dir, "pm.prj")
   spm_dat <- file.path(output_dir, "spm.dat")
@@ -212,6 +213,18 @@ write_spmr_projection_inputs <- function(model_file = file.path("analysis", "out
     stringsAsFactors = FALSE
   )
   utils::write.csv(manifest, file.path(output_dir, "manifest.csv"), row.names = FALSE)
+  utils::write.csv(
+    data.frame(
+      model_file = model_path,
+      model_md5 = model_md5,
+      model_created = as.character(saved$metadata$created %||% NA_character_),
+      configuration = saved$metadata$configuration %||% NA_character_,
+      generated = as.character(Sys.time()),
+      stringsAsFactors = FALSE
+    ),
+    file.path(output_dir, "base_lineage.csv"),
+    row.names = FALSE
+  )
 
   fixed_catch_years <- if (is.null(names(fixed_catches))) {
     as.integer(data$endyr) + seq_along(fixed_catches)

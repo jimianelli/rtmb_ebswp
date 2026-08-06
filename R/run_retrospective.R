@@ -4,6 +4,18 @@
 source(file.path("R", "config.R"))
 
 rtmb_dir <- normalizePath(getwd(), mustWork = TRUE)
+base_file <- file.path(rtmb_dir, "analysis", "output", "base.rds")
+if (!file.exists(base_file)) {
+  stop("Run R/write_output.R before the retrospective analysis.")
+}
+base_saved <- readRDS(base_file)
+if (!identical(
+  base_saved$metadata$configuration,
+  "September 2025 fixed-parameter ADMB-to-RTMB bridge"
+)) {
+  stop("base.rds is not identified as the September 2025 bridge configuration.")
+}
+base_md5 <- unname(tools::md5sum(base_file))
 fixed_params <- names(map_obj)[vapply(
   map_obj, function(x) all(is.na(x)), logical(1)
 )]
@@ -323,6 +335,13 @@ if (!is.null(series) && nrow(series) > 0 && any(series$peel == 0)) {
 
 out <- list(
   created = Sys.time(),
+  base_lineage = list(
+    file = normalizePath(base_file),
+    md5 = base_md5,
+    created = base_saved$metadata$created,
+    configuration = base_saved$metadata$configuration,
+    bridge_metrics = base_saved$metadata$bridge_metrics
+  ),
   peels = peels,
   series = series,
   diagnostics = diagnostics,

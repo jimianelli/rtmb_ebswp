@@ -31,6 +31,19 @@ if (!identical(as.integer(model_data$fishery_sel_form %||% 0L), 0L)) {
   stop("The SparseNUTS default runner must use fishery_sel_form = 0 (base RTMB model).")
 }
 
+base_file <- file.path(rtmb_root, "analysis", "output", "base.rds")
+if (!file.exists(base_file)) {
+  stop("Run R/write_output.R before SparseNUTS so the bridge lineage is explicit.")
+}
+base_saved <- readRDS(base_file)
+if (!identical(
+  base_saved$metadata$configuration,
+  "September 2025 fixed-parameter ADMB-to-RTMB bridge"
+)) {
+  stop("base.rds is not identified as the September 2025 bridge configuration.")
+}
+base_md5 <- unname(tools::md5sum(base_file))
+
 output_file <- file.path(
   rtmb_root, "analysis", "output", "sparsenuts",
   "rtmb_ebswp_sparsenuts_default.rds"
@@ -62,6 +75,12 @@ attr(fit, "rtmb_ebswp_sparsenuts") <- list(
   runner = "R/run_sparsenuts_default.R",
   model = "accepted base RTMB model (fishery_sel_form = 0)",
   fishery_sel_form = 0L,
+  base_lineage = list(
+    file = normalizePath(base_file),
+    md5 = base_md5,
+    created = base_saved$metadata$created,
+    bridge_metrics = base_saved$metadata$bridge_metrics
+  ),
   package_version = as.character(utils::packageVersion("SparseNUTS")),
   package_remote_sha = package_description$RemoteSha %||% NA_character_,
   call = paste(
@@ -89,6 +108,7 @@ utils::write.csv(as.data.frame(fit$monitor), monitor_file, row.names = FALSE)
 utils::write.csv(
   data.frame(
     model = "accepted base RTMB model (fishery_sel_form = 0)",
+    base_md5 = base_md5,
     package_version = as.character(utils::packageVersion("SparseNUTS")),
     package_remote_sha = package_description$RemoteSha %||% NA_character_,
     algorithm = fit$algorithm,
