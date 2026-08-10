@@ -41,15 +41,18 @@ not be conflated:
    comparable assessment results?
 
 The September 2025 ADMB--RTMB restoration is the numerical reference. The
-Rceattle work is a close, independently fitted bridge to the modified
-`m23_rceattle_full` ADMB model. The 2025 comparison is the next controlled
-experiment; it is not yet presented as completed evidence.
+Rceattle work includes both an effectively exact fixed-parameter bridge to the
+modified `m23_rceattle_full` ADMB model and a close, independently fitted
+comparison. Both Rceattle results were unchanged after updating from version
+4.8.0 to 4.9.1. The 2025 comparison is the next controlled experiment; it is
+not yet presented as completed evidence.
 
 ::: {.callout-important}
-The exact RTMB bridge and close Rceattle bridge refer to different ADMB
-reference configurations. Their numerical bridge statistics therefore test
-implementation fidelity within each pair; they are not a direct ranking of
-the two software frameworks.
+The exact RTMB and Rceattle bridge tests refer to different ADMB reference
+configurations. Their numerical statistics test implementation fidelity
+within each pair; they are not a direct ranking of the two software
+frameworks. The independently optimized Rceattle fit remains a separate close
+comparison.
 :::
 
 # Evidence at a glance
@@ -57,6 +60,7 @@ the two software frameworks.
 | Track | Reference and implementation | Current evidence | Interpretation |
 |---|---|---|---|
 | Exact bridge | `for_rtmb/pm.tpl` versus restored `R/Rpm.R` | Total NLL differs by 0.004097748; key outputs differ by less than 0.0005%; maximum absolute gradient is 6.37e-06 | Validated fixed-parameter bridge baseline |
+| Exact Rceattle forward pass | `ADMB/m23_rceattle_full/` MLE versus fixed-parameter Rceattle | Mean absolute differences are 0.000117% for SSB and 0.000143% for catch; unchanged under Rceattle 4.9.1 | Validated fixed-parameter implementation bridge |
 | Close bridge | `ADMB/m23_rceattle_full/` versus fitted Rceattle `NonParametricPM` | Terminal 2024 differences: SSB -0.2%, recruitment -0.9%, total biomass -0.2%; correlations are at least 0.9992 | Close fitted bridge, not bit-for-bit equivalence |
 | 2025 update | 2025 ADMB base run versus matched RTMB and Rceattle updates | ADMB input and run artifacts exist; matched RTMB and Rceattle results have not yet been accepted into this comparison | Work in progress |
 
@@ -87,7 +91,16 @@ The source report records the exact template, RTMB sources, file hashes, and
 test procedure. Development changes should be introduced only after the base
 bridge continues to pass unchanged.
 
-# 2. Close ADMB--Rceattle bridge
+# 2. ADMB--Rceattle bridge and fitted comparison
+
+The standalone fixed-parameter Rceattle bridge injects the
+`m23_rceattle_full` ADMB MLE and realized selectivity. It reproduces SSB and
+predicted catch to about 0.0001% mean absolute difference. Repeating this test
+after updating Rceattle from 4.8.0 to 4.9.1 changed none of the six stored
+bridge metrics. The two-stage base objectives, gradient, population
+trajectories, and OSA residuals were also unchanged. The package update only
+changed the inactive steepness reporting array by filling all years rather
+than leaving structural zeros.
 
 Grant Adams's Rceattle handoff uses the modified ADMB reference in
 `ADMB/m23_rceattle_full/` and the prepared
