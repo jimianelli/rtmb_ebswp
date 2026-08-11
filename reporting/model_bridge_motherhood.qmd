@@ -65,7 +65,7 @@ comparison.
 | 2025 update | 2025 ADMB base run versus matched RTMB and Rceattle updates | ADMB input and run artifacts exist; matched RTMB and Rceattle results have not yet been accepted into this comparison | Work in progress |
 
 [Read the validated September 2025 ADMB--RTMB bridge](sept_2025_bridge_restoration.html){.btn .btn-primary}
-[Read the Rceattle handoff results](grant_rceattle_handoff_results.html){.btn .btn-secondary}
+[Read the Rceattle refinements](grant_rceattle_handoff_results.html){.btn .btn-secondary}
 [Open the separate SparseNUTS report](rceattle_2024_results.html){.btn .btn-secondary}
 
 # 1. Exact ADMB--RTMB bridge
@@ -174,8 +174,8 @@ implementations.
 
 - [September 2025 bridge restoration](sept_2025_bridge_restoration.html):
   exact ADMB--RTMB bridge, provenance, and regression test.
-- [Rceattle handoff results](grant_rceattle_handoff_results.html): Grant's six
-  handoff items, close bridge results, and diagnostic limitations.
+- [Rceattle refinements](grant_rceattle_handoff_results.html): Rceattle model
+  developments, ADMB comparisons, selectivity results, and diagnostic limitations.
 - [Rceattle SparseNUTS report](rceattle_2024_results.html): separate exploratory
   MCMC and selectivity comparisons.
 
