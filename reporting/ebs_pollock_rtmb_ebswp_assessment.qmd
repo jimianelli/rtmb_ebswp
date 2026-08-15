@@ -1,6 +1,6 @@
 ---
 title: "Developments of the RTMB version of the ADMB pollock model"
-subtitle: 'Working paper on the corrected full-age 2024 "PM" model bridge and subsequent RTMB developments'
+subtitle: 'September 2026 Plan Team working paper on the corrected full-age 2024 "PM" model bridge and subsequent RTMB developments'
 author:
   - name: James Ianelli
     corresponding: true
@@ -587,6 +587,11 @@ The fixed-parameter comparison showed negligible differences between ADMB and
 RTMB for the tested configuration. Alternative selectivity formulations and
 diagnostic analyses are presented for review and do not alter current
 management advice, which remains based on the accepted ADMB assessment model.
+This document is the primary model-development report for the September 2026
+Plan Team meeting. Companion SPoRC and Rceattle analyses provide comparisons
+with more general modeling frameworks. Among these alternatives, Rceattle is
+the leading candidate for future operational assessment development, subject
+to resolution of the remaining diagnostics and the established review process.
 
 # Purpose and Scope
 
@@ -599,6 +604,23 @@ The analyses use a corrected comparison in which observed and predicted BTS
 age compositions span ages 1--15 and nominal integer sample sizes enter the
 likelihood. A historical configuration is retained only to quantify the effect
 of that correction.
+
+## September 2026 Plan Team review context
+
+Three model-development reports are intended to be presented and discussed
+together. They address different questions and should not be interpreted as
+three competing operational assessments.
+
+| Report | Role in the September 2026 review | Current interpretation |
+|---|---|---|
+| **RTMB** (this report) | Primary report and detailed reference for the corrected ADMB translation, diagnostics, retrospectives, selectivity alternatives, and projections | Establishes the common implementation baseline and identifies issues requiring further evaluation |
+| [**SPoRC**](https://jimianelli.github.io/sporc_ebswp/) | Companion comparison using the SPoRC single-region framework | Demonstrates close reproduction of the corrected ADMB candidate and supports continued methods development |
+| [**Rceattle**](rceattle_ebswp.html) | Companion comparison using a more general and extensible assessment framework | Leading candidate for future operational assessment development; advancement depends on resolving selectivity identification, retrospective bias, posterior mixing, and completing formal review |
+
+The accepted ADMB model continues to provide management advice during this
+evaluation. The near-term review question is therefore how the three analyses
+inform future development priorities, with particular attention to whether the
+remaining Rceattle diagnostics can be satisfactorily resolved.
 
 # Initial RTMB Developments
 
