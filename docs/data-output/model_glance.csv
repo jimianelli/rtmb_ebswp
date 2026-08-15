@@ -1,0 +1,4 @@
+"engine","model","objective_type","marginal_nll","joint_nll","npar_fixed","npar_random","max_gradient","convergence","converged","hessian_positive_definite","terminal_ssb","runtime_secs"
+"custom RTMB","base coefficients","joint",NA,7943.09816961014,1340,0,0.00150280161083115,0,FALSE,NA,3261.60769632189,3.14809799194336
+"Rceattle","nonparametric_pm","joint",NA,713.676498739957,1218,0,4.39956389776119e-05,NA,TRUE,TRUE,5716.41419047769,3.45106101036072
+"SPoRC","family_sporc","joint",NA,1547.85147335999,1207,0,2.26794372374658e-10,1,FALSE,TRUE,3275.07579240563,NA

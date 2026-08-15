@@ -1,0 +1,373 @@
+scenario,year,quantity,value
+Current tinyVAST BTS ages,1964,spawning_biomass,528.691
+Current tinyVAST BTS ages,1964,recruitment_age1,6339.69
+Current tinyVAST BTS ages,1964,predicted_catch,175.408
+Current tinyVAST BTS ages,1965,spawning_biomass,620.079
+Current tinyVAST BTS ages,1965,recruitment_age1,20900.4
+Current tinyVAST BTS ages,1965,predicted_catch,231.406
+Current tinyVAST BTS ages,1966,spawning_biomass,716.454
+Current tinyVAST BTS ages,1966,recruitment_age1,15002.2
+Current tinyVAST BTS ages,1966,predicted_catch,262.924
+Current tinyVAST BTS ages,1967,spawning_biomass,900.525
+Current tinyVAST BTS ages,1967,recruitment_age1,25470.6
+Current tinyVAST BTS ages,1967,predicted_catch,551.645
+Current tinyVAST BTS ages,1968,spawning_biomass,1117.09
+Current tinyVAST BTS ages,1968,recruitment_age1,22080.7
+Current tinyVAST BTS ages,1968,predicted_catch,704.125
+Current tinyVAST BTS ages,1969,spawning_biomass,1310.99
+Current tinyVAST BTS ages,1969,recruitment_age1,26127.5
+Current tinyVAST BTS ages,1969,predicted_catch,865.488
+Current tinyVAST BTS ages,1970,spawning_biomass,1584.82
+Current tinyVAST BTS ages,1970,recruitment_age1,23489
+Current tinyVAST BTS ages,1970,predicted_catch,1256.22
+Current tinyVAST BTS ages,1971,spawning_biomass,1680.6
+Current tinyVAST BTS ages,1971,recruitment_age1,14393.4
+Current tinyVAST BTS ages,1971,predicted_catch,1733.56
+Current tinyVAST BTS ages,1972,spawning_biomass,1634.35
+Current tinyVAST BTS ages,1972,recruitment_age1,11740.2
+Current tinyVAST BTS ages,1972,predicted_catch,1862.18
+Current tinyVAST BTS ages,1973,spawning_biomass,1393.01
+Current tinyVAST BTS ages,1973,recruitment_age1,26789
+Current tinyVAST BTS ages,1973,predicted_catch,1749.3
+Current tinyVAST BTS ages,1974,spawning_biomass,1184.3
+Current tinyVAST BTS ages,1974,recruitment_age1,19424.1
+Current tinyVAST BTS ages,1974,predicted_catch,1584.85
+Current tinyVAST BTS ages,1975,spawning_biomass,957.173
+Current tinyVAST BTS ages,1975,recruitment_age1,16489.2
+Current tinyVAST BTS ages,1975,predicted_catch,1354.32
+Current tinyVAST BTS ages,1976,spawning_biomass,1095.34
+Current tinyVAST BTS ages,1976,recruitment_age1,12675.9
+Current tinyVAST BTS ages,1976,predicted_catch,1177.12
+Current tinyVAST BTS ages,1977,spawning_biomass,1000.83
+Current tinyVAST BTS ages,1977,recruitment_age1,13374.4
+Current tinyVAST BTS ages,1977,predicted_catch,978.215
+Current tinyVAST BTS ages,1978,spawning_biomass,965.471
+Current tinyVAST BTS ages,1978,recruitment_age1,24497.1
+Current tinyVAST BTS ages,1978,predicted_catch,979.028
+Current tinyVAST BTS ages,1979,spawning_biomass,995.138
+Current tinyVAST BTS ages,1979,recruitment_age1,57289.8
+Current tinyVAST BTS ages,1979,predicted_catch,935.752
+Current tinyVAST BTS ages,1980,spawning_biomass,1055.88
+Current tinyVAST BTS ages,1980,recruitment_age1,27234.8
+Current tinyVAST BTS ages,1980,predicted_catch,959.87
+Current tinyVAST BTS ages,1981,spawning_biomass,1515.51
+Current tinyVAST BTS ages,1981,recruitment_age1,31968.9
+Current tinyVAST BTS ages,1981,predicted_catch,975.915
+Current tinyVAST BTS ages,1982,spawning_biomass,2459.56
+Current tinyVAST BTS ages,1982,recruitment_age1,18306.8
+Current tinyVAST BTS ages,1982,predicted_catch,952.986
+Current tinyVAST BTS ages,1983,spawning_biomass,2933.68
+Current tinyVAST BTS ages,1983,recruitment_age1,50815.7
+Current tinyVAST BTS ages,1983,predicted_catch,975.402
+Current tinyVAST BTS ages,1984,spawning_biomass,3356.35
+Current tinyVAST BTS ages,1984,recruitment_age1,13957.1
+Current tinyVAST BTS ages,1984,predicted_catch,1086.22
+Current tinyVAST BTS ages,1985,spawning_biomass,3426.27
+Current tinyVAST BTS ages,1985,recruitment_age1,32282.3
+Current tinyVAST BTS ages,1985,predicted_catch,1130.42
+Current tinyVAST BTS ages,1986,spawning_biomass,3579.06
+Current tinyVAST BTS ages,1986,recruitment_age1,12530.6
+Current tinyVAST BTS ages,1986,predicted_catch,1130.85
+Current tinyVAST BTS ages,1987,spawning_biomass,3568
+Current tinyVAST BTS ages,1987,recruitment_age1,7107.1
+Current tinyVAST BTS ages,1987,predicted_catch,853.572
+Current tinyVAST BTS ages,1988,spawning_biomass,3458.03
+Current tinyVAST BTS ages,1988,recruitment_age1,5479.99
+Current tinyVAST BTS ages,1988,predicted_catch,1214.27
+Current tinyVAST BTS ages,1989,spawning_biomass,3281.91
+Current tinyVAST BTS ages,1989,recruitment_age1,11434.2
+Current tinyVAST BTS ages,1989,predicted_catch,1214.49
+Current tinyVAST BTS ages,1990,spawning_biomass,2813.29
+Current tinyVAST BTS ages,1990,recruitment_age1,49463.3
+Current tinyVAST BTS ages,1990,predicted_catch,1433.03
+Current tinyVAST BTS ages,1991,spawning_biomass,2051.28
+Current tinyVAST BTS ages,1991,recruitment_age1,26438.7
+Current tinyVAST BTS ages,1991,predicted_catch,1178.55
+Current tinyVAST BTS ages,1992,spawning_biomass,2252.06
+Current tinyVAST BTS ages,1992,recruitment_age1,22694.4
+Current tinyVAST BTS ages,1992,predicted_catch,1384.07
+Current tinyVAST BTS ages,1993,spawning_biomass,2761.22
+Current tinyVAST BTS ages,1993,recruitment_age1,44599.3
+Current tinyVAST BTS ages,1993,predicted_catch,1334.03
+Current tinyVAST BTS ages,1994,spawning_biomass,2992.32
+Current tinyVAST BTS ages,1994,recruitment_age1,15125.5
+Current tinyVAST BTS ages,1994,predicted_catch,1338.38
+Current tinyVAST BTS ages,1995,spawning_biomass,3080.45
+Current tinyVAST BTS ages,1995,recruitment_age1,10599.7
+Current tinyVAST BTS ages,1995,predicted_catch,1278.09
+Current tinyVAST BTS ages,1996,spawning_biomass,3326.63
+Current tinyVAST BTS ages,1996,recruitment_age1,21976.8
+Current tinyVAST BTS ages,1996,predicted_catch,1210.49
+Current tinyVAST BTS ages,1997,spawning_biomass,2910.87
+Current tinyVAST BTS ages,1997,recruitment_age1,29709.7
+Current tinyVAST BTS ages,1997,predicted_catch,1128.74
+Current tinyVAST BTS ages,1998,spawning_biomass,2839.01
+Current tinyVAST BTS ages,1998,recruitment_age1,14593.4
+Current tinyVAST BTS ages,1998,predicted_catch,1089.84
+Current tinyVAST BTS ages,1999,spawning_biomass,2726.94
+Current tinyVAST BTS ages,1999,recruitment_age1,15727.7
+Current tinyVAST BTS ages,1999,predicted_catch,976.904
+Current tinyVAST BTS ages,2000,spawning_biomass,2973.11
+Current tinyVAST BTS ages,2000,recruitment_age1,24312.7
+Current tinyVAST BTS ages,2000,predicted_catch,1122.24
+Current tinyVAST BTS ages,2001,spawning_biomass,2782.38
+Current tinyVAST BTS ages,2001,recruitment_age1,34314.9
+Current tinyVAST BTS ages,2001,predicted_catch,1387.64
+Current tinyVAST BTS ages,2002,spawning_biomass,2577.67
+Current tinyVAST BTS ages,2002,recruitment_age1,22753.4
+Current tinyVAST BTS ages,2002,predicted_catch,1487.31
+Current tinyVAST BTS ages,2003,spawning_biomass,2754.49
+Current tinyVAST BTS ages,2003,recruitment_age1,14122.2
+Current tinyVAST BTS ages,2003,predicted_catch,1496.59
+Current tinyVAST BTS ages,2004,spawning_biomass,2606.73
+Current tinyVAST BTS ages,2004,recruitment_age1,6354.71
+Current tinyVAST BTS ages,2004,predicted_catch,1488.64
+Current tinyVAST BTS ages,2005,spawning_biomass,2714.19
+Current tinyVAST BTS ages,2005,recruitment_age1,4485.3
+Current tinyVAST BTS ages,2005,predicted_catch,1498.89
+Current tinyVAST BTS ages,2006,spawning_biomass,2514.36
+Current tinyVAST BTS ages,2006,recruitment_age1,11264.3
+Current tinyVAST BTS ages,2006,predicted_catch,1478.16
+Current tinyVAST BTS ages,2007,spawning_biomass,1926.04
+Current tinyVAST BTS ages,2007,recruitment_age1,24402.3
+Current tinyVAST BTS ages,2007,predicted_catch,1319.6
+Current tinyVAST BTS ages,2008,spawning_biomass,1589.94
+Current tinyVAST BTS ages,2008,recruitment_age1,12902.9
+Current tinyVAST BTS ages,2008,predicted_catch,964.759
+Current tinyVAST BTS ages,2009,spawning_biomass,1357.25
+Current tinyVAST BTS ages,2009,recruitment_age1,48121.7
+Current tinyVAST BTS ages,2009,predicted_catch,787.348
+Current tinyVAST BTS ages,2010,spawning_biomass,1528.06
+Current tinyVAST BTS ages,2010,recruitment_age1,22159.3
+Current tinyVAST BTS ages,2010,predicted_catch,788.341
+Current tinyVAST BTS ages,2011,spawning_biomass,1899.26
+Current tinyVAST BTS ages,2011,recruitment_age1,13472.9
+Current tinyVAST BTS ages,2011,predicted_catch,1178.97
+Current tinyVAST BTS ages,2012,spawning_biomass,2471.76
+Current tinyVAST BTS ages,2012,recruitment_age1,11683.1
+Current tinyVAST BTS ages,2012,predicted_catch,1191.97
+Current tinyVAST BTS ages,2013,spawning_biomass,2775.4
+Current tinyVAST BTS ages,2013,recruitment_age1,42247.2
+Current tinyVAST BTS ages,2013,predicted_catch,1243.06
+Current tinyVAST BTS ages,2014,spawning_biomass,2295.55
+Current tinyVAST BTS ages,2014,recruitment_age1,48013.6
+Current tinyVAST BTS ages,2014,predicted_catch,1287.51
+Current tinyVAST BTS ages,2015,spawning_biomass,2188.53
+Current tinyVAST BTS ages,2015,recruitment_age1,20580.5
+Current tinyVAST BTS ages,2015,predicted_catch,1363.04
+Current tinyVAST BTS ages,2016,spawning_biomass,2733.99
+Current tinyVAST BTS ages,2016,recruitment_age1,7495.84
+Current tinyVAST BTS ages,2016,predicted_catch,1422.23
+Current tinyVAST BTS ages,2017,spawning_biomass,3093.62
+Current tinyVAST BTS ages,2017,recruitment_age1,6996.31
+Current tinyVAST BTS ages,2017,predicted_catch,1436
+Current tinyVAST BTS ages,2018,spawning_biomass,3472.12
+Current tinyVAST BTS ages,2018,recruitment_age1,15522.3
+Current tinyVAST BTS ages,2018,predicted_catch,1423.38
+Current tinyVAST BTS ages,2019,spawning_biomass,2644.46
+Current tinyVAST BTS ages,2019,recruitment_age1,70385
+Current tinyVAST BTS ages,2019,predicted_catch,1460.45
+Current tinyVAST BTS ages,2020,spawning_biomass,1975.23
+Current tinyVAST BTS ages,2020,recruitment_age1,24628.2
+Current tinyVAST BTS ages,2020,predicted_catch,1377.78
+Current tinyVAST BTS ages,2021,spawning_biomass,2462.1
+Current tinyVAST BTS ages,2021,recruitment_age1,11975.3
+Current tinyVAST BTS ages,2021,predicted_catch,1378.54
+Current tinyVAST BTS ages,2022,spawning_biomass,2914.86
+Current tinyVAST BTS ages,2022,recruitment_age1,10019.4
+Current tinyVAST BTS ages,2022,predicted_catch,1106.29
+Current tinyVAST BTS ages,2023,spawning_biomass,3584.02
+Current tinyVAST BTS ages,2023,recruitment_age1,12115.3
+Current tinyVAST BTS ages,2023,predicted_catch,1321.48
+Current tinyVAST BTS ages,2024,spawning_biomass,2762.48
+Current tinyVAST BTS ages,2024,recruitment_age1,16261.2
+Current tinyVAST BTS ages,2024,predicted_catch,1315.84
+Current tinyVAST BTS ages,2025,spawning_biomass,2327.79
+Current tinyVAST BTS ages,2025,recruitment_age1,20051
+Current tinyVAST BTS ages,2025,predicted_catch,1342.8
+Prior BTSProp ages for 1982-2024,1964,spawning_biomass,526.09
+Prior BTSProp ages for 1982-2024,1964,recruitment_age1,6326.95
+Prior BTSProp ages for 1982-2024,1964,predicted_catch,175.41
+Prior BTSProp ages for 1982-2024,1965,spawning_biomass,617.015
+Prior BTSProp ages for 1982-2024,1965,recruitment_age1,20867.1
+Prior BTSProp ages for 1982-2024,1965,predicted_catch,231.408
+Prior BTSProp ages for 1982-2024,1966,spawning_biomass,712.99
+Prior BTSProp ages for 1982-2024,1966,recruitment_age1,14986.8
+Prior BTSProp ages for 1982-2024,1966,predicted_catch,262.928
+Prior BTSProp ages for 1982-2024,1967,spawning_biomass,896.684
+Prior BTSProp ages for 1982-2024,1967,recruitment_age1,25459.1
+Prior BTSProp ages for 1982-2024,1967,predicted_catch,551.653
+Prior BTSProp ages for 1982-2024,1968,spawning_biomass,1112.9
+Prior BTSProp ages for 1982-2024,1968,recruitment_age1,22078.9
+Prior BTSProp ages for 1982-2024,1968,predicted_catch,704.134
+Prior BTSProp ages for 1982-2024,1969,spawning_biomass,1306.8
+Prior BTSProp ages for 1982-2024,1969,recruitment_age1,26130.4
+Prior BTSProp ages for 1982-2024,1969,predicted_catch,865.496
+Prior BTSProp ages for 1982-2024,1970,spawning_biomass,1580.66
+Prior BTSProp ages for 1982-2024,1970,recruitment_age1,23490.3
+Prior BTSProp ages for 1982-2024,1970,predicted_catch,1256.22
+Prior BTSProp ages for 1982-2024,1971,spawning_biomass,1676.81
+Prior BTSProp ages for 1982-2024,1971,recruitment_age1,14391.5
+Prior BTSProp ages for 1982-2024,1971,predicted_catch,1733.55
+Prior BTSProp ages for 1982-2024,1972,spawning_biomass,1631.02
+Prior BTSProp ages for 1982-2024,1972,recruitment_age1,11736.9
+Prior BTSProp ages for 1982-2024,1972,predicted_catch,1862.16
+Prior BTSProp ages for 1982-2024,1973,spawning_biomass,1390.08
+Prior BTSProp ages for 1982-2024,1973,recruitment_age1,26785.5
+Prior BTSProp ages for 1982-2024,1973,predicted_catch,1749.27
+Prior BTSProp ages for 1982-2024,1974,spawning_biomass,1181.37
+Prior BTSProp ages for 1982-2024,1974,recruitment_age1,19412.2
+Prior BTSProp ages for 1982-2024,1974,predicted_catch,1584.84
+Prior BTSProp ages for 1982-2024,1975,spawning_biomass,954.635
+Prior BTSProp ages for 1982-2024,1975,recruitment_age1,16470.9
+Prior BTSProp ages for 1982-2024,1975,predicted_catch,1354.31
+Prior BTSProp ages for 1982-2024,1976,spawning_biomass,1092.5
+Prior BTSProp ages for 1982-2024,1976,recruitment_age1,12655.6
+Prior BTSProp ages for 1982-2024,1976,predicted_catch,1177.11
+Prior BTSProp ages for 1982-2024,1977,spawning_biomass,997.922
+Prior BTSProp ages for 1982-2024,1977,recruitment_age1,13334.5
+Prior BTSProp ages for 1982-2024,1977,predicted_catch,978.211
+Prior BTSProp ages for 1982-2024,1978,spawning_biomass,962.204
+Prior BTSProp ages for 1982-2024,1978,recruitment_age1,24422.5
+Prior BTSProp ages for 1982-2024,1978,predicted_catch,979.022
+Prior BTSProp ages for 1982-2024,1979,spawning_biomass,990.835
+Prior BTSProp ages for 1982-2024,1979,recruitment_age1,56968.5
+Prior BTSProp ages for 1982-2024,1979,predicted_catch,935.749
+Prior BTSProp ages for 1982-2024,1980,spawning_biomass,1050.11
+Prior BTSProp ages for 1982-2024,1980,recruitment_age1,27114.8
+Prior BTSProp ages for 1982-2024,1980,predicted_catch,959.876
+Prior BTSProp ages for 1982-2024,1981,spawning_biomass,1505.85
+Prior BTSProp ages for 1982-2024,1981,recruitment_age1,31708.6
+Prior BTSProp ages for 1982-2024,1981,predicted_catch,975.926
+Prior BTSProp ages for 1982-2024,1982,spawning_biomass,2442.8
+Prior BTSProp ages for 1982-2024,1982,recruitment_age1,18128
+Prior BTSProp ages for 1982-2024,1982,predicted_catch,952.984
+Prior BTSProp ages for 1982-2024,1983,spawning_biomass,2911.55
+Prior BTSProp ages for 1982-2024,1983,recruitment_age1,50704.9
+Prior BTSProp ages for 1982-2024,1983,predicted_catch,975.396
+Prior BTSProp ages for 1982-2024,1984,spawning_biomass,3327.64
+Prior BTSProp ages for 1982-2024,1984,recruitment_age1,13898.5
+Prior BTSProp ages for 1982-2024,1984,predicted_catch,1086.19
+Prior BTSProp ages for 1982-2024,1985,spawning_biomass,3396.35
+Prior BTSProp ages for 1982-2024,1985,recruitment_age1,32343.1
+Prior BTSProp ages for 1982-2024,1985,predicted_catch,1130.33
+Prior BTSProp ages for 1982-2024,1986,spawning_biomass,3549.25
+Prior BTSProp ages for 1982-2024,1986,recruitment_age1,12511.8
+Prior BTSProp ages for 1982-2024,1986,predicted_catch,1130.69
+Prior BTSProp ages for 1982-2024,1987,spawning_biomass,3541.69
+Prior BTSProp ages for 1982-2024,1987,recruitment_age1,7086.68
+Prior BTSProp ages for 1982-2024,1987,predicted_catch,853.472
+Prior BTSProp ages for 1982-2024,1988,spawning_biomass,3435.82
+Prior BTSProp ages for 1982-2024,1988,recruitment_age1,5446.18
+Prior BTSProp ages for 1982-2024,1988,predicted_catch,1214.03
+Prior BTSProp ages for 1982-2024,1989,spawning_biomass,3262.28
+Prior BTSProp ages for 1982-2024,1989,recruitment_age1,11398
+Prior BTSProp ages for 1982-2024,1989,predicted_catch,1214.15
+Prior BTSProp ages for 1982-2024,1990,spawning_biomass,2795.45
+Prior BTSProp ages for 1982-2024,1990,recruitment_age1,49459
+Prior BTSProp ages for 1982-2024,1990,predicted_catch,1432.46
+Prior BTSProp ages for 1982-2024,1991,spawning_biomass,2036.05
+Prior BTSProp ages for 1982-2024,1991,recruitment_age1,26386.5
+Prior BTSProp ages for 1982-2024,1991,predicted_catch,1177.96
+Prior BTSProp ages for 1982-2024,1992,spawning_biomass,2237.82
+Prior BTSProp ages for 1982-2024,1992,recruitment_age1,22615.9
+Prior BTSProp ages for 1982-2024,1992,predicted_catch,1383.75
+Prior BTSProp ages for 1982-2024,1993,spawning_biomass,2748.38
+Prior BTSProp ages for 1982-2024,1993,recruitment_age1,44589.4
+Prior BTSProp ages for 1982-2024,1993,predicted_catch,1334.21
+Prior BTSProp ages for 1982-2024,1994,spawning_biomass,2980.01
+Prior BTSProp ages for 1982-2024,1994,recruitment_age1,15144.3
+Prior BTSProp ages for 1982-2024,1994,predicted_catch,1338.4
+Prior BTSProp ages for 1982-2024,1995,spawning_biomass,3069.07
+Prior BTSProp ages for 1982-2024,1995,recruitment_age1,10593.6
+Prior BTSProp ages for 1982-2024,1995,predicted_catch,1278.16
+Prior BTSProp ages for 1982-2024,1996,spawning_biomass,3316.42
+Prior BTSProp ages for 1982-2024,1996,recruitment_age1,21981.2
+Prior BTSProp ages for 1982-2024,1996,predicted_catch,1210.63
+Prior BTSProp ages for 1982-2024,1997,spawning_biomass,2902.84
+Prior BTSProp ages for 1982-2024,1997,recruitment_age1,29711.5
+Prior BTSProp ages for 1982-2024,1997,predicted_catch,1128.7
+Prior BTSProp ages for 1982-2024,1998,spawning_biomass,2832.3
+Prior BTSProp ages for 1982-2024,1998,recruitment_age1,14528.1
+Prior BTSProp ages for 1982-2024,1998,predicted_catch,1089.91
+Prior BTSProp ages for 1982-2024,1999,spawning_biomass,2721.65
+Prior BTSProp ages for 1982-2024,1999,recruitment_age1,15794.6
+Prior BTSProp ages for 1982-2024,1999,predicted_catch,976.768
+Prior BTSProp ages for 1982-2024,2000,spawning_biomass,2968.11
+Prior BTSProp ages for 1982-2024,2000,recruitment_age1,24314.3
+Prior BTSProp ages for 1982-2024,2000,predicted_catch,1122.07
+Prior BTSProp ages for 1982-2024,2001,spawning_biomass,2778.16
+Prior BTSProp ages for 1982-2024,2001,recruitment_age1,34247.7
+Prior BTSProp ages for 1982-2024,2001,predicted_catch,1387.66
+Prior BTSProp ages for 1982-2024,2002,spawning_biomass,2574.72
+Prior BTSProp ages for 1982-2024,2002,recruitment_age1,22741.8
+Prior BTSProp ages for 1982-2024,2002,predicted_catch,1487.16
+Prior BTSProp ages for 1982-2024,2003,spawning_biomass,2751.85
+Prior BTSProp ages for 1982-2024,2003,recruitment_age1,14123
+Prior BTSProp ages for 1982-2024,2003,predicted_catch,1496.49
+Prior BTSProp ages for 1982-2024,2004,spawning_biomass,2603.82
+Prior BTSProp ages for 1982-2024,2004,recruitment_age1,6363.75
+Prior BTSProp ages for 1982-2024,2004,predicted_catch,1488.48
+Prior BTSProp ages for 1982-2024,2005,spawning_biomass,2710.92
+Prior BTSProp ages for 1982-2024,2005,recruitment_age1,4486.42
+Prior BTSProp ages for 1982-2024,2005,predicted_catch,1499.22
+Prior BTSProp ages for 1982-2024,2006,spawning_biomass,2511.07
+Prior BTSProp ages for 1982-2024,2006,recruitment_age1,11260.9
+Prior BTSProp ages for 1982-2024,2006,predicted_catch,1478.24
+Prior BTSProp ages for 1982-2024,2007,spawning_biomass,1923.25
+Prior BTSProp ages for 1982-2024,2007,recruitment_age1,24391.2
+Prior BTSProp ages for 1982-2024,2007,predicted_catch,1319.36
+Prior BTSProp ages for 1982-2024,2008,spawning_biomass,1587.73
+Prior BTSProp ages for 1982-2024,2008,recruitment_age1,12894.6
+Prior BTSProp ages for 1982-2024,2008,predicted_catch,964.282
+Prior BTSProp ages for 1982-2024,2009,spawning_biomass,1355.57
+Prior BTSProp ages for 1982-2024,2009,recruitment_age1,48094.6
+Prior BTSProp ages for 1982-2024,2009,predicted_catch,787.06
+Prior BTSProp ages for 1982-2024,2010,spawning_biomass,1526.49
+Prior BTSProp ages for 1982-2024,2010,recruitment_age1,22141.6
+Prior BTSProp ages for 1982-2024,2010,predicted_catch,788.368
+Prior BTSProp ages for 1982-2024,2011,spawning_biomass,1897.36
+Prior BTSProp ages for 1982-2024,2011,recruitment_age1,13445.4
+Prior BTSProp ages for 1982-2024,2011,predicted_catch,1179.48
+Prior BTSProp ages for 1982-2024,2012,spawning_biomass,2469.17
+Prior BTSProp ages for 1982-2024,2012,recruitment_age1,11642.6
+Prior BTSProp ages for 1982-2024,2012,predicted_catch,1192.23
+Prior BTSProp ages for 1982-2024,2013,spawning_biomass,2772.06
+Prior BTSProp ages for 1982-2024,2013,recruitment_age1,42159.4
+Prior BTSProp ages for 1982-2024,2013,predicted_catch,1243.07
+Prior BTSProp ages for 1982-2024,2014,spawning_biomass,2291.81
+Prior BTSProp ages for 1982-2024,2014,recruitment_age1,47963.7
+Prior BTSProp ages for 1982-2024,2014,predicted_catch,1287.48
+Prior BTSProp ages for 1982-2024,2015,spawning_biomass,2183.72
+Prior BTSProp ages for 1982-2024,2015,recruitment_age1,20546.1
+Prior BTSProp ages for 1982-2024,2015,predicted_catch,1363.21
+Prior BTSProp ages for 1982-2024,2016,spawning_biomass,2727.33
+Prior BTSProp ages for 1982-2024,2016,recruitment_age1,7515.51
+Prior BTSProp ages for 1982-2024,2016,predicted_catch,1422.78
+Prior BTSProp ages for 1982-2024,2017,spawning_biomass,3085.69
+Prior BTSProp ages for 1982-2024,2017,recruitment_age1,7009.26
+Prior BTSProp ages for 1982-2024,2017,predicted_catch,1436.59
+Prior BTSProp ages for 1982-2024,2018,spawning_biomass,3463.04
+Prior BTSProp ages for 1982-2024,2018,recruitment_age1,15540.4
+Prior BTSProp ages for 1982-2024,2018,predicted_catch,1423.82
+Prior BTSProp ages for 1982-2024,2019,spawning_biomass,2636.95
+Prior BTSProp ages for 1982-2024,2019,recruitment_age1,70738
+Prior BTSProp ages for 1982-2024,2019,predicted_catch,1461.04
+Prior BTSProp ages for 1982-2024,2020,spawning_biomass,1969.52
+Prior BTSProp ages for 1982-2024,2020,recruitment_age1,24676.2
+Prior BTSProp ages for 1982-2024,2020,predicted_catch,1378.19
+Prior BTSProp ages for 1982-2024,2021,spawning_biomass,2461.87
+Prior BTSProp ages for 1982-2024,2021,recruitment_age1,12010.5
+Prior BTSProp ages for 1982-2024,2021,predicted_catch,1378.99
+Prior BTSProp ages for 1982-2024,2022,spawning_biomass,2920.45
+Prior BTSProp ages for 1982-2024,2022,recruitment_age1,9997.35
+Prior BTSProp ages for 1982-2024,2022,predicted_catch,1106.58
+Prior BTSProp ages for 1982-2024,2023,spawning_biomass,3595.1
+Prior BTSProp ages for 1982-2024,2023,recruitment_age1,12177.6
+Prior BTSProp ages for 1982-2024,2023,predicted_catch,1321.65
+Prior BTSProp ages for 1982-2024,2024,spawning_biomass,2772.65
+Prior BTSProp ages for 1982-2024,2024,recruitment_age1,15658.2
+Prior BTSProp ages for 1982-2024,2024,predicted_catch,1315.56
+Prior BTSProp ages for 1982-2024,2025,spawning_biomass,2337.49
+Prior BTSProp ages for 1982-2024,2025,recruitment_age1,20463.4
+Prior BTSProp ages for 1982-2024,2025,predicted_catch,1342.58

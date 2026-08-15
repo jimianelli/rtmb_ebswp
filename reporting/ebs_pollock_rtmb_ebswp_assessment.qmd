@@ -1,7 +1,32 @@
 ---
-title: "EBS Pollock RTMB Implementation"
+title: "Developments of the RTMB version of the ADMB pollock model"
+subtitle: 'Working paper on the corrected full-age 2024 "PM" model bridge and subsequent RTMB developments'
+author:
+  - name: James Ianelli
+    corresponding: true
+    orcid: 0000-0002-7170-8677
+    email: jim.ianelli@noaa.gov
+    affiliation:
+      - name: Alaska Fisheries Science Center
+        city: Seattle
+        state: WA
+date: today
+date-format: "MMMM D, YYYY"
+lang: en-US
+bibliography: ../references/software.bib
+link-citations: true
+abstract: |
+  The eastern Bering Sea walleye pollock assessment has long used a custom
+  AD Model Builder (ADMB) model. This working paper documents its translation
+  to R Template Model Builder (RTMB), the fixed-parameter bridge used to test
+  implementation equivalence, and subsequent developments made possible by
+  the RTMB framework. The report brings the bridge, model fits, fishery and
+  survey selectivity work, projections, retrospective analysis, and
+  SparseNUTS diagnostics into one reproducible account. The accepted ADMB
+  model remains the management reference; the RTMB results presented here
+  support implementation testing and evaluation of candidate refinements.
 execute:
-  echo: true
+  echo: false
   warning: false
   message: false
 format:
@@ -14,13 +39,25 @@ format:
     code-fold: true
     code-summary: "Show code"
     code-tools: true
+    code-copy: true
+    smooth-scroll: true
+    link-external-newwindow: true
+    fig-responsive: true
+    theme:
+      light: cosmo
+      dark: darkly
 params:
-  model_file: "analysis/output/base.rds"
-  only_bts_file: "analysis/output/only_bts.rds"
-  retro_file: "analysis/output/retro_9_peel.rds"
-  sparsenuts_file: "analysis/output/sparsenuts/rtmb_ebswp_sparsenuts_default.rds"
-  projection_dir: "analysis/output/spmR_projection"
-  projection_alt2_dir: "analysis/output/spmR_projection_alt2_fixed1300"
+  bridge_case: "corrected_full_age_bts"
+  admb_run_dir: "analysis/output/corrected_full_age_bts/admb_root/runs/full_age_bts"
+  bts_comp_normalization: "full_ages"
+  model_file: "analysis/output/corrected_full_age_bts/rtmb_base.rds"
+  legacy_model_file: "analysis/output/base.rds"
+  only_bts_file: "analysis/output/corrected_full_age_bts/only_bts.rds"
+  retro_file: "analysis/output/corrected_full_age_bts/retro_9_peel.rds"
+  osa_output_file: "analysis/output/corrected_full_age_bts/osa/rtmb_ebswp_osa_residuals.rds"
+  sparsenuts_file: "analysis/output/sparsenuts/fishery_sel_forms/rtmb_ebswp_sparsenuts_form_2_sparse_adapt095.rds"
+  projection_dir: "analysis/output/corrected_full_age_bts/spmR_projection"
+  projection_alt2_dir: "analysis/output/corrected_full_age_bts/spmR_projection_alt2_fixed1300"
   refit: false
   run_sparsenuts: false
   force_sparsenuts: false
@@ -44,12 +81,17 @@ theme_set(ggthemes::theme_few())
 
 if (!exists("params", inherits = FALSE)) {
   params <- list(
-    model_file = "analysis/output/base.rds",
-    only_bts_file = "analysis/output/only_bts.rds",
-    retro_file = "analysis/output/retro_9_peel.rds",
-    sparsenuts_file = "analysis/output/sparsenuts/rtmb_ebswp_sparsenuts_default.rds",
-    projection_dir = "analysis/output/spmR_projection",
-    projection_alt2_dir = "analysis/output/spmR_projection_alt2_fixed1300",
+    bridge_case = "corrected_full_age_bts",
+    admb_run_dir = "analysis/output/corrected_full_age_bts/admb_root/runs/full_age_bts",
+    bts_comp_normalization = "full_ages",
+    model_file = "analysis/output/corrected_full_age_bts/rtmb_base.rds",
+    legacy_model_file = "analysis/output/base.rds",
+    only_bts_file = "analysis/output/corrected_full_age_bts/only_bts.rds",
+    retro_file = "analysis/output/corrected_full_age_bts/retro_9_peel.rds",
+    osa_output_file = "analysis/output/corrected_full_age_bts/osa/rtmb_ebswp_osa_residuals.rds",
+    sparsenuts_file = "analysis/output/sparsenuts/fishery_sel_forms/rtmb_ebswp_sparsenuts_form_2_sparse_adapt095.rds",
+    projection_dir = "analysis/output/corrected_full_age_bts/spmR_projection",
+    projection_alt2_dir = "analysis/output/corrected_full_age_bts/spmR_projection_alt2_fixed1300",
     run_sparsenuts = FALSE,
     force_sparsenuts = FALSE,
     refit = FALSE
@@ -127,14 +169,22 @@ display_path <- function(path) {
 }
 
 model_file <- rtmb_file(params$model_file)
-only_bts_file <- rtmb_file(params$only_bts_file %||% "analysis/output/only_bts.rds")
-retro_file <- rtmb_file(params$retro_file %||% "analysis/output/retro_9_peel.rds")
+legacy_model_file <- rtmb_file(params$legacy_model_file %||% "analysis/output/base.rds")
+only_bts_file <- rtmb_file(params$only_bts_file %||% "analysis/output/corrected_full_age_bts/only_bts.rds")
+retro_file <- rtmb_file(params$retro_file %||% "analysis/output/corrected_full_age_bts/retro_9_peel.rds")
+osa_output_file <- rtmb_file(params$osa_output_file %||% "analysis/output/corrected_full_age_bts/osa/rtmb_ebswp_osa_residuals.rds")
 sparsenuts_file <- rtmb_file(params$sparsenuts_file)
-projection_dir <- rtmb_file(params$projection_dir %||% "analysis/output/spmR_projection")
-projection_alt2_dir <- rtmb_file(params$projection_alt2_dir %||% "analysis/output/spmR_projection_alt2_fixed1300")
+projection_dir <- rtmb_file(params$projection_dir %||% "analysis/output/corrected_full_age_bts/spmR_projection")
+projection_alt2_dir <- rtmb_file(params$projection_alt2_dir %||% "analysis/output/corrected_full_age_bts/spmR_projection_alt2_fixed1300")
 if (!file.exists(model_file)) {
   stop("Missing saved RTMB output at: ", model_file, "\nRun: Rscript R/write_output.R")
 }
+
+Sys.setenv(
+  EBSWP_BRIDGE_CASE = params$bridge_case,
+  EBSWP_ADMB_RUN_DIR = rtmb_file(params$admb_run_dir),
+  EBSWP_BTS_COMP_NORMALIZATION = params$bts_comp_normalization
+)
 
 rtmb_env <- new.env(parent = globalenv())
 rtmb_env$rm <- function(...) invisible(NULL)
@@ -174,6 +224,8 @@ if (isTRUE(params$refit)) {
   rtmb_report <- saved$report
   rtmb_metadata <- saved$metadata
 }
+legacy_saved <- if (file.exists(legacy_model_file)) readRDS(legacy_model_file) else NULL
+legacy_report <- legacy_saved$report %||% NULL
 rtmb_bridge_comparison <- if (exists("saved") && !is.null(saved$bridge_comparison)) {
   as_tibble(saved$bridge_comparison)
 } else {
@@ -356,8 +408,7 @@ plot_osa_aggregate_panel <- function(residual_data, aggregate_data, osa_output =
 }
 
 osa_helper_file <- pollock_file("R", "plot_osa_comps.R")
-osa_output_file <- rtmb_file("analysis", "output", "osa", "rtmb_ebswp_osa_residuals.rds")
-osa_plot_file <- rtmb_file("analysis", "output", "osa", "osa_age_diagnostics.png")
+osa_plot_file <- file.path(dirname(osa_output_file), "osa_age_diagnostics.png")
 osa_env <- new.env(parent = globalenv())
 osa_helper_loaded <- FALSE
 osa_res_multi_loaded <- FALSE
@@ -394,7 +445,7 @@ osa_helper_ready <- osa_helper_loaded &&
 osa_residual_method <- if (isTRUE(osa_precomputed_available)) {
   paste0(
     "afscOSA ", osa_output$afscOSA_version %||% "version not recorded",
-    " output generated from the accepted RTMB base model"
+    " output generated from the corrected full-age BTS RTMB bridge"
   )
 } else if (isTRUE(osa_helper_ready)) {
   "R/plot_osa_comps.R with afscOSA::resMulti"
@@ -496,15 +547,54 @@ plot_osa_comps_for_fleet <- function(fleet_name) {
 }
 ```
 
-# Overview
+# Executive Summary
+
+The custom ADMB pollock model has been translated into RTMB and tested at the
+same parameter point as a corrected ADMB bridge run. The corrected case
+normalizes observed and predicted bottom trawl survey (BTS) age compositions
+across ages 1--15 and applies the nominal integer sample sizes. The
+fixed-parameter comparison separates code translation from optimization and
+later model development. The saved corrected RTMB bridge supplies a common
+starting point for model-fit summaries, projections, retrospective peels, and
+sensitivities in this report.
+
+The principal developments are:
+
+- an R implementation of the ADMB population dynamics and likelihood;
+- explicit object-by-object and likelihood-component bridge checks;
+- selectable fishery-selectivity forms, including hierarchical
+  time-varying and two-dimensional autoregressive alternatives;
+- RTMB-based retrospective and uncertainty workflows;
+- a reproducible lineage from the ADMB bridge files to saved RTMB results and
+  downstream analyses.
+
+The corrected fixed-parameter bridge supports implementation equivalence for
+the tested configuration. The historical bridge remains in the repository as
+an explicit comparator. Alternative selectivity forms and diagnostic analyses
+remain development products, while the accepted ADMB model remains the
+management reference.
+
+# Purpose and Scope
 
 This document summarizes the RTMB implementation of the EBS pollock ADMB bridge model in this standalone source repository. It follows the same assessment-reporting framework used by the FIMS, SPoRC, and Rceattle implementation documents, but reads the RTMB report object written by `Rscript R/write_output.R`.
 
-The current RTMB implementation should be interpreted as an ADMB-port bridge rather than a self-contained assessment package. It uses the dedicated ADMB bridge run in `admb/runs/for_rtmb/` for initialization and comparison. By default, this report reads the saved RTMB output at `analysis/output/base.rds`, which was created from the ADMB bridge `pm.rep` and `pm.par` files.
+The current RTMB implementation is an ADMB-port bridge within a development
+workflow. It uses the corrected staged run in
+`analysis/output/corrected_full_age_bts/admb_root/runs/full_age_bts/` for
+initialization and comparison. This report reads the corrected RTMB output at
+`analysis/output/corrected_full_age_bts/rtmb_base.rds`. The historical
+`analysis/output/base.rds` provides a direct audit of the sample-size and
+composition-normalization change.
 
-# Data Inputs
+# Initial RTMB Developments
 
-The RTMB input series include annual fishery catch, fishery age compositions, BTS and ATS age compositions, BTS and ATS survey biomass or abundance indices, acoustic vessels of opportunity, and fishery CPUE. The input data and bridge ADMB output are resolved through `R/config.R` using the external pollock workspace supplied by `POLLOCK_ROOT`.
+## Data Inputs
+
+The RTMB input series include annual fishery catch, fishery age compositions,
+BTS and ATS age compositions, the BTS biomass index, the ATS survey index,
+acoustic vessels of opportunity, and fishery CPUE. The input data and bridge
+ADMB output are resolved through `R/config.R` using the external pollock
+workspace supplied by `POLLOCK_ROOT`.
 
 ```{r}
 #| label: tbl-input-summary
@@ -535,6 +625,35 @@ summary_tbl <- tibble(
 summary_tbl |>
   gt_report() |>
   tab_header(title = "RTMB-ADMB Input Summary")
+```
+
+The corrected bridge applies one coherent BTS composition likelihood. Observed
+proportions and multinomial predictions each span ages 1--15 and sum to one.
+Age-1 selectivity retains its dedicated parameterization, while the ages 2--15
+curve retains its existing form. The likelihood uses the nominal sample sizes
+recorded by `pm.tpl`, with integer truncation preserved because the ADMB data
+object stores those sample sizes as integers. Separately, the BTS total-numbers
+quantity used to scale the age composition continues to represent ages 2--15.
+This quantity is not the fitted BTS survey index, which is defined in biomass.
+
+```{r}
+#| label: tbl-corrected-bts-treatment
+#| tbl-cap: "BTS age-composition treatment in the corrected ADMB and RTMB bridge. Observed and predicted compositions cover ages 1--15; the total-numbers quantity used for composition scaling retains its ages 2--15 definition."
+tibble(
+  component = c(
+    "Observed composition ages", "Predicted composition ages",
+    "Maximum observed row-sum error", "Maximum predicted row-sum error",
+    "Sample-size treatment", "BTS total-numbers ages"
+  ),
+  corrected_treatment = c(
+    "1--15", "1--15",
+    format(max(abs(rowSums(data$oac_bts) - 1)), scientific = TRUE, digits = 3),
+    format(max(abs(rowSums(rtmb_report$phat_bts) - 1)), scientific = TRUE, digits = 3),
+    "Nominal integer values from pm.tpl", "2--15"
+  )
+) |>
+  gt_report() |>
+  tab_header(title = "Corrected BTS Composition Definition")
 ```
 
 ```{r}
@@ -581,9 +700,9 @@ bridge_files |>
   tab_header(title = "ADMB Bridge Files")
 ```
 
-# Model Implementation
+## Model Implementation
 
-## Structure
+### Structure
 
 - **Population**: single EBS pollock stock.
 - **Model engine**: RTMB with the negative log-likelihood written in R.
@@ -594,7 +713,42 @@ bridge_files |>
 - **Natural mortality**: age-specific input vector from the ADMB bridge data.
 - **Selectivity**: fishery, BTS, and ATS selectivity blocks ported from the ADMB bridge configuration.
 
-## BTS Selectivity Variation and Penalties
+### Model assumptions
+
+```{r}
+#| label: tbl-model-assumptions
+#| tbl-cap: "Key model assumptions and fixed settings in the current RTMB-ADMB implementation."
+assumptions_tbl <- tibble(
+  topic = c(
+    "Bridge source",
+    "Template",
+    "Natural mortality",
+    "BTS start year",
+    "ATS start year",
+    "Recruitment age",
+    "Age-1 ATS index",
+    "BTS biology likelihood",
+    "ATS biology likelihood"
+  ),
+  setting = c(
+    "ADMB bridge run in admb/runs/for_rtmb",
+    "Physical bridge pm.tpl copy that intentionally differs from admb/source/pm.tpl",
+    paste(round(data$natmort, 4), collapse = ", "),
+    as.character(data$styr_bts),
+    as.character(data$styr_ats),
+    as.character(data$recage),
+    as.character(data$use_age1_ats),
+    as.character(data$do_bts_bio),
+    as.character(data$do_ats_bio)
+  )
+)
+
+assumptions_tbl |>
+  gt_report() |>
+  tab_header(title = "RTMB-ADMB Model Assumptions")
+```
+
+### BTS Selectivity Variation and Penalties
 
 The bottom trawl survey (BTS) selectivity in the RTMB bridge is represented as a time-varying logistic curve for ages 2 and older, with a separate age-1 term. For BTS year \(t\) and model age \(a\), the code uses the age midpoint \(x_a = a + 0.5\) and computes
 
@@ -615,7 +769,7 @@ where $\eta_t$ is `sel_age_one_bts_dev`.
 
 The current RTMB call treats `sel_slp_bts_dev`, `sel_a50_bts_dev`, and `sel_age_one_bts_dev` as estimated annual vectors. The base logistic BTS terms `sel_slp_bts`, `sel_a50_bts`, `sel_age_one_bts`, and `sel_devs_bts` are fixed in `R/config.R`; the time variation is carried by the annual deviation vectors above.
 
-The regularization is applied to the implied annual log-selectivity curves, not directly to $\alpha_t$ or $\gamma_t$. In `selectivity_like_bts()`, an extended matrix $\tilde{\ell}_{t,a}$ is formed by prepending a zero row for the year before the BTS time series. Let $\Delta_t z_t = z_t - z_{t-1}$. The BTS time-variation penalty for ages $a = q_{\min}, \ldots, q_{\max}-1$ is
+The regularization targets the implied annual log-selectivity curves instead of $\alpha_t$ or $\gamma_t$ directly. In `selectivity_like_bts()`, an extended matrix $\tilde{\ell}_{t,a}$ is formed by prepending a zero row for the year before the BTS time series. Let $\Delta_t z_t = z_t - z_{t-1}$. The BTS time-variation penalty for ages $a = q_{\min}, \ldots, q_{\max}-1$ is
 
 $$
 P_{\mathrm{BTS,time}}
@@ -625,7 +779,7 @@ P_{\mathrm{BTS,time}}
 \left(\Delta_t \tilde{\ell}_{t,a}\right)^2,
 $$
 
-where $\lambda_{\mathrm{BTS}}$ is `selVarbts`. In this configuration, `q_amin = 3`, `q_amax` defaults to `nages`, and `nages = 15`, so this penalty applies to ages 3 through 14. Age 2 is not included in this time-smoothness sum, and age 15 is not directly included because the loop stops at `q_amax - 1`.
+where $\lambda_{\mathrm{BTS}}$ is `selVarbts`. In this configuration, `q_amin = 3`, `q_amax` defaults to `nages`, and `nages = 15`, so this penalty applies to ages 3 through 14. Age 2 lies below this time-smoothness range, and age 15 lies above the final loop index of `q_amax - 1`.
 
 The age-1 BTS term has a separate first-difference penalty:
 
@@ -682,7 +836,36 @@ bts_sel_tbl |>
   tab_header(title = "BTS Selectivity Regularization")
 ```
 
-## Run Definitions
+### Fishery Selectivity Specifications
+
+The base bridge retains the assessment's age coefficients and deviations at
+configured change years. Two additional fishery-selectivity forms were
+implemented to evaluate how a more continuous representation of change
+affects fit, biological patterns, and assessment scale. These runs differ in
+fishery selectivity while retaining the common data and likelihood framework.
+
+| Form | Specification | Development status |
+|---|---|---|
+| Base coefficients | Age coefficients with deviations at configured change years; ages 11 and older share the age-11 value | Bridge reference |
+| Time-age varying double logistic | Shared ascending and descending curve with annual random effects at a fixed 20% process CV; the tested formulation evaluates ages through 15 separately | Converged staged development fit |
+| Two-dimensional AR1 | Year-by-age latent field with separable AR1 correlation across years and ages; ages 11 and older share the age-11 value | Sensitivity fit |
+
+The initial double-logistic experiment estimated 183 annual fixed effects and
+failed the convergence criteria. A two-stage hierarchical formulation replaced
+that experiment: stage 1 estimated a shared three-parameter curve, and stage 2
+estimated zero-centered annual random effects using the RTMB Laplace
+approximation. The staged fit passed the optimizer, gradient, positive-Hessian,
+and finite-standard-error checks recorded in the selectivity analysis.
+
+These alternatives should be evaluated using likelihood components,
+age-composition residuals, selectivity surfaces, convergence, and effects on
+spawning biomass. Objective value alone provides an incomplete basis for
+choosing a selectivity specification. The detailed equations, fitted
+comparisons, and implementation references remain available in the companion
+[fishery-selectivity technical appendix](appendix_fishery_selectivity.html),
+generated from `reporting/appendix_fishery_selectivity.qmd`.
+
+### Run Definitions
 
 The current report has one saved RTMB run, `base`, written by `R/write_output.R`. Refitting can be enabled at render time with `params$refit: true`, but the default render reads the saved RTMB report object to avoid rerunning the optimizer.
 
@@ -716,20 +899,28 @@ data$return_nll_only <- 0
 rtmb_result <- rpm(parms)
 saveRDS(
   list(report = rtmb_result$rtmb, metadata = list(model = "rtmb_ebswp")),
-  "analysis/output/base.rds"
+  "analysis/output/corrected_full_age_bts/rtmb_base.rds"
 )
 ```
 
-# Bridging ADMB to RTMB {#sec-admb-rtmb-bridge}
+# ADMB Comparison Results {#sec-admb-rtmb-bridge}
 
-This is the same fixed-parameter bridge demonstrated in the September 2025
-[EBS pollock development report](https://noaa-afsc.github.io/EBS_pollock/doc/Sept_2025.html#bridging-admb-to-rtmb). The modified ADMB model's maximum-likelihood parameter estimates are injected into RTMB, and the two implementations are evaluated at that identical parameter point. This isolates the code translation from optimization behavior or later model alternatives.
+This fixed-parameter comparison follows the bridge method demonstrated in the
+September 2025 [EBS pollock development report](https://noaa-afsc.github.io/EBS_pollock/doc/Sept_2025.html#bridging-admb-to-rtmb).
+The corrected ADMB model's maximum-likelihood parameter estimates are injected
+into RTMB, and both implementations are evaluated at that identical parameter
+point. This isolates code translation from optimization behavior and later
+model alternatives.
 
-The refreshed `base.rds` is the authoritative starting point for every result below. Its configuration label, bridge statistics, and file identity are carried into the projections, retrospectives, and SparseNUTS metadata so those analyses cannot silently use a different selectivity form or an older base run.
+The refreshed corrected artifact is the authoritative starting point for the
+primary results below. Its configuration label, bridge statistics, and file
+identity propagate into the OSA diagnostics, Only-BTS sensitivity,
+retrospectives, and projections. The SparseNUTS appendix retains its separate
+hierarchical Form-2 development lineage and states that distinction explicitly.
 
 ```{r}
 #| label: tbl-bridge-summary
-#| tbl-cap: "Summary of the fixed-parameter ADMB-to-RTMB bridge, recalculated from the September 2025 configuration. The absolute NLL difference is on the negative-log-likelihood scale; the key-output difference is the largest absolute percentage difference among state, prediction, selectivity, composition, and likelihood quantities."
+#| tbl-cap: "Summary of the corrected full-age BTS fixed-parameter ADMB-to-RTMB bridge. The absolute NLL difference is on the negative-log-likelihood scale; the key-output difference is the largest absolute percentage difference among state, prediction, selectivity, composition, and likelihood quantities."
 bridge_metrics <- rtmb_metadata$bridge_metrics
 tibble(
   measure = c(
@@ -749,14 +940,52 @@ tibble(
 ) |>
   gt_report() |>
   fmt_number(columns = value, decimals = 9) |>
-  tab_header(title = "September 2025 ADMB–RTMB Bridge")
+  tab_header(title = "Corrected Full-Age BTS ADMB–RTMB Bridge")
 ```
 
-The total negative log-likelihoods differ by only `r sprintf("%.9f", bridge_metrics$absolute_total_nll_difference)`. The maximum difference among key outputs is `r sprintf("%.9f%%", bridge_metrics$maximum_key_percent_difference)`, and the largest absolute RTMB gradient at the ADMB estimates is `r format(bridge_metrics$maximum_absolute_gradient, scientific = TRUE, digits = 7)`. These reproduce the near-perfect September bridge and pass the repository's automated bridge tolerances.
+The total negative log-likelihoods differ by
+`r sprintf("%.9f", bridge_metrics$absolute_total_nll_difference)`. The maximum
+difference among key outputs is
+`r sprintf("%.9f%%", bridge_metrics$maximum_key_percent_difference)`, and the
+largest absolute RTMB gradient at the ADMB estimates is
+`r format(bridge_metrics$maximum_absolute_gradient, scientific = TRUE, digits = 7)`.
+These values pass the repository's automated corrected-bridge tolerances.
+
+```{r}
+#| label: tbl-correction-effect
+#| tbl-cap: "Effect of replacing the historical RTMB-adjusted BTS composition treatment with the corrected full-age treatment. Percent differences summarize paired annual values from the two saved RTMB bridge reports."
+correction_effect <- if (!is.null(legacy_report)) {
+  bind_rows(
+    lapply(
+      list(
+        `Spawning biomass` = cbind(rtmb_report$SSB, legacy_report$SSB),
+        Recruitment = cbind(rtmb_report$N[, 1], legacy_report$N[, 1]),
+        `Numbers at age` = cbind(as.vector(rtmb_report$N), as.vector(legacy_report$N))
+      ),
+      function(values) {
+        relative <- abs(values[, 1] - values[, 2]) /
+          pmax(abs(values[, 2]), .Machine$double.eps) * 100
+        tibble(
+          `Median absolute difference (%)` = median(relative, na.rm = TRUE),
+          `Maximum absolute difference (%)` = max(relative, na.rm = TRUE)
+        )
+      }
+    ),
+    .id = "Quantity"
+  )
+} else {
+  tibble(Quantity = "Historical bridge artifact unavailable")
+}
+
+correction_effect |>
+  gt_report() |>
+  fmt_number(columns = where(is.numeric), decimals = 4) |>
+  tab_header(title = "Effect of Correcting the BTS Composition Likelihood")
+```
 
 ```{r}
 #| label: tbl-downstream-lineage
-#| tbl-cap: "Base-model lineage for downstream analyses. Matching checksums confirm that projections, retrospectives, and SparseNUTS were regenerated from the same refreshed September 2025 bridge output."
+#| tbl-cap: "Corrected-base lineage for primary downstream analyses. Matching checksums confirm that each product was regenerated from the corrected full-age BTS RTMB bridge output."
 current_base_md5 <- unname(tools::md5sum(model_file))
 projection_lineage <- readr::read_csv(
   file.path(projection_dir, "base_lineage.csv"), show_col_types = FALSE
@@ -764,29 +993,26 @@ projection_lineage <- readr::read_csv(
 alt2_lineage <- readr::read_csv(
   file.path(projection_alt2_dir, "base_lineage.csv"), show_col_types = FALSE
 )
-mcmc_lineage <- readr::read_csv(
-  rtmb_file("reporting", "data", "sparsenuts_base_run_summary.csv"),
-  show_col_types = FALSE
-)
 lineage_tbl <- tibble(
   analysis = c(
-    "Authoritative base bridge", "Nine-peel retrospective",
-    "Seven-scenario Tier 3 projections", "Alternative 2 fixed-catch projections",
-    "SparseNUTS MCMC"
+    "Corrected base bridge", "Only-BTS sensitivity", "OSA diagnostics",
+    "Nine-peel retrospective", "Seven-scenario Tier 3 projections",
+    "Alternative 2 fixed-catch projections"
   ),
   base_md5 = c(
     current_base_md5,
+    only_bts_metadata$base_md5 %||% NA_character_,
+    osa_output$lineage$base_md5 %||% NA_character_,
     retro_saved$base_lineage$md5 %||% NA_character_,
     projection_lineage$model_md5[1] %||% NA_character_,
-    alt2_lineage$model_md5[1] %||% NA_character_,
-    mcmc_lineage$base_md5[1] %||% NA_character_
+    alt2_lineage$model_md5[1] %||% NA_character_
   )
 ) |>
   mutate(matches_authoritative_base = base_md5 == current_base_md5)
 
 lineage_tbl |>
   gt_report() |>
-  tab_header(title = "Common September-Bridge Lineage")
+  tab_header(title = "Corrected Full-Age Bridge Lineage")
 ```
 
 ```{r}
@@ -833,6 +1059,7 @@ tibble(
 ```{r}
 #| label: fig-bridge-ssb-recruitment
 #| fig-cap: "Spawning biomass and age-1 recruitment from RTMB and ADMB at the same ADMB maximum-likelihood parameter estimates. The two implementations are visually indistinguishable at the plotted scale. Select the figure to open it in the lightbox."
+#| fig-alt: "Two-panel line chart comparing RTMB and ADMB spawning biomass and age-1 recruitment from 1964 through 2024. The paired implementation lines overlap across both panels."
 bridge_years <- data$styr:data$endyr
 bridge_series <- bind_rows(
   tibble(
@@ -873,6 +1100,7 @@ ggplot(bridge_series, aes(year, value, color = model, linetype = model)) +
 ```{r}
 #| label: fig-bridge-relative-differences
 #| fig-cap: "Absolute relative differences between RTMB and ADMB spawning biomass and age-1 recruitment at the shared ADMB estimates. Values are percentages; the very small vertical scale is intentional. Select the figure to open it in the lightbox."
+#| fig-alt: "Two-panel line chart of absolute percentage differences between RTMB and ADMB spawning biomass and recruitment. Values remain close to zero throughout the modeled period."
 bridge_difference <- bridge_series |>
   pivot_wider(names_from = model, values_from = value) |>
   mutate(
@@ -887,7 +1115,7 @@ ggplot(bridge_difference, aes(year, absolute_relative_difference)) +
   labs(x = "Year", y = "Absolute relative difference (%)")
 ```
 
-# Results
+# RTMB Model Results
 
 ## Fit to Base RTMB-ADMB Run
 
@@ -1004,6 +1232,7 @@ diagnostic_sdnr_df <- diagnostic_residual_df |>
 ```{r}
 #| label: fig-ssb
 #| fig-cap: "Estimated spawning biomass from the saved EBS pollock RTMB-ADMB base model, with the ADMB bridge output overlaid when available."
+#| fig-alt: "Time-series line chart of spawning biomass from 1964 through 2024. RTMB and ADMB bridge trajectories overlap closely."
 ssb_overlay <- bind_rows(
   ts_df |>
     transmute(model = "RTMB-ADMB base", source = "RTMB", year, value = ssb),
@@ -1025,6 +1254,7 @@ ggplot(ssb_overlay, aes(x = year, y = value, color = model, linetype = source)) 
 ```{r}
 #| label: fig-catch-fit
 #| fig-cap: "Observed fishery catch and predicted catch from the saved RTMB-ADMB model."
+#| fig-alt: "Time-series chart with observed catch points and a predicted catch line across model years, showing close correspondence."
 ggplot(catch_df, aes(x = year)) +
   geom_line(aes(y = expected), color = "#377eb8", linewidth = 0.8) +
   geom_point(aes(y = observed), color = "#377eb8", size = 1.2, alpha = 0.7) +
@@ -1037,6 +1267,7 @@ ggplot(catch_df, aes(x = year)) +
 ```{r}
 #| label: fig-fits-by-fleet
 #| fig-cap: "Observed and predicted index series from the saved RTMB-ADMB model, shown on arithmetic scales with separate facet axes."
+#| fig-alt: "Faceted time-series chart of observed points and predicted lines for BTS, ATS, CPUE, and AVO indices, with a separate vertical scale for each series."
 ggplot(index_df, aes(x = year)) +
   geom_line(aes(y = expected), color = "#377eb8", linewidth = 0.8) +
   geom_point(aes(y = observed), color = "#377eb8", size = 1.1, alpha = 0.7, na.rm = TRUE) +
@@ -1050,6 +1281,7 @@ ggplot(index_df, aes(x = year)) +
 ```{r}
 #| label: fig-residuals
 #| fig-cap: "Approximate standardized log residuals for RTMB-ADMB index observations. Residuals are divided by the input log standard deviation."
+#| fig-alt: "Faceted residual chart by index series and year. Points appear above and below a horizontal zero line, revealing temporal clusters of positive and negative residuals."
 ggplot(index_df, aes(x = year, y = std_residual)) +
   geom_hline(yintercept = 0, color = "gray50", linewidth = 0.4) +
   geom_point(size = 1.1, alpha = 0.7) +
@@ -1062,6 +1294,7 @@ ggplot(index_df, aes(x = year, y = std_residual)) +
 ```{r}
 #| label: fig-agecomp-fishery
 #| fig-cap: "Observed and expected fishery age-composition patterns from the saved RTMB-ADMB model, faceted by year."
+#| fig-alt: "Small-multiple fishery age-composition plots by year, with observed proportions shown as points and expected proportions shown as lines across ages 1 through 15."
 #| fig-width: 8
 #| fig-height: 11
 #| out-width: "100%"
@@ -1071,6 +1304,7 @@ plot_agecomp_fit(agecomp_df, "Fishery", ncol = 5)
 ```{r}
 #| label: fig-agecomp-bts
 #| fig-cap: "Observed and expected BTS age-composition patterns from the saved RTMB-ADMB model, faceted by year."
+#| fig-alt: "Small-multiple bottom trawl survey age-composition plots by year, with observed points and expected lines across ages 1 through 15."
 #| fig-width: 8
 #| fig-height: 11
 #| out-width: "100%"
@@ -1080,6 +1314,7 @@ plot_agecomp_fit(agecomp_df, "BTS", ncol = 4)
 ```{r}
 #| label: fig-agecomp-ats
 #| fig-cap: "Observed and expected ATS age-composition patterns from the saved RTMB-ADMB model, faceted by year."
+#| fig-alt: "Small-multiple acoustic-trawl survey age-composition plots by year, with observed points and expected lines across modeled ages."
 #| fig-width: 8
 #| fig-height: 11
 #| out-width: "100%"
@@ -1088,13 +1323,13 @@ plot_agecomp_fit(agecomp_df, "ATS", ncol = 3)
 
 ### OSA Residual Diagnostics
 
-The age-composition diagnostics follow the updated [afscOSA guidance](https://noaa-afsc.github.io/afscOSA/) incorporated through [afscOSA pull request 10](https://github.com/noaa-afsc/afscOSA/pull/10). The diagnostics were regenerated from the accepted September 2025 bridge base model rather than from a selectivity sensitivity. In this render, the method is `r osa_residual_method`.
+The age-composition diagnostics follow the updated [afscOSA guidance](https://noaa-afsc.github.io/afscOSA/) incorporated through [afscOSA pull request 10](https://github.com/noaa-afsc/afscOSA/pull/10). The diagnostics were regenerated from the corrected full-age BTS bridge. In this render, the method is `r osa_residual_method`.
 
-The four rows in @fig-osa-age-diagnostics should be read together. The aggregate composition is the first check for systematic lack of fit, such as a selectivity pattern that consistently misses particular ages. The Q-Q plot assesses whether OSA residuals behave approximately as standard normal values and reports the SDNR and lower and upper 2.5% quantiles with their expected intervals. The OSA and Pearson bubble plots then help locate temporal, age-specific, or cohort patterns. A statistic outside its interval is a clue to investigate, not a stand-alone rule for accepting or rejecting an assessment configuration.
+The four rows in @fig-osa-age-diagnostics provide a joint interpretation. The aggregate composition first identifies systematic fit patterns, such as selectivity that consistently misses particular ages. The Q-Q plot assesses whether OSA residuals behave approximately as standard normal values and reports the SDNR and lower and upper 2.5% quantiles with their expected intervals. The OSA and Pearson bubble plots then locate temporal, age-specific, or cohort patterns. A statistic outside its interval signals an area for investigation and provides one element of the broader assessment evaluation.
 
 ```{r}
 #| label: tbl-osa-residual-status
-#| tbl-cap: "Source and software checks for the updated OSA diagnostics. The base-model checksum ties these diagnostics to the same accepted RTMB object used elsewhere in this report. The ATS 2020 placeholder was excluded because it contains no rounded multinomial observations and therefore supplies no information to an OSA calculation."
+#| tbl-cap: "Source and software checks for the updated OSA diagnostics. The base-model checksum ties these diagnostics to the corrected RTMB object used elsewhere in this report. The ATS 2020 placeholder was excluded because it has zero rounded multinomial observations and supplies zero information to an OSA calculation."
 tibble(
   item = c(
     "afscOSA version",
@@ -1143,7 +1378,7 @@ osa_output$summary |>
 
 ```{r}
 #| label: fig-osa-age-diagnostics
-#| fig-cap: "Age-composition diagnostics produced with afscOSA for the fishery, bottom trawl survey (BTS), and acoustic-trawl survey (ATS). Top row: observed aggregate proportions (blue bars), expected proportions (red points and line), and 95% intervals for data expected from the fitted model (red vertical lines); the intervals condition on fitted parameters and are neither confidence intervals nor posterior predictive intervals. ISS and ESS are the aggregate input and effective sample sizes. Second row: OSA residual Q-Q plots with SDNR and 2.5% tail quantiles; parentheses give their expected 95% intervals. Third and fourth rows: OSA and Pearson residual bubbles by year and age, with red positive and blue negative residuals and bubble area increasing with absolute magnitude. Bubble sizes are standardized across fleets; two Pearson residuals greater than 6 were truncated to 6 for display only. The diagnostics should be interpreted jointly and do not constitute a stand-alone model acceptance or rejection test."
+#| fig-cap: "Age-composition diagnostics produced with afscOSA for the fishery, bottom trawl survey (BTS), and acoustic-trawl survey (ATS). Top row: observed aggregate proportions (blue bars), expected proportions (red points and line), and 95% conditional intervals for data expected from the fitted model (red vertical lines). ISS and ESS are the aggregate input and effective sample sizes. Second row: OSA residual Q-Q plots with SDNR and 2.5% tail quantiles; parentheses give their expected 95% intervals. Third and fourth rows: OSA and Pearson residual bubbles by year and age, with red positive and blue negative residuals and bubble area increasing with absolute magnitude. Bubble sizes are standardized across fleets; two Pearson residuals greater than 6 were truncated to 6 for display only. Joint interpretation of all panels supports the broader model evaluation."
 #| fig-alt: "Four-row diagnostic figure with columns for Fishery, BTS, and ATS. Aggregate fits are generally close, with localized age-bin discrepancies. Q-Q plots show SDNR values of 0.87 for Fishery, 0.96 for BTS, and 0.82 for ATS. OSA and Pearson bubble plots show residual sign and magnitude across years and ages, providing checks for temporal, age-specific, and cohort patterns."
 #| fig-width: 12
 #| fig-height: 9
@@ -1151,13 +1386,14 @@ osa_output$summary |>
 knitr::include_graphics(osa_plot_file)
 ```
 
-The aggregate panels show generally close observed and expected patterns, with localized departures that deserve attention rather than a wholesale failure of the composition model. The BTS SDNR (0.96) lies within its displayed expected interval. Fishery (0.87) and ATS (0.82) have narrower OSA residual distributions than standard normal expectations; this can reflect composition weighting, residual dependence, or other model structure and should be considered alongside the aggregate and bubble patterns. The fishery upper tail is also lighter than expected, while the other tail estimates are close to or within their displayed intervals. These results identify where follow-up work may be useful, but they do not by themselves determine the preferred assessment model.
+The aggregate panels show generally close observed and expected patterns, with localized departures that deserve attention. The BTS SDNR lies within its displayed expected interval. Fishery and ATS have narrower OSA residual distributions than standard normal expectations; this can reflect composition weighting, residual dependence, or other model structure and should be considered alongside the aggregate and bubble patterns. The fishery upper tail is also lighter than expected, while the other tail estimates are close to or within their displayed intervals. These results identify focused follow-up work and provide one component of model evaluation.
 
 ### Selectivity Curves
 
 ```{r}
 #| label: fig-selectivity-curves
 #| fig-cap: "Estimated RTMB-ADMB selectivity-at-age curves by fleet in selected years."
+#| fig-alt: "Faceted line chart of fishery, bottom trawl survey, and acoustic-trawl survey selectivity across ages for early, middle, and terminal model years."
 selected_years <- c(first_year, years[ceiling(length(years) / 2)], terminal_year)
 sel_df <- bind_rows(
   as_year_age_df(rtmb_report$sel_fsh, years, "Fishery", "selectivity"),
@@ -1176,11 +1412,26 @@ ggplot(sel_df, aes(x = age, y = selectivity, color = factor(year))) +
   labs(x = "Age", y = "Relative selectivity", color = "Year", title = "Selectivity at Age")
 ```
 
+The selected-year curves illustrate differences in both shape and temporal
+change among fleets. Fishery selectivity changes from a pronounced peak near
+ages 4--5 in the earliest year to a broader pattern that retains relatively
+high selectivity across older ages in 1994 and 2024. BTS selectivity is low at
+young ages and increases toward full selection at older ages; the 1994 curve
+rises more rapidly across the intermediate ages than the 2024 curve. ATS
+selectivity also increases toward an older-age plateau, with the largest
+differences between the selected years occurring among the youngest ages.
+These curves are normalized within fleet and year, so they describe relative
+age patterns rather than absolute catchability. [Appendix A-2](#sec-bts-availability)
+evaluates the consequence of the fitted annual BTS selectivity patterns by
+holding numbers and weight at age fixed and translating selectivity changes
+into a relative vulnerable-biomass index.
+
 ### Selectivity Ridge Plots
 
 ```{r}
 #| label: fig-selectivity-ridge-fishery
 #| fig-cap: "Relative fishery selectivity over time from the RTMB-ADMB model. Ridge heights are normalized within year."
+#| fig-alt: "Ridgeline display of normalized fishery selectivity across ages for successive model years, showing changes in the age pattern through time."
 #| fig-width: 8
 #| fig-height: 10
 #| out-width: "100%"
@@ -1211,6 +1462,7 @@ ggplot(ridge_df |> filter(fleet == "Fishery"), aes(x = age, y = year_factor, hei
 ```{r}
 #| label: fig-selectivity-ridge-bts
 #| fig-cap: "Relative BTS selectivity over time from the RTMB-ADMB model. Ridge heights are normalized within year."
+#| fig-alt: "Ridgeline display of normalized bottom trawl survey selectivity across ages for successive survey years, showing time variation in the age pattern."
 #| fig-width: 8
 #| fig-height: 10
 #| out-width: "100%"
@@ -1230,6 +1482,7 @@ ggplot(ridge_df |> filter(fleet == "BTS"), aes(x = age, y = year_factor, height 
 ```{r}
 #| label: fig-selectivity-ridge-ats
 #| fig-cap: "Relative ATS selectivity over time from the RTMB-ADMB model. Ridge heights are normalized within year."
+#| fig-alt: "Ridgeline display of normalized acoustic-trawl survey selectivity across ages for successive survey years, showing time variation in the age pattern."
 #| fig-width: 8
 #| fig-height: 10
 #| out-width: "100%"
@@ -1248,7 +1501,14 @@ ggplot(ridge_df |> filter(fleet == "ATS"), aes(x = age, y = year_factor, height 
 
 # Projections
 
-The RTMB bridge can now write a Standard Projection Model input directory for use with `spmR`. This report writes the current saved RTMB output to `r display_path(projection_dir)`, using the same SPM setup structure as the ADMB bridge projection directory while replacing the species assessment input file with an RTMB-derived `pm.prj`.
+The projection analysis is also available as a self-contained attachment:
+[RTMB EBS pollock: standalone spmR projection attachment](reporting/appendix_spmr_projections.html).
+
+The RTMB bridge can now write a Standard Projection Model input directory for
+use with `spmR` [@ianelli2026spmR]. This report writes the current saved RTMB
+output to `r display_path(projection_dir)`, using the same SPM setup structure
+as the ADMB bridge projection directory while replacing the species assessment
+input file with an RTMB-derived `pm.prj`.
 
 ```{r}
 #| label: spmr-projection-inputs
@@ -1272,6 +1532,11 @@ spmr_summary <- if (file.exists(spmr_summary_file)) {
   as_tibble(utils::read.csv(spmr_summary_file, check.names = FALSE))
 } else {
   tibble()
+}
+spmr_version <- if (requireNamespace("spmR", quietly = TRUE)) {
+  as.character(utils::packageVersion("spmR"))
+} else {
+  NA_character_
 }
 spmr_input <- if (file.exists(file.path(display_path(spmr_projection$output_dir), "spm.dat")) &&
                   requireNamespace("spmR", quietly = TRUE)) {
@@ -1350,7 +1615,7 @@ spmr_alt_desc <- tibble(
     "Projects catch using the recent average fishing mortality read from the assessment input file, rather than recalculating catch from the ABC harvest-control rule.",
     "Projects catch using the user-specified Alternative 4 SPR rate. The generated setup uses SPR = 0.60, matching the SPM input convention for this alternative.",
     "Projects the stock forward with F = 0, so catch is zero after any fixed catch years specified in the setup file.",
-    "Projects catch at the OFL harvest rate. This alternative is used for threshold/status-determination calculations and is not constrained by the TAC-equals-ABC rule in the same way as the ABC alternatives.",
+    "Projects catch at the OFL harvest rate. This alternative supports threshold and status-determination calculations and uses a rule distinct from the TAC-equals-ABC alternatives.",
     "Applies maximum permissible ABC catch for the first three projection years in the SPM implementation, then switches to the OFL harvest-rate calculation used for status determination."
   )
 )
@@ -1362,7 +1627,7 @@ spmr_alt_desc |>
 
 ## Seven Tier-3 Scenario Results
 
-The installed `spmR` package is attached by the reproducible projection script
+The installed `spmR` package (version `r spmr_version`) is attached by the reproducible projection script
 `R/run_spmr_tier3_projection.R`. That script converts the saved RTMB pollock
 fit to the standard SPM inputs, runs all seven alternatives through the ADMB
 projection engine, and calls `spmR::tier3_scenario_table()` to produce the
@@ -1375,12 +1640,28 @@ for 2025 and 2026 are fixed at 1,350 thousand t in every alternative.
 #| echo: false
 
 tier3_table_file <- file.path(
-  display_path(spmr_projection$output_dir),
+  spmr_projection$output_dir,
   "tier3_seven_scenario_table.csv"
 )
 
-if (file.exists(tier3_table_file)) {
-  readr::read_csv(tier3_table_file, show_col_types = FALSE) |>
+tier3_required_columns <- c(
+  "Alt", "Scenario",
+  paste0(c("Catch_", "ABC_", "OFL_", "SSB_", "F_", "B_B35_"), "2027"),
+  paste0(c("Catch_", "ABC_", "OFL_", "SSB_", "F_", "B_B35_"), "2028")
+)
+tier3_results <- readr::read_csv(tier3_table_file, show_col_types = FALSE)
+tier3_missing_columns <- setdiff(tier3_required_columns, names(tier3_results))
+if (nrow(tier3_results) != 7L ||
+    !setequal(as.integer(tier3_results$Alt), 1:7) ||
+    length(tier3_missing_columns) > 0L ||
+    anyNA(tier3_results[tier3_required_columns])) {
+  stop(
+    "Incomplete seven-scenario Tier 3 projection table. Missing columns: ",
+    paste(tier3_missing_columns, collapse = ", ")
+  )
+}
+
+tier3_results |>
     gt_report() |>
     fmt_number(
       columns = matches("^(Catch|ABC|OFL|SSB)_"),
@@ -1389,15 +1670,16 @@ if (file.exists(tier3_table_file)) {
     ) |>
     fmt_number(columns = matches("^F_"), decimals = 3) |>
     fmt_number(columns = matches("^B_B35_"), decimals = 2) |>
+    cols_label(
+      Alt = "Alternative",
+      Catch_2027 = "Catch", ABC_2027 = "ABC", OFL_2027 = "OFL",
+      SSB_2027 = md("$B$"), F_2027 = md("$F$"), B_B35_2027 = md("$B/B_{35\\%}$"),
+      Catch_2028 = "Catch", ABC_2028 = "ABC", OFL_2028 = "OFL",
+      SSB_2028 = md("$B$"), F_2028 = md("$F$"), B_B35_2028 = md("$B/B_{35\\%}$")
+    ) |>
     tab_spanner(label = "2027", columns = ends_with("_2027")) |>
     tab_spanner(label = "2028", columns = ends_with("_2028")) |>
     tab_header(title = "Seven Tier-3 Projection Alternatives")
-} else {
-  tibble(note = paste(
-    "Run R/run_spmr_tier3_projection.R to create", tier3_table_file
-  )) |>
-    gt_report()
-}
 ```
 
 ```{r}
@@ -1605,11 +1887,15 @@ if (nrow(spmr_detail) > 0) {
 
 The following figures summarize all 1,000 simulations in `spm_detail.csv` for
 each of the seven Tier 3 alternatives. The lines show simulation medians and
-the shaded intervals show the central 90% of the simulated outcomes.
+the shaded intervals show the central 90% of the simulated outcomes. Figure
+@fig-spmr-projection-stock-status also shows the same 10 reproducibly selected
+simulation iterations in every alternative: 242, 278, 361, 495, 507, 510,
+598, 837, 937, and 989.
 
 ```{r}
 #| label: fig-spmr-projection-stock-status
-#| fig-cap: "Projected spawning biomass and stock status under all seven Tier 3 alternatives. Lines are simulation medians and shaded bands span the 5th to 95th percentiles of the 1,000 SPM simulations. Spawning biomass is in thousand metric tons; the dashed line in the status panels marks B/B35% = 1."
+#| fig-cap: "Projected spawning biomass under all seven Tier 3 alternatives. The dark line is the simulation median, shaded bands span the 5th to 95th percentiles of the 1,000 SPM simulations, and colored lines show the same 10 randomly selected simulation iterations in every panel. Spawning biomass is in thousand metric tons; the dashed horizontal line marks B35%."
+#| fig-alt: "Seven vertically arranged spawning-biomass panels, one for each Tier 3 alternative. Each panel shows a dark median line, a blue 5th-to-95th-percentile ribbon, 10 colored individual simulation trajectories identified by iteration number, and a dashed horizontal B35-percent reference line at 2,092 thousand metric tons."
 #| fig-width: 11
 #| fig-height: 12
 if (nrow(spmr_detail) > 0) {
@@ -1618,43 +1904,68 @@ if (nrow(spmr_detail) > 0) {
     spmr_alt_desc$Alternative
   )
 
-  spmr_stock_plot <- spmr_detail |>
+  set.seed(202508)
+  spmr_selected_sims <- sort(sample(unique(spmr_detail$Sim), 10))
+
+  spmr_stock_data <- spmr_detail |>
     mutate(
       scenario = factor(
         spmr_alt_names[as.character(Alt)],
         levels = unname(spmr_alt_names)
-      ),
-      `Spawning biomass` = SSB,
-      `Spawning biomass / B35%` = SSB / B35
-    ) |>
-    select(scenario, Year, `Spawning biomass`, `Spawning biomass / B35%`) |>
-    pivot_longer(
-      c(`Spawning biomass`, `Spawning biomass / B35%`),
-      names_to = "quantity",
-      values_to = "value"
-    ) |>
-    group_by(scenario, Year, quantity) |>
+      )
+    )
+
+  spmr_stock_plot <- spmr_stock_data |>
+    group_by(scenario, Year) |>
     summarize(
-      lower = quantile(value, 0.05, na.rm = TRUE),
-      median = median(value, na.rm = TRUE),
-      upper = quantile(value, 0.95, na.rm = TRUE),
+      lower = quantile(SSB, 0.05, na.rm = TRUE),
+      median = median(SSB, na.rm = TRUE),
+      upper = quantile(SSB, 0.95, na.rm = TRUE),
+      B35 = first(B35),
       .groups = "drop"
+    ) |>
+    mutate(reference = "B35%")
+
+  spmr_selected_paths <- spmr_stock_data |>
+    filter(Sim %in% spmr_selected_sims) |>
+    mutate(
+      iteration = factor(
+        Sim,
+        levels = spmr_selected_sims,
+        labels = paste("Iteration", spmr_selected_sims)
+      )
     )
 
   ggplot(spmr_stock_plot, aes(x = Year, y = median)) +
-    geom_hline(
-      data = tibble(quantity = "Spawning biomass / B35%", reference = 1),
-      aes(yintercept = reference),
-      linetype = "dashed",
-      color = "#b03a2e",
+    geom_ribbon(aes(ymin = lower, ymax = upper), fill = "#2b7a9b", alpha = 0.22) +
+    geom_line(
+      data = spmr_selected_paths,
+      aes(x = Year, y = SSB, color = iteration, group = iteration),
       linewidth = 0.45,
+      alpha = 0.75,
       inherit.aes = FALSE
     ) +
-    geom_ribbon(aes(ymin = lower, ymax = upper), fill = "#2b7a9b", alpha = 0.22) +
-    geom_line(color = "#155a78", linewidth = 0.75) +
-    facet_grid(scenario ~ quantity, scales = "free_y") +
+    geom_line(color = "#102f3d", linewidth = 0.95) +
+    geom_line(
+      aes(x = Year, y = B35, linetype = reference),
+      color = "#4d4d4d",
+      linewidth = 0.6
+    ) +
+    facet_wrap(vars(scenario), ncol = 1) +
     scale_y_continuous(labels = scales::label_comma()) +
-    labs(x = "Year", y = NULL, title = "Projected Stock Status by Tier 3 Alternative")
+    scale_linetype_manual(values = c("B35%" = "dashed")) +
+    labs(
+      x = "Year",
+      y = "Spawning biomass (thousand t)",
+      color = "Selected simulation",
+      linetype = "Reference"
+    ) +
+    guides(
+      color = guide_legend(nrow = 2, byrow = TRUE),
+      linetype = guide_legend(order = 2)
+    ) +
+    ggthemes::theme_few() +
+    theme(legend.position = "bottom")
 } else {
   plot.new()
   text(0.5, 0.5, "SPM projection results are unavailable.", cex = 0.9)
@@ -1663,17 +1974,20 @@ if (nrow(spmr_detail) > 0) {
 
 ```{r}
 #| label: fig-spmr-projection-removals
-#| fig-cap: "Projected catch and calculated ABC and OFL under all seven Tier 3 alternatives. Lines show simulation medians and the catch ribbons span the 5th to 95th percentiles of the 1,000 simulations. All quantities are thousand metric tons. ABC and OFL are reference quantities and need not equal realized catch under every alternative."
+#| fig-cap: "Projected catch and calculated ABC and OFL under all seven Tier 3 alternatives. Black lines show simulation medians, with line type distinguishing catch, ABC, and OFL; catch ribbons span the 5th to 95th percentiles of the 1,000 simulations. Colored lines show catch for the same 10 selected simulation iterations used in Figure 15. All quantities are thousand metric tons. ABC and OFL are reference quantities and can differ from realized catch under some alternatives."
+#| fig-alt: "Seven-panel projection chart of catch, ABC, and OFL by Tier 3 alternative. Each panel shows black median lines distinguished by line type, a green 5th-to-95th-percentile catch ribbon, and 10 colored individual catch trajectories corresponding to iterations 242, 278, 361, 495, 507, 510, 598, 837, 937, and 989."
 #| fig-width: 11
 #| fig-height: 11
 if (nrow(spmr_detail) > 0) {
-  spmr_removal_plot <- spmr_detail |>
+  spmr_removal_data <- spmr_detail |>
     mutate(
       scenario = factor(
         spmr_alt_names[as.character(Alt)],
         levels = unname(spmr_alt_names)
       )
-    ) |>
+    )
+
+  spmr_removal_plot <- spmr_removal_data |>
     select(scenario, Year, Catch, ABC, OFL) |>
     pivot_longer(c(Catch, ABC, OFL), names_to = "quantity", values_to = "value") |>
     group_by(scenario, Year, quantity) |>
@@ -1684,9 +1998,23 @@ if (nrow(spmr_detail) > 0) {
       .groups = "drop"
     )
 
-  removal_plot_max <- max(spmr_removal_plot$upper, na.rm = TRUE) * 1.03
+  spmr_selected_catch <- spmr_removal_data |>
+    filter(Sim %in% spmr_selected_sims) |>
+    mutate(
+      iteration = factor(
+        Sim,
+        levels = spmr_selected_sims,
+        labels = paste("Iteration", spmr_selected_sims)
+      )
+    )
 
-  ggplot(spmr_removal_plot, aes(x = Year, y = median, color = quantity)) +
+  removal_plot_max <- max(
+    spmr_removal_plot$upper,
+    spmr_selected_catch$Catch,
+    na.rm = TRUE
+  ) * 1.03
+
+  ggplot(spmr_removal_plot, aes(x = Year, y = median)) +
     geom_ribbon(
       data = filter(spmr_removal_plot, quantity == "Catch"),
       aes(ymin = lower, ymax = upper),
@@ -1694,16 +2022,32 @@ if (nrow(spmr_detail) > 0) {
       color = NA,
       alpha = 0.2
     ) +
-    geom_line(linewidth = 0.72) +
+    geom_line(
+      data = spmr_selected_catch,
+      aes(x = Year, y = Catch, color = iteration, group = iteration),
+      linewidth = 0.45,
+      alpha = 0.75,
+      inherit.aes = FALSE
+    ) +
+    geom_line(aes(linetype = quantity), color = "#102f3d", linewidth = 0.85) +
     facet_wrap(~scenario, ncol = 2) +
-    scale_color_manual(values = c(Catch = "#2d6a4f", ABC = "#2b7a9b", OFL = "#c45a3c")) +
+    scale_linetype_manual(values = c(Catch = "solid", ABC = "dashed", OFL = "dotdash")) +
     scale_y_continuous(labels = scales::label_comma()) +
     coord_cartesian(ylim = c(0, removal_plot_max)) +
     labs(
       x = "Year",
       y = "Thousand metric tons",
-      color = NULL,
-      title = "Projected Catch and Harvest Reference Quantities"
+      color = "Selected simulation",
+      linetype = "Median quantity"
+    ) +
+    guides(
+      linetype = guide_legend(order = 1),
+      color = guide_legend(nrow = 2, byrow = TRUE, order = 2)
+    ) +
+    ggthemes::theme_few() +
+    theme(
+      legend.position = "bottom",
+      legend.box = "vertical"
     )
 } else {
   plot.new()
@@ -1713,7 +2057,8 @@ if (nrow(spmr_detail) > 0) {
 
 ```{r}
 #| label: fig-spmr-projection-fishing-mortality
-#| fig-cap: "Projected fishing mortality under all seven Tier 3 alternatives. Lines are simulation medians and shaded bands span the 5th to 95th percentiles of the 1,000 simulations."
+#| fig-cap: "Projected fishing mortality under all seven Tier 3 alternatives. The dark line is the simulation median, shaded bands span the 5th to 95th percentiles of the 1,000 simulations, and colored lines show the same 10 selected simulation iterations used in Figures 15 and 16."
+#| fig-alt: "Seven-panel fishing-mortality projection chart by Tier 3 alternative. Each panel shows a dark median line, an orange 5th-to-95th-percentile ribbon, and 10 colored individual trajectories corresponding to iterations 242, 278, 361, 495, 507, 510, 598, 837, 937, and 989."
 #| fig-width: 11
 #| fig-height: 10
 if (nrow(spmr_detail) > 0) {
@@ -1732,55 +2077,51 @@ if (nrow(spmr_detail) > 0) {
       .groups = "drop"
     )
 
-  f_plot_max <- max(spmr_f_plot$upper, na.rm = TRUE) * 1.03
+  spmr_selected_f <- spmr_stock_data |>
+    filter(Sim %in% spmr_selected_sims) |>
+    mutate(
+      iteration = factor(
+        Sim,
+        levels = spmr_selected_sims,
+        labels = paste("Iteration", spmr_selected_sims)
+      )
+    )
+
+  f_plot_max <- max(spmr_f_plot$upper, spmr_selected_f$F, na.rm = TRUE) * 1.03
 
   ggplot(spmr_f_plot, aes(x = Year, y = median)) +
     geom_ribbon(aes(ymin = lower, ymax = upper), fill = "#d18b2c", alpha = 0.24) +
-    geom_line(color = "#945f16", linewidth = 0.75) +
+    geom_line(
+      data = spmr_selected_f,
+      aes(x = Year, y = F, color = iteration, group = iteration),
+      linewidth = 0.45,
+      alpha = 0.75,
+      inherit.aes = FALSE
+    ) +
+    geom_line(color = "#4d3210", linewidth = 0.95) +
     facet_wrap(~scenario, ncol = 2) +
     scale_y_continuous(labels = scales::label_number(accuracy = 0.01)) +
     coord_cartesian(ylim = c(0, f_plot_max)) +
-    labs(x = "Year", y = "Fishing mortality", title = "Projected Fishing Mortality")
+    labs(
+      x = "Year",
+      y = "Fishing mortality",
+      color = "Selected simulation"
+    ) +
+    guides(color = guide_legend(nrow = 2, byrow = TRUE)) +
+    ggthemes::theme_few() +
+    theme(legend.position = "bottom")
 } else {
   plot.new()
   text(0.5, 0.5, "SPM projection results are unavailable.", cex = 0.9)
 }
 ```
 
-The generated directory is intended as an input handoff. Running the projection model remains a separate step, for example `spmR::runSPM("analysis/output/spmR_projection", run = TRUE, engine = "admb")`, or `spmR::runSPM("analysis/output/spmR_projection", run = TRUE, engine = "rtmb")` for the current experimental RTMB path in `spmR`.
+The corrected projection directory is a reproducible input handoff. The rebuild
+script executes the production ADMB engine through `spmR::runSPM()` and records
+the corrected RTMB base checksum in `base_lineage.csv`. The current experimental
+RTMB projection engine remains available for implementation testing.
 
-## Diagnostics
-
-```{r}
-#| label: tbl-model-status
-#| tbl-cap: "Summary diagnostics for the current saved RTMB-ADMB base model."
-model_status_tbl <- tibble(
-  metric = c(
-    "RTMB output",
-    "Report elements",
-    "Parameters in taped object",
-    "Initial objective",
-    "Saved total likelihood",
-    "ADMB bridge report",
-    "ADMB bridge parameters",
-    "Interpretation"
-  ),
-  value = c(
-    params$model_file,
-    as.character(length(names(rtmb_report))),
-    as.character(length(obj$par)),
-    sprintf("%.3f", obj$fn(obj$par)),
-    sprintf("%.3f", as.numeric(rtmb_report$tot_like)),
-    display_path(rtmb_metadata$admb_rep),
-    display_path(rtmb_metadata$admb_par),
-    "Saved report loads and the RTMB objective tapes successfully; full convergence diagnostics require a fitted optimizer object."
-  )
-)
-
-model_status_tbl |>
-  gt_report() |>
-  tab_header(title = "Model Status Diagnostics")
-```
+# Diagnostics
 
 ```{r}
 #| label: bridge-series-data
@@ -1798,55 +2139,52 @@ diag_series <- bind_rows(
 )
 ```
 
-```{r}
-#| label: tbl-diagnostics
-#| tbl-cap: "RTMB-ADMB likelihood diagnostics by component."
-nll_tbl <- tibble(
-  component = c(
-    "Catch",
-    "BTS index",
-    "ATS index",
-    "ATS age-1 index",
-    "CPUE",
-    "AVO",
-    "Fishery age composition",
-    "BTS age composition",
-    "ATS age composition",
-    "Recruitment",
-    "Fishing mortality penalty",
-    "Selectivity penalty",
-    "Weight-at-age",
-    "Priors",
-    "Total"
-  ),
-  value = c(
-    rtmb_report$cat_like,
-    rtmb_report$bts_like,
-    rtmb_report$ats_like,
-    rtmb_report$ats_age1_like,
-    rtmb_report$cpue_like,
-    rtmb_report$avo_like,
-    rtmb_report$age_like[1],
-    rtmb_report$age_like[2],
-    rtmb_report$age_like[3],
-    sum(rtmb_report$rec_like, na.rm = TRUE),
-    rtmb_report$Fpen_like,
-    sum(rtmb_report$sel_like, na.rm = TRUE) + sum(rtmb_report$sel_like_dev, na.rm = TRUE),
-    rtmb_report$wt_like,
-    sum(rtmb_report$Priors, na.rm = TRUE),
-    rtmb_report$tot_like
-  )
-)
+## Retrospective Peels
 
-nll_tbl |>
-  gt_report() |>
-  fmt_number(columns = value, decimals = 3) |>
-  tab_header(title = "Likelihood Diagnostics by Component")
+The retrospective procedure included peel 0 (the full model terminating in
+2024) and nine peels terminating in 2023 through 2015. Each peel retained the
+full model's stream-specific observation lag. Thus, because fishery age
+compositions ended in 2023 in the full model, they ended in 2022 in the first
+peel. Terminal-year fishery, BTS, and ATS selectivity was fixed at the
+corresponding penultimate-year value within each peel. Annual inputs and
+parameter vectors were truncated to the applicable terminal year, and each
+fit was initialized from the preceding fitted peel. The established 2020 gap
+in the BTS biomass index was retained.
+
+```{r}
+#| label: tbl-retrospective-availability
+#| tbl-cap: "Maximum observation year retained for each data stream in the full model and nine retrospective peels. Stream-specific lags remain constant across peels."
+if (!is.null(retro_saved$availability)) {
+  retrospective_availability <- readr::read_csv(
+    rtmb_file(
+      "analysis", "output", "corrected_full_age_bts",
+      "retrospective_data_availability.csv"
+    ),
+    show_col_types = FALSE
+  )
+
+  retrospective_availability |>
+    gt_report() |>
+    tab_header(title = "Retrospective Data-Availability Audit")
+}
 ```
 
-### Retrospective Peels
+The observations underlying @tbl-retrospective-availability are available as
+a [machine-readable CSV file](data-output/retrospective_data_availability.csv).
 
-The RTMB retrospective script was run for peel 0 (the full 2024 model) and nine retrospective peels terminating in 2023 through 2015. Each peel removes observations and weight-at-age inputs after its terminal year, shortens the corresponding annual parameter vectors, and starts from the preceding fitted peel. The BTS index has no 2020 observation in these inputs; the peeling code retains that data gap rather than treating 2020 as an observed BTS year.
+```{r}
+#| label: tbl-retrospective-selectivity
+#| tbl-cap: "Maximum absolute difference between terminal-year and penultimate-year selectivity by fleet for each retrospective peel. Values at numerical zero verify the terminal-year equality constraint."
+if (!is.null(retro_saved$terminal_selectivity)) {
+  as_tibble(retro_saved$terminal_selectivity) |>
+    filter(peel > 0) |>
+    select(peel, terminal_year, fleet, maximum_absolute_difference) |>
+    arrange(peel, fleet) |>
+    gt_report() |>
+    fmt_number(columns = maximum_absolute_difference, decimals = 10) |>
+    tab_header(title = "Retrospective Terminal-Selectivity Audit")
+}
+```
 
 ```{r}
 #| label: tbl-retrospective-status
@@ -1857,7 +2195,7 @@ if (nrow(retro_diagnostics) > 0) {
       status = case_when(
         is.na(convergence) ~ "failed",
         convergence == 0 ~ "converged",
-        TRUE ~ paste0("not converged: ", convergence)
+        TRUE ~ paste0("optimizer code ", convergence)
       ),
       error = coalesce(error, "")
     ) |>
@@ -1890,6 +2228,7 @@ if (nrow(retro_mohn) > 0) {
 ```{r}
 #| label: fig-retrospective-ssb-recruitment
 #| fig-cap: "RTMB spawning-biomass and recruitment trajectories for the full model and nine retrospective peels. Each trajectory ends in its peel-specific terminal year."
+#| fig-alt: "Two-panel retrospective line chart for spawning biomass and recruitment. The full model ends in 2024 and nine peel trajectories end in 2023 through 2015."
 if (nrow(retro_series) > 0) {
   retro_series |>
     pivot_longer(c(SSB, Recruitment), names_to = "quantity", values_to = "value") |>
@@ -1909,9 +2248,9 @@ if (nrow(retro_series) > 0) {
 }
 ```
 
-All nine peels completed and produced trajectory estimates. Nine of the ten fits including peel 0 ended with convergence code 0. Peel 2 ended its tighter restart with code 1, but its maximum gradient was `r scales::number(retro_diagnostics$max_gradient[retro_diagnostics$peel == 2], accuracy = 0.000001)`, below the report's 0.001 gradient criterion. The largest maximum gradient across all fits was `r scales::number(max(retro_diagnostics$max_gradient, na.rm = TRUE), accuracy = 0.0001)`. Mohn's rho was `r scales::number(retro_mohn$rho[retro_mohn$quantity == "SSB"], accuracy = 0.001)` for spawning biomass and `r scales::number(retro_mohn$rho[retro_mohn$quantity == "Recruitment"], accuracy = 0.001)` for recruitment. Both are positive, and the spawning-biomass value is driven particularly by the deeper peels terminating in 2015--2020. These results indicate a substantial positive retrospective pattern and should be considered when evaluating stability and uncertainty.
+All `r sum(retro_diagnostics$peel > 0 & is.na(retro_diagnostics$error))` peels completed and produced trajectory estimates. `r sum(retro_diagnostics$convergence == 0, na.rm = TRUE)` of the `r nrow(retro_diagnostics)` fits ended with convergence code 0. The largest maximum gradient across all fits was `r scales::number(max(retro_diagnostics$max_gradient, na.rm = TRUE), accuracy = 0.0001)`. Mohn's rho was `r scales::number(retro_mohn$rho[retro_mohn$quantity == "SSB"], accuracy = 0.001)` for spawning biomass and `r scales::number(retro_mohn$rho[retro_mohn$quantity == "Recruitment"], accuracy = 0.001)` for recruitment. Positive values indicate that truncated assessments estimate these quantities above their corresponding full-model estimates. The retrospective pattern forms an important component of the stability and uncertainty evaluation.
 
-# Additional Bridge Diagnostics and Only-BTS Sensitivity
+## Additional Bridge Diagnostics and Only-BTS Sensitivity
 
 The bridge comparison uses shared numeric objects from the saved RTMB report and the ADMB report loaded by `R/config.R`. The `Only BTS` curve is a separate RTMB fit from the same bridge configuration with the ATS biomass index, ATS age-1 index, and AVO index likelihood components excluded; BTS, CPUE, catch, composition, recruitment, selectivity, and weight-at-age components remain active. Differences should be interpreted as implementation diagnostics rather than assessment conclusions.
 
@@ -1951,6 +2290,7 @@ bridge_tbl |>
 ```{r}
 #| label: fig-admb-bridge
 #| fig-cap: "Shared RTMB and ADMB bridge time series for spawning biomass and recruitment, including the Only BTS RTMB sensitivity model with ATS and AVO survey index likelihoods excluded."
+#| fig-alt: "Two-panel line chart of spawning biomass and recruitment for the corrected RTMB bridge, corrected ADMB bridge, and Only-BTS RTMB sensitivity. The corrected bridge lines overlap closely."
 if (nrow(admb_ts) > 0) {
   ggplot(diag_series, aes(x = year, y = value, color = model, linetype = source, group = model)) +
     geom_line(linewidth = 0.9) +
@@ -1965,6 +2305,26 @@ if (nrow(admb_ts) > 0) {
 }
 ```
 
+# Summary
+
+The RTMB implementation reproduces the corrected full-age BTS ADMB bridge at
+the shared ADMB maximum-likelihood estimates. Observed and predicted BTS
+compositions each span ages 1--15 and sum to one, nominal integer sample sizes
+enter the multinomial likelihood, and the BTS total-numbers quantity used for
+composition scaling retains its ages 2--15 definition. The fitted BTS survey
+index is a biomass index. The corrected bridge provides a practical platform for
+diagnostics and model development, while the historical artifact provides an
+explicit comparison of the likelihood treatment.
+
+The OSA diagnostics, Only-BTS sensitivity, nine retrospective peels, and spmR
+projections all carry the corrected base checksum. The retrospective workflow
+preserves stream-specific data lags and fixes terminal-year selectivity at the
+penultimate-year curve. Positive Mohn's rho values identify a stability issue
+for continued evaluation. Candidate refinements require simulation testing and
+review for operational use. ADMB retains its role as the accepted management
+model during this development process, and the hierarchical Form-2 SparseNUTS
+appendix remains a separate development lineage.
+
 # Reproducibility
 
 ```{r}
@@ -1973,7 +2333,7 @@ if (nrow(admb_ts) > 0) {
 repro_tbl <- tibble(
   item = c(
     "Working directory",
-    "Write output command",
+    "Complete corrected rebuild command",
     "Render command",
     "Default SparseNUTS command",
     "RTMB report object",
@@ -1983,12 +2343,12 @@ repro_tbl <- tibble(
   ),
   value = c(
     display_path(pollock_root),
-    "Rscript R/write_output.R",
+    "Rscript R/rebuild_corrected_full_age_bts_products.R",
     "quarto render reporting/ebs_pollock_rtmb_ebswp_assessment.qmd",
-    "quarto render reporting/ebs_pollock_rtmb_ebswp_assessment.qmd -P run_sparsenuts:true",
+    "quarto render -P run_sparsenuts:true",
     display_path(model_file),
     display_path(sparsenuts_file),
-    display_path(pollock_file("admb", "runs", "for_rtmb")),
+    display_path(rtmb_file(params$admb_run_dir)),
     display_path(rtmb_root)
   )
 )
@@ -1998,7 +2358,7 @@ repro_tbl |>
   tab_header(title = "Reproducibility Checklist")
 ```
 
-# Tables
+# Supporting Tables
 
 ```{r}
 #| label: tbl-key-results
@@ -2064,48 +2424,792 @@ f_at_age_tbl |>
   tab_header(title = "Terminal-Year Fishery F at Age")
 ```
 
-# Appendix
+# References {.unnumbered}
 
-## Model Assumptions
+::: {#refs}
+:::
+
+# Appendices {.unnumbered}
+
+## A-1 Data issues and revisions since the 2024 assessment {.unnumbered #sec-age-data-issues}
+
+This appendix documents two distinct age-data issues considered after the 2024
+assessment: the method used to assign ages to individual otoliths and the
+spatio-temporal method used to expand BTS age samples into annual proportions
+at age. The first concerns traditional microscope ages (TMA) versus ages
+predicted by Fourier-transform near-infrared spectroscopy (FT-NIRS). The
+second concerns replacement of the prior BTS age-composition estimator with a
+tinyVAST implementation. These changes occur at different stages of the data
+workflow and should be evaluated separately.
+
+### FTNIRS age-data {.unnumbered #sec-ftnirs-age-data}
+
+TMA assigns age by preparing an otolith and visually counting annual growth
+zones under a microscope. FT-NIRS instead measures the wavelengths and amount
+of near-infrared light absorbed by an otolith and predicts age from its
+spectral and chemical signal using a calibration model. FT-NIRS can process
+otoliths substantially faster, but its predicted ages are methodologically
+different from direct microscope readings ([NOAA Fisheries age-method
+overview](https://www.fisheries.noaa.gov/feature-story/age-and-growth-homework-determining-how-old-fish-are)).
+
+The 2025 CIE discussion paper compared the two methods using pollock data. For
+the same design-based BTS abundance-at-age inputs, TMA estimates showed a high
+degree of cohort consistency, whereas FT-NIRS estimates showed lower cohort
+consistency; the assessment authors described the consequence of that
+difference as unresolved. The comparison also identified differences between
+TMA- and FT-NIRS-based proportions at age for the fishery, BTS, and ATS. Model
+tests therefore treated FT-NIRS ages as a separate data source and considered
+both global and fleet-specific FT-NIRS age-error matrices. See the official
+[FT-NIRS data consistency
+comparisons](https://noaa-afsc.github.io/EBS_pollock/doc/CIE.html#ft-nirs-data-consistency-comparisons)
+for the cohort plots, composition comparisons, data coverage, and alternative
+age-error treatments.
+
+The FT-NIRS issue concerns age assignment and associated ageing error. The BTS
+bridge below concerns the subsequent expansion of age observations across
+space and time. Consequently, the controlled BTS bridge should not be
+interpreted as a test of TMA against FT-NIRS.
+
+### Impact of revised BTS age-data {.unnumbered #sec-bts-age-data-bridge}
+
+This appendix isolates the effect of replacing the original bottom-trawl
+survey (BTS) proportions at age in `BTSProp.csv` with the revised proportions
+in `tinyVAST_props_new.csv`. Both ADMB runs use the complete 2025 input set and
+the same model specification, executable, starting parameter file, and
+tinyVAST 2025 BTS age observation. The sensitivity restores the original
+1982-2024 BTS proportions while holding the 2025 tinyVAST row constant. The
+comparison therefore addresses the historical estimator change.
+
+The 2024 assessment used the previous spatio-temporal expansion of BTS age
+samples. The revised series uses an improved implementation in `tinyVAST`, a
+multivariate spatio-temporal generalized linear mixed-model framework that can
+model age groups jointly, share information across locations and years, and
+area-expand predictions to annual abundance and proportions at age
+[@thorson2019spatiotemporalcomposition; @thorson2025tinyvast]. The
+[tinyVAST age-composition expansion
+example](https://vast-lib.github.io/tinyVAST/articles/web_only/age_composition_expansion.html)
+documents this workflow for EBS pollock age data. This methodological update
+changes the estimated BTS proportions at age supplied to the assessment; the
+controlled runs below quantify the resulting assessment-model effect while
+holding the other inputs and model configuration fixed.
 
 ```{r}
-#| label: tbl-model-assumptions
-#| tbl-cap: "Key model assumptions and fixed settings in the current RTMB-ADMB implementation."
-assumptions_tbl <- tibble(
-  topic = c(
-    "Bridge source",
-    "Template",
-    "Natural mortality",
-    "BTS start year",
-    "ATS start year",
-    "Recruitment age",
-    "Age-1 ATS index",
-    "BTS biology likelihood",
-    "ATS biology likelihood"
+#| label: bts-age-data-bridge-load
+#| include: false
+bts_age_bridge_file <- rtmb_file(
+  "analysis", "output", "bts_age_data_bridge", "bts_age_data_bridge.rds"
+)
+if (!file.exists(bts_age_bridge_file)) {
+  stop(
+    "Missing BTS age-data bridge output. Run: ",
+    "Rscript scripts/run_bts_age_data_bridge.R"
+  )
+}
+bts_age_bridge <- readRDS(bts_age_bridge_file)
+bts_age_comparison <- as_tibble(bts_age_bridge$comparison)
+bts_age_diagnostics <- as_tibble(bts_age_bridge$diagnostics)
+bts_age_input_summary <- as_tibble(bts_age_bridge$input_summary)
+bts_age_input_comparison <- as_tibble(bts_age_bridge$age_data_comparison)
+bts_age_input_extremes <- bts_age_input_comparison |>
+  summarise(
+    maximum_increase = max(percent_change),
+    maximum_decrease = min(percent_change),
+    maximum_percentage_point_change = max(
+      abs(100 * (tinyvast_proportion - original_proportion))
+    )
+  )
+
+tinyvast_retro_file <- rtmb_file(
+  "analysis", "output", "bts_age_data_bridge",
+  "tinyvast_rtmb_retro_9_peel.rds"
+)
+if (!file.exists(tinyvast_retro_file)) {
+  stop(
+    "Missing tinyVAST retrospective output. Run: ",
+    "RTMB_RETRO_BTS_PROPS=/path/to/tinyVAST_props_new.csv ",
+    "RTMB_RETRO_OUTPUT=analysis/output/bts_age_data_bridge/",
+    "tinyvast_rtmb_retro_9_peel.rds Rscript R/run_retrospective.R"
+  )
+}
+tinyvast_retro <- readRDS(tinyvast_retro_file)
+tinyvast_retro_diagnostics <- as_tibble(tinyvast_retro$diagnostics)
+tinyvast_retro_mohn <- as_tibble(tinyvast_retro$mohn$rho)
+tinyvast_retro_series <- as_tibble(tinyvast_retro$series) |>
+  pivot_longer(
+    cols = c(SSB, Recruitment),
+    names_to = "quantity",
+    values_to = "value"
+  ) |>
+  mutate(
+    quantity = recode(
+      quantity,
+      SSB = "Spawning biomass",
+      Recruitment = "Age-1 recruitment"
+    ),
+    run = if_else(peel == 0, "Full model", "Retrospective peel")
+  )
+
+bts_age_result_summary <- bts_age_comparison |>
+  group_by(quantity) |>
+  summarise(
+    terminal_year = max(year),
+    terminal_percent_difference = percent_difference[which.max(year)],
+    maximum_absolute_percent_difference = max(abs(percent_difference)),
+    year_of_maximum_difference = year[which.max(abs(percent_difference))],
+    .groups = "drop"
+  ) |>
+  mutate(
+    quantity = recode(
+      quantity,
+      spawning_biomass = "Spawning biomass",
+      recruitment_age1 = "Age-1 recruitment",
+      predicted_catch = "Predicted catch"
+    )
+  )
+```
+
+```{r}
+#| label: tbl-bts-age-data-contrast
+#| tbl-cap: "Controlled input contrast for the revised BTS age-data bridge. The 2025 BTS age observation and all non-BTS-age inputs are identical between runs."
+bts_age_input_summary |>
+  gt_report() |>
+  tab_header(title = "BTS Age-Data Contrast")
+```
+
+The source-data comparison uses the `both` region from `BTSProp.csv` as the
+original series and `tinyVAST_props_new.csv` as the revised series
+(@fig-bts-age-input-change). Across the 42 matched survey years, relative
+changes range from
+`r sprintf("%.1f%%", bts_age_input_extremes$maximum_decrease)` to
+`r sprintf("%+.1f%%", bts_age_input_extremes$maximum_increase)`; the largest
+absolute change is
+`r sprintf("%.2f percentage points", bts_age_input_extremes$maximum_percentage_point_change)`.
+The calculation uses the original proportion as the denominator and describes
+the input revision rather than its influence on model results. The revised
+2025 row is excluded because the original file ends in 2024.
+
+```{r}
+#| label: fig-bts-age-input-change
+#| fig-cap: "Percent change in BTS proportions at age from the original BTSProp.csv series to the revised tinyVAST_props_new.csv series for each matched historical survey year. Positive bars indicate a larger tinyVAST proportion and negative bars indicate a smaller tinyVAST proportion. Age 15 is the plus group; no BTS survey occurred in 2020."
+#| fig-alt: "Small-multiple bar chart for 42 matched BTS survey years from 1982 through 2024, excluding 2020. Each panel shows relative percent change from the original series to the tinyVAST series for ages 1 through 15. Bars above zero indicate increases and bars below zero indicate decreases. Changes range from about minus 12 percent to plus 55 percent, with the largest increase at age 12 in 2023."
+#| fig-width: 13
+#| fig-height: 10
+bts_age_input_comparison |>
+  ggplot(aes(age, percent_change, fill = direction)) +
+  geom_hline(yintercept = 0, color = "grey35", linewidth = 0.3) +
+  geom_col(width = 0.82) +
+  facet_wrap(vars(year), ncol = 7) +
+  scale_x_continuous(breaks = c(1, 5, 10, 15)) +
+  scale_y_continuous(labels = scales::label_number(suffix = "%")) +
+  scale_fill_manual(
+    values = c("Decrease" = "#2166AC", "Increase" = "#B2182B")
+  ) +
+  labs(
+    x = "Age (15 is plus group)",
+    y = "Change from prior proportion at age",
+    fill = "Direction"
+  ) +
+  theme(
+    legend.position = "top",
+    panel.grid.minor = element_blank(),
+    strip.text = element_text(face = "bold")
+  )
+```
+
+Both runs reached maximum absolute gradients below 0.001. The likelihood
+components in @tbl-bts-age-data-diagnostics document the fits and support a
+structured contrast between scenarios with different observed BTS age values.
+
+```{r}
+#| label: tbl-bts-age-data-diagnostics
+#| tbl-cap: "ADMB fit diagnostics for the matched 2025 model with tinyVAST BTS proportions and with original BTSProp proportions for 1982-2024. Negative-log-likelihood values diagnose each data version; cross-data model selection requires a common observation set and likelihood definition."
+bts_age_diagnostics |>
+  gt_report() |>
+  fmt_number(
+    columns = c(total_nll, bts_index_nll, bts_age_nll),
+    decimals = 3
+  ) |>
+  fmt_scientific(columns = maximum_gradient, decimals = 2) |>
+  cols_label(
+    scenario = "Data version",
+    total_nll = "Total NLL",
+    bts_index_nll = "BTS index NLL",
+    bts_age_nll = "BTS age NLL",
+    maximum_gradient = "Maximum |gradient|"
+  ) |>
+  tab_header(title = "BTS Age-Data Bridge Diagnostics")
+```
+
+The revision changes terminal spawning biomass by
+`r sprintf("%+.3f%%", bts_age_result_summary$terminal_percent_difference[bts_age_result_summary$quantity == "Spawning biomass"])`.
+The largest spawning-biomass difference is
+`r sprintf("%.3f%%", bts_age_result_summary$maximum_absolute_percent_difference[bts_age_result_summary$quantity == "Spawning biomass"])`
+in `r bts_age_result_summary$year_of_maximum_difference[bts_age_result_summary$quantity == "Spawning biomass"]`.
+Terminal age-1 recruitment changes by
+`r sprintf("%+.3f%%", bts_age_result_summary$terminal_percent_difference[bts_age_result_summary$quantity == "Age-1 recruitment"])`,
+which is the largest recruitment difference in the series. Terminal predicted
+catch changes by
+`r sprintf("%+.3f%%", bts_age_result_summary$terminal_percent_difference[bts_age_result_summary$quantity == "Predicted catch"])`.
+
+```{r}
+#| label: tbl-bts-age-data-results
+#| tbl-cap: "Relative effects of replacing the original historical BTS proportions with tinyVAST proportions. Percent differences are tinyVAST minus original, divided by the absolute original estimate."
+bts_age_result_summary |>
+  gt_report() |>
+  fmt_number(
+    columns = c(
+      terminal_percent_difference,
+      maximum_absolute_percent_difference
+    ),
+    decimals = 3
+  ) |>
+  cols_label(
+    quantity = "Quantity",
+    terminal_year = "Terminal year",
+    terminal_percent_difference = "Terminal difference (%)",
+    maximum_absolute_percent_difference = "Maximum absolute difference (%)",
+    year_of_maximum_difference = "Year of maximum"
+  ) |>
+  tab_header(title = "Effects of tinyVAST Historical BTS Proportions")
+```
+
+```{r}
+#| label: fig-bts-age-data-bridge
+#| fig-cap: "Percent differences in spawning biomass, age-1 recruitment, and predicted catch between the 2025 model using tinyVAST BTS proportions and the sensitivity using original BTSProp proportions for 1982-2024. The horizontal line marks no difference."
+#| fig-alt: "Three-panel line graph of percent differences from 1964 through 2025. Spawning-biomass differences remain within one percent and equal minus 0.4 percent in 2025. Recruitment differences remain within four percent and equal minus 2.0 percent in 2025. Predicted-catch differences remain within 0.1 percent."
+#| fig-width: 10
+#| fig-height: 7
+bts_age_comparison |>
+  mutate(
+    quantity = recode(
+      quantity,
+      spawning_biomass = "Spawning biomass",
+      recruitment_age1 = "Age-1 recruitment",
+      predicted_catch = "Predicted catch"
+    )
+  ) |>
+  ggplot(aes(year, percent_difference)) +
+  geom_hline(yintercept = 0, color = "grey50", linewidth = 0.4) +
+  geom_line(color = "#1f4e79", linewidth = 0.7) +
+  geom_point(color = "#1f4e79", size = 1.1) +
+  facet_wrap(vars(quantity), scales = "free_y", ncol = 1) +
+  labs(x = "Year", y = "Difference from prior-age sensitivity (%)") +
+  theme(legend.position = "none")
+```
+
+#### Nine-peel tinyVAST retrospective {.unnumbered}
+
+The RTMB retrospective uses the exact 1982-2024 `both`-region proportions from
+`tinyVAST_props_new.csv`. Peel 0 terminates in 2024 and nine successive peels
+terminate in 2023 through 2015. Each peel removes observations after its
+terminal year and initializes from the preceding fitted peel.
+
+```{r}
+#| label: tbl-tinyvast-retro-diagnostics
+#| tbl-cap: "RTMB convergence diagnostics for the full tinyVAST model and nine retrospective peels. Optimizer code 0 indicates normal completion; maximum absolute gradient is the primary convergence criterion."
+tinyvast_retro_diagnostics |>
+  select(-error) |>
+  gt_report() |>
+  fmt_number(columns = objective, decimals = 3) |>
+  fmt_scientific(columns = max_gradient, decimals = 2) |>
+  cols_label(
+    peel = "Peel",
+    terminal_year = "Terminal year",
+    convergence = "Optimizer code",
+    objective = "Objective",
+    max_gradient = "Maximum |gradient|",
+    optimization_passes = "Optimization passes"
+  ) |>
+  tab_header(title = "tinyVAST Nine-peel Retrospective Diagnostics")
+```
+
+```{r}
+#| label: tbl-tinyvast-retro-mohn
+#| tbl-cap: "Mohn's rho for spawning biomass and age-1 recruitment across nine RTMB retrospective peels using the tinyVAST BTS proportions."
+tinyvast_retro_mohn |>
+  mutate(
+    quantity = recode(
+      quantity,
+      SSB = "Spawning biomass",
+      Recruitment = "Age-1 recruitment"
+    )
+  ) |>
+  gt_report() |>
+  fmt_number(columns = rho, decimals = 3) |>
+  cols_label(quantity = "Quantity", rho = "Mohn's rho", n_peels = "Peels") |>
+  tab_header(title = "tinyVAST Retrospective Mohn's Rho")
+```
+
+```{r}
+#| label: fig-tinyvast-retrospective
+#| fig-cap: "RTMB spawning-biomass and age-1 recruitment trajectories for the full 2024 model and nine retrospective peels using tinyVAST BTS proportions. Points mark the terminal year of each trajectory."
+#| fig-alt: "Two-panel retrospective line graph for spawning biomass and age-1 recruitment. The full model ends in 2024 and nine peels end in 2023 through 2015. Most truncated trajectories lie above the full-model trajectory near their terminal years, corresponding to positive Mohn's rho values of 0.283 for spawning biomass and 0.311 for recruitment."
+#| fig-width: 10
+#| fig-height: 7
+tinyvast_retro_series |>
+  ggplot(aes(year, value, group = peel, color = factor(peel))) +
+  geom_line(aes(linewidth = run)) +
+  geom_point(
+    data = \(x) filter(x, year == terminal_year),
+    aes(shape = run),
+    size = 2
+  ) +
+  facet_wrap(vars(quantity), scales = "free_y", ncol = 1) +
+  scale_linewidth_manual(values = c("Full model" = 1.1, "Retrospective peel" = 0.55)) +
+  labs(
+    x = "Year",
+    y = "Estimate",
+    color = "Peel",
+    shape = "Run",
+    linewidth = "Run"
+  ) +
+  theme(legend.position = "bottom")
+```
+
+All ten RTMB fits have maximum absolute gradients below 0.001. Peels 2, 4,
+and 8 ended with optimizer code 1 after tighter restarts, but their gradients
+were below the reporting criterion. Mohn's rho is
+`r scales::number(tinyvast_retro_mohn$rho[tinyvast_retro_mohn$quantity == "SSB"], accuracy = 0.001)`
+for spawning biomass and
+`r scales::number(tinyvast_retro_mohn$rho[tinyvast_retro_mohn$quantity == "Recruitment"], accuracy = 0.001)`
+for age-1 recruitment. Both values indicate a positive retrospective pattern.
+
+Replacing the historical BTS proportions with tinyVAST has a small effect on
+terminal spawning biomass and predicted catch in the controlled ADMB bridge,
+and a somewhat larger effect on recruitment. The positive retrospective
+pattern remains an important stability caveat when considering adoption.
+
+## A-2 Evaluation of time-varying BTS availability {.unnumbered #sec-bts-availability}
+
+This diagnostic isolates the biomass variation induced by the fitted
+time-varying bottom-trawl survey (BTS) selectivity. It holds population
+abundance and weight at age constant across years. The fixed abundance vector
+for ages 1--15 is the arithmetic mean of the model-estimated numbers at each
+age across 1982--2024. The fixed weight vector is the mean BTS weight at each
+age across the survey observations. This centers the controlled calculation
+on the estimated population age structure over the analysis period while
+removing annual changes in population abundance.
+
+For year $t$, the selectivity-only vulnerable biomass is
+
+$$
+B^{\mathrm{sel}}_t = \sum_{a=1}^{15} \bar{N}_a\,\bar{w}_a\,s_{t,a},
+$$
+
+where $\bar{N}_a$ is mean estimated numbers at age across 1982--2024,
+$\bar{w}_a$ is mean BTS weight at age, and only BTS selectivity $s_{t,a}$
+varies. This is an availability index rather than an estimated stock biomass
+trajectory.
+
+```{r}
+#| label: fig-bts-selectivity-only-biomass
+#| fig-cap: "Relative BTS-vulnerable biomass attributable only to fitted annual BTS selectivity. Mean estimated numbers at ages 1–15 across 1982–2024 and mean BTS weight at age are held fixed. Values are divided by the 1982–2024 mean; the dashed horizontal line marks that mean."
+#| fig-alt: "Line plot from 1982 through 2024 showing the BTS vulnerable-biomass variation attributable to fitted annual selectivity when mean estimated numbers and mean weight at age are held fixed."
+#| fig-width: 10
+#| fig-height: 5.5
+
+bts_mean_weight_at_age <- colMeans(data$wt_bts, na.rm = TRUE)
+bts_selectivity_years <- data$styr_bts:data$endyr
+bts_numbers_years <- data$styr_bts:data$endyr
+bts_numbers_rows <- match(bts_numbers_years, years)
+bts_mean_numbers_at_age <- colMeans(
+  as.matrix(rtmb_report$N[bts_numbers_rows, , drop = FALSE]),
+  na.rm = TRUE
+)
+
+stopifnot(
+  !anyNA(bts_numbers_rows),
+  nrow(rtmb_report$N) == length(years),
+  ncol(rtmb_report$N) == length(ages),
+  ncol(rtmb_report$sel_bts) == length(ages),
+  nrow(rtmb_report$sel_bts) == length(bts_selectivity_years),
+  length(bts_mean_weight_at_age) == length(ages),
+  length(bts_mean_numbers_at_age) == length(ages)
+)
+
+bts_availability <- tibble(
+  year = bts_selectivity_years,
+  vulnerable_biomass = as.numeric(
+    as.matrix(rtmb_report$sel_bts) %*%
+      (bts_mean_numbers_at_age * bts_mean_weight_at_age)
+  )
+) |>
+  mutate(relative_biomass = vulnerable_biomass / mean(vulnerable_biomass))
+
+bts_availability_min <- min(bts_availability$relative_biomass)
+bts_availability_max <- max(bts_availability$relative_biomass)
+
+ggplot(bts_availability, aes(x = year, y = relative_biomass)) +
+  geom_hline(yintercept = 1, linetype = "dashed", color = "#555555") +
+  geom_line(color = "#1f5673", linewidth = 0.8) +
+  geom_point(color = "#1f5673", size = 1.5) +
+  scale_x_continuous(breaks = seq(1985, 2025, by = 5)) +
+  scale_y_continuous(labels = scales::label_percent(accuracy = 1)) +
+  labs(
+    x = "BTS selectivity year",
+    y = "Relative vulnerable biomass (period mean = 100%)"
+  ) +
+  ggthemes::theme_few()
+```
+
+With numbers and weights fixed, the selectivity-only index ranges from
+`r scales::percent(bts_availability_min, accuracy = 0.1)` to
+`r scales::percent(bts_availability_max, accuracy = 0.1)` of its period mean.
+Thus, fitted BTS selectivity alone produces deviations of approximately
+`r scales::percent(bts_availability_min - 1, accuracy = 0.1)` to
+`r scales::percent(bts_availability_max - 1, accuracy = 0.1)` around mean
+vulnerable biomass. This range describes changes in modeled survey
+availability caused by selectivity and should not be interpreted as population
+biomass change.
+
+An analogous weight-only calculation holds mean estimated numbers at age and
+BTS selectivity fixed. Selectivity is averaged at each age over 1982--2024,
+while the observed BTS weight-at-age vector varies among the 42 survey years.
+There is no BTS weight observation for 2020, so the plotted series moves
+directly from 2019 to 2021.
+
+```{r}
+#| label: fig-bts-weight-only-biomass
+#| fig-cap: "Relative BTS-vulnerable biomass attributable only to annual BTS weight at age. Mean estimated numbers at ages 1–15 across 1982–2024 and mean 1982–2024 BTS selectivity at age are held fixed. Values are divided by the mean across the 42 BTS observation years; the dashed horizontal line marks that mean."
+#| fig-alt: "Line plot over the 42 BTS observation years from 1982 through 2024 showing the vulnerable-biomass variation attributable to annual weight at age when mean estimated numbers and mean selectivity at age are held fixed; 2020 has no observation."
+#| fig-width: 10
+#| fig-height: 5.5
+
+bts_mean_selectivity_at_age <- colMeans(
+  as.matrix(rtmb_report$sel_bts), na.rm = TRUE
+)
+
+stopifnot(
+  nrow(data$wt_bts) == length(data$yrs_bts_data),
+  ncol(data$wt_bts) == length(ages),
+  length(bts_mean_selectivity_at_age) == length(ages)
+)
+
+bts_weight_availability <- tibble(
+  year = data$yrs_bts_data,
+  vulnerable_biomass = as.numeric(
+    as.matrix(data$wt_bts) %*%
+      (bts_mean_numbers_at_age * bts_mean_selectivity_at_age)
+  )
+) |>
+  mutate(relative_biomass = vulnerable_biomass / mean(vulnerable_biomass))
+
+bts_weight_availability_min <- min(bts_weight_availability$relative_biomass)
+bts_weight_availability_max <- max(bts_weight_availability$relative_biomass)
+
+ggplot(bts_weight_availability, aes(x = year, y = relative_biomass)) +
+  geom_hline(yintercept = 1, linetype = "dashed", color = "#555555") +
+  geom_line(color = "#8c510a", linewidth = 0.8) +
+  geom_point(color = "#8c510a", size = 1.5) +
+  scale_x_continuous(breaks = seq(1985, 2025, by = 5)) +
+  scale_y_continuous(labels = scales::label_percent(accuracy = 1)) +
+  labs(
+    x = "BTS observation year",
+    y = "Relative vulnerable biomass (period mean = 100%)"
+  ) +
+  ggthemes::theme_few()
+```
+
+With mean estimated numbers at age and mean selectivity fixed, annual BTS
+weights alone produce a relative vulnerable-biomass range of
+`r scales::percent(bts_weight_availability_min, accuracy = 0.1)` to
+`r scales::percent(bts_weight_availability_max, accuracy = 0.1)`, equivalent
+to deviations of
+`r scales::percent(bts_weight_availability_min - 1, accuracy = 0.1)` to
+`r scales::percent(bts_weight_availability_max - 1, accuracy = 0.1)` around
+the mean.
+
+The third calculation holds both BTS selectivity and BTS weight at age at
+their period means and varies only the model-estimated numbers at ages 1--15.
+It therefore describes how the estimated population age structure and scale
+would change BTS-vulnerable biomass under a constant observation process.
+
+```{r}
+#| label: fig-bts-numbers-only-biomass
+#| fig-cap: "Relative BTS-vulnerable biomass attributable only to annual estimated numbers at ages 1–15. Mean BTS selectivity at age and mean BTS weight at age are held fixed. Values are divided by the 1982–2024 mean; the dashed horizontal line marks that mean."
+#| fig-alt: "Line plot from 1982 through 2024 showing a numbers-at-age-only BTS vulnerable-biomass index ranging from about 0.48 to 1.53."
+#| fig-width: 10
+#| fig-height: 5.5
+
+stopifnot(
+  nrow(rtmb_report$N[bts_numbers_rows, , drop = FALSE]) ==
+    length(bts_numbers_years)
+)
+
+bts_numbers_availability <- tibble(
+  year = bts_numbers_years,
+  vulnerable_biomass = as.numeric(
+    as.matrix(rtmb_report$N[bts_numbers_rows, , drop = FALSE]) %*%
+      (bts_mean_selectivity_at_age * bts_mean_weight_at_age)
+  )
+) |>
+  mutate(relative_biomass = vulnerable_biomass / mean(vulnerable_biomass))
+
+bts_numbers_availability_min <- min(bts_numbers_availability$relative_biomass)
+bts_numbers_availability_max <- max(bts_numbers_availability$relative_biomass)
+
+ggplot(bts_numbers_availability, aes(x = year, y = relative_biomass)) +
+  geom_hline(yintercept = 1, linetype = "dashed", color = "#555555") +
+  geom_line(color = "#4d7c0f", linewidth = 0.8) +
+  geom_point(color = "#4d7c0f", size = 1.5) +
+  scale_x_continuous(breaks = seq(1985, 2025, by = 5)) +
+  scale_y_continuous(labels = scales::label_percent(accuracy = 1)) +
+  labs(
+    x = "Model year",
+    y = "Relative vulnerable biomass (period mean = 100%)"
+  ) +
+  ggthemes::theme_few()
+```
+
+With mean selectivity and mean weight fixed, estimated numbers at age alone
+produce a relative vulnerable-biomass range of
+`r scales::percent(bts_numbers_availability_min, accuracy = 0.1)` to
+`r scales::percent(bts_numbers_availability_max, accuracy = 0.1)`, equivalent
+to deviations of
+`r scales::percent(bts_numbers_availability_min - 1, accuracy = 0.1)` to
+`r scales::percent(bts_numbers_availability_max - 1, accuracy = 0.1)` around
+the mean. Unlike the first two controlled calculations, this third series
+reflects estimated population change rather than observation-process
+variation.
+
+The combined comparison in @fig-bts-biomass-components-overlay places the
+three controlled series from @fig-bts-selectivity-only-biomass,
+@fig-bts-weight-only-biomass, and @fig-bts-numbers-only-biomass on the same
+scale as the observed BTS biomass index. Each series is divided by its own
+period mean, so 100% represents the mean for that series rather than a common
+biomass level. The BTS observation series retains the 2020 survey gap.
+
+```{r}
+#| label: fig-bts-biomass-components-overlay
+#| fig-cap: "Relative BTS-vulnerable-biomass components and observed BTS biomass index. The selectivity-only, weight-only, numbers-at-age-only, and observed survey series are each normalized to their own 1982–2024 mean. The dashed horizontal line marks 100%; the observed BTS series has no 2020 value."
+#| fig-alt: "Overlaid time-series plot from 1982 through 2024 comparing normalized BTS vulnerable biomass attributable separately to annual selectivity, annual weight at age, and annual numbers at age with the normalized observed BTS biomass index. Each series has a period mean of 100 percent, and the observed survey line has a gap in 2020."
+#| fig-width: 11
+#| fig-height: 6.5
+
+bts_survey_biomass <- tibble(
+  year = data$yrs_bts_data,
+  biomass = as.numeric(data$ob_bts)
+) |>
+  mutate(relative_biomass = biomass / mean(biomass, na.rm = TRUE)) |>
+  right_join(tibble(year = bts_numbers_years), by = "year") |>
+  arrange(year)
+
+bts_component_overlay <- bind_rows(
+  bts_availability |>
+    transmute(year, series = "Selectivity only", relative_biomass),
+  bts_weight_availability |>
+    transmute(year, series = "Weight at age only", relative_biomass),
+  bts_numbers_availability |>
+    transmute(year, series = "Numbers at age only", relative_biomass),
+  bts_survey_biomass |>
+    transmute(year, series = "Observed BTS biomass", relative_biomass)
+) |>
+  mutate(
+    series = factor(
+      series,
+      levels = c(
+        "Observed BTS biomass",
+        "Selectivity only",
+        "Weight at age only",
+        "Numbers at age only"
+      )
+    ),
+    line_segment = if_else(
+      series == "Observed BTS biomass" & year > 2020,
+      "Observed BTS biomass after 2020",
+      as.character(series)
+    )
+  )
+
+ggplot(
+  bts_component_overlay,
+  aes(
+    x = year,
+    y = relative_biomass,
+    color = series,
+    linetype = series,
+    shape = series,
+    group = line_segment
+  )
+) +
+  geom_hline(yintercept = 1, linetype = "dashed", color = "#555555") +
+  geom_line(linewidth = 0.85, na.rm = TRUE) +
+  geom_point(size = 1.8, na.rm = TRUE) +
+  scale_x_continuous(breaks = seq(1985, 2025, by = 5)) +
+  scale_y_continuous(labels = scales::label_percent(accuracy = 1)) +
+  scale_color_manual(
+    values = c(
+      "Observed BTS biomass" = "#000000",
+      "Selectivity only" = "#1f5673",
+      "Weight at age only" = "#8c510a",
+      "Numbers at age only" = "#4d7c0f"
+    )
+  ) +
+  scale_linetype_manual(
+    values = c(
+      "Observed BTS biomass" = "solid",
+      "Selectivity only" = "longdash",
+      "Weight at age only" = "dotdash",
+      "Numbers at age only" = "twodash"
+    )
+  ) +
+  scale_shape_manual(values = c(16, 17, 15, 18)) +
+  labs(
+    x = "Year",
+    y = "Relative index (period mean = 100%)",
+    color = NULL,
+    linetype = NULL,
+    shape = NULL
+  ) +
+  ggthemes::theme_few() +
+  theme(legend.position = "bottom")
+```
+
+The pairwise display in @fig-bts-biomass-components-pairs removes the time
+axis and compares the four normalized series directly. Diagonal panels show
+each marginal distribution, lower panels show paired annual values, and upper
+panels report Pearson correlations based on the years available for each
+pair. These correlations describe shared temporal variation among the
+normalized indices; they do not identify causal contributions to observed
+survey biomass.
+
+```{r}
+#| label: fig-bts-biomass-components-pairs
+#| fig-cap: "Pairwise relationships among observed BTS biomass and the selectivity-only, weight-at-age-only, and numbers-at-age-only relative indices shown in Figure @fig-bts-biomass-components-overlay. Values are percentages of each series' 1982–2024 mean. Upper panels report Pearson correlations using available paired years."
+#| fig-alt: "Pairs-plot matrix for four normalized annual series: observed BTS biomass, selectivity-only vulnerable biomass, weight-at-age-only vulnerable biomass, and numbers-at-age-only vulnerable biomass. Diagonal panels show distributions, lower panels show paired annual points, and upper panels give Pearson correlations."
+#| fig-width: 11
+#| fig-height: 10
+
+bts_component_pairs <- bts_component_overlay |>
+  select(year, series, relative_biomass) |>
+  mutate(
+    series = recode(
+      as.character(series),
+      "Observed BTS biomass" = "BTS biomass",
+      "Selectivity only" = "Selectivity",
+      "Weight at age only" = "Weight at age",
+      "Numbers at age only" = "Numbers at age"
+    ),
+    relative_biomass = 100 * relative_biomass
+  ) |>
+  tidyr::pivot_wider(names_from = series, values_from = relative_biomass) |>
+  select(`BTS biomass`, Selectivity, `Weight at age`, `Numbers at age`)
+
+GGally::ggpairs(
+  bts_component_pairs,
+  upper = list(
+    continuous = GGally::wrap("cor", method = "pearson", size = 4)
   ),
-  setting = c(
-    "ADMB bridge run in admb/runs/for_rtmb",
-    "Physical bridge pm.tpl copy that intentionally differs from admb/source/pm.tpl",
-    paste(round(data$natmort, 4), collapse = ", "),
-    as.character(data$styr_bts),
-    as.character(data$styr_ats),
-    as.character(data$recage),
-    as.character(data$use_age1_ats),
-    as.character(data$do_bts_bio),
-    as.character(data$do_ats_bio)
+  lower = list(
+    continuous = GGally::wrap("points", alpha = 0.7, size = 1.5)
+  ),
+  diag = list(
+    continuous = GGally::wrap("densityDiag", alpha = 0.45)
+  ),
+  progress = FALSE
+) +
+  ggthemes::theme_few() +
+  theme(
+    strip.text = element_text(size = 10),
+    axis.text = element_text(size = 8)
+  )
+```
+
+```{r}
+#| label: tbl-model-status
+#| tbl-cap: "Summary diagnostics for the current saved RTMB-ADMB base model."
+model_status_tbl <- tibble(
+  metric = c(
+    "RTMB output",
+    "Report elements",
+    "Parameters in taped object",
+    "Initial objective",
+    "Saved total likelihood",
+    "ADMB bridge report",
+    "ADMB bridge parameters",
+    "Interpretation"
+  ),
+  value = c(
+    params$model_file,
+    as.character(length(names(rtmb_report))),
+    as.character(length(obj$par)),
+    sprintf("%.3f", obj$fn(obj$par)),
+    sprintf("%.3f", as.numeric(rtmb_report$tot_like)),
+    display_path(rtmb_metadata$admb_rep),
+    display_path(rtmb_metadata$admb_par),
+    "Saved report loads and the RTMB objective tapes successfully; full convergence diagnostics require a fitted optimizer object."
   )
 )
 
-assumptions_tbl |>
+model_status_tbl |>
   gt_report() |>
-  tab_header(title = "RTMB-ADMB Model Assumptions")
+  tab_header(title = "Model Status Diagnostics")
 ```
 
-## SparseNUTS MCMC
+```{r}
+#| label: tbl-diagnostics
+#| tbl-cap: "RTMB-ADMB likelihood diagnostics by component."
+nll_tbl <- tibble(
+  component = c(
+    "Catch",
+    "BTS index",
+    "ATS index",
+    "ATS age-1 index",
+    "CPUE",
+    "AVO",
+    "Fishery age composition",
+    "BTS age composition",
+    "ATS age composition",
+    "Recruitment",
+    "Fishing mortality penalty",
+    "Selectivity penalty",
+    "Weight-at-age",
+    "Priors",
+    "Total"
+  ),
+  value = c(
+    rtmb_report$cat_like,
+    rtmb_report$bts_like,
+    rtmb_report$ats_like,
+    rtmb_report$ats_age1_like,
+    rtmb_report$cpue_like,
+    rtmb_report$avo_like,
+    rtmb_report$age_like[1],
+    rtmb_report$age_like[2],
+    rtmb_report$age_like[3],
+    sum(rtmb_report$rec_like, na.rm = TRUE),
+    rtmb_report$Fpen_like,
+    sum(rtmb_report$sel_like, na.rm = TRUE) + sum(rtmb_report$sel_like_dev, na.rm = TRUE),
+    rtmb_report$wt_like,
+    sum(rtmb_report$Priors, na.rm = TRUE),
+    rtmb_report$tot_like
+  )
+)
 
-This analysis applies the current `SparseNUTS` package to the **accepted base RTMB model** (`fishery_sel_form = 0`), not to the experimental Form 2 double-logistic model. The call leaves chains, cores, sampling iterations, warmup, initialization, and metric selection at the package defaults, but increases `adapt_delta` to 0.95 to reduce divergent transitions. The model name and `globals = list(data = model_data)` are also supplied. Exporting that RTMB data object lets the package rebuild the objective in its parallel R workers, so the package-default chains can run concurrently.
+nll_tbl |>
+  gt_report() |>
+  fmt_number(columns = value, decimals = 3) |>
+  tab_header(title = "Likelihood Diagnostics by Component")
+```
 
-The completed fit is saved outside the rendered document. Every render reads that fit and rebuilds all MCMC tables and figures, preventing diagnostics from an older run from remaining in the report. The reproducible runner is `R/run_sparsenuts_default.R`.
+## A-3 SparseNUTS MCMC {.unnumbered}
+
+This analysis applies the current `SparseNUTS` package to the **hierarchical
+Form-2 double-logistic development model** (`fishery_sel_form = 2`). The
+accepted Form-0 ADMB bridge remains the management reference. The Form-2
+model declares annual selectivity deviations as random effects, which permits
+SparseNUTS to construct the sparse precision metric. The sampler uses
+`metric = "sparse"` and
+`adapt_delta = 0.95`; chains, cores, sampling iterations, warmup, and
+initialization remain at the package defaults. The model name and
+`globals = list(data = model_data)` are also supplied. Exporting that RTMB data
+object lets the package rebuild the objective in its parallel R workers, so the
+package-default chains can run concurrently.
+
+The completed fit is saved outside the rendered document. Every render reads
+that fit and rebuilds all MCMC tables and figures, preventing diagnostics from
+an older run from remaining in the report. The reproducible runner is
+`R/run_sparsenuts_fishery_sel_forms.R`.
 
 ```{r}
 #| label: sparsenuts-default-run
@@ -2121,7 +3225,7 @@ if (param_is_true(params$run_sparsenuts) &&
   } else {
     run_status <- system2(
       file.path(R.home("bin"), "Rscript"),
-      rtmb_file("R", "run_sparsenuts_default.R")
+      rtmb_file("R", "run_sparsenuts_fishery_sel_forms.R")
     )
     if (!identical(run_status, 0L)) {
       sparsenuts_error <- paste("SparseNUTS runner exited with status", run_status)
@@ -2147,7 +3251,7 @@ if (!is.null(sparsenuts_fit) && sparsenuts_available) {
 
 ```{r}
 #| label: tbl-sparsenuts-status
-#| tbl-cap: "SparseNUTS default-run status for the RTMB-ADMB base model."
+#| tbl-cap: "SparseNUTS sparse-metric run status for the hierarchical Form-2 RTMB model."
 sample_dims <- if (!is.null(sparsenuts_fit$samples)) dim(sparsenuts_fit$samples) else NULL
 draws_per_chain <- if (!is.null(sample_dims) && length(sample_dims) >= 2) sample_dims[1] else NA_integer_
 chains <- if (!is.null(sample_dims) && length(sample_dims) >= 2) sample_dims[2] else NA_integer_
@@ -2177,11 +3281,11 @@ sparsenuts_status <- tibble(
     "Error"
   ),
   value = c(
-    sparsenuts_run_metadata$model %||% "base RTMB model",
+    sparsenuts_run_metadata$model %||% "hierarchical Form-2 RTMB model",
     as.character(sparsenuts_available),
     sparsenuts_run_metadata$package_version %||% if (sparsenuts_available) as.character(packageVersion("SparseNUTS")) else NA_character_,
     sparsenuts_run_metadata$package_remote_sha %||% NA_character_,
-    "SparseNUTS::sample_snuts(obj, globals = list(data = model_data))",
+    "SparseNUTS::sample_snuts(obj, metric = 'sparse', control = list(adapt_delta = 0.95), globals = list(data = model_data))",
     as.character(file.exists(sparsenuts_file)),
     display_path(sparsenuts_file),
     as.character(sparsenuts_fit$algorithm %||% NA_character_),
@@ -2200,12 +3304,12 @@ sparsenuts_status <- tibble(
 
 sparsenuts_status |>
   gt_report() |>
-  tab_header(title = "SparseNUTS Default-Run Status")
+  tab_header(title = "SparseNUTS Hierarchical Form-2 Run Status")
 ```
 
 ```{r}
 #| label: tbl-sparsenuts-diagnostics
-#| tbl-cap: "Diagnostics for the current package-default SparseNUTS run of the base RTMB model. R-hat values near 1 and larger effective sample sizes indicate good between-chain mixing. Divergences identify transitions that did not adequately explore the posterior geometry and should be resolved before using the draws for final inference."
+#| tbl-cap: "Diagnostics for the SparseNUTS sparse-metric run of the base RTMB model with adapt_delta = 0.95. R-hat values near 1 and larger effective sample sizes indicate good between-chain mixing. Divergences identify inadequate exploration of posterior geometry and require resolution before final inference."
 if (!is.null(sparsenuts_fit) && !is.null(sparsenuts_fit$monitor)) {
   diag_values <- sparsenuts_diagnostics %||% data.frame(
     perc_divergent = NA_real_, perc_treedepth = NA_real_,
@@ -2248,10 +3352,19 @@ if (!is.null(sparsenuts_fit) && !is.null(sparsenuts_fit$monitor)) {
 diag_tbl |>
   gt_report() |>
   fmt_number(columns = value, decimals = 3) |>
-  tab_header(title = "SparseNUTS Base-Model Diagnostics")
+  tab_header(title = "SparseNUTS Hierarchical Form-2 Diagnostics")
 ```
 
-With `adapt_delta = 0.95`, the run produced `r warmup_divergences` divergences during adaptation and **`r sampling_divergences` divergences among the `r format(post_warmup_total, big.mark = ",")` retained transitions**. Maximum R-hat was `r sprintf("%.3f", max(sparsenuts_fit$monitor$rhat, na.rm = TRUE))`, and minimum bulk effective sample size was `r format(round(min(sparsenuts_fit$monitor$ess_bulk, na.rm = TRUE)), big.mark = ",")`. `r if (sampling_divergences == 0) "The retained draws pass the reported divergence and chain-mixing checks." else paste0("The chain-mixing statistics are good, but ", sampling_divergences, " retained divergence", if (sampling_divergences == 1) " remains" else "s remain", "; its location should be checked before treating the posterior as final.")` Substantive posterior checks and comparison with deterministic uncertainty remain appropriate before using the draws in assessment decisions.
+With `metric = "sparse"` and `adapt_delta = 0.95`, the run produced
+`r warmup_divergences` divergences during adaptation and **`r sampling_divergences`
+divergences among the `r format(post_warmup_total, big.mark = ",")` retained
+transitions**. Maximum R-hat was
+`r sprintf("%.3f", max(sparsenuts_fit$monitor$rhat, na.rm = TRUE))`, and minimum
+bulk effective sample size was
+`r format(round(min(sparsenuts_fit$monitor$ess_bulk, na.rm = TRUE)), big.mark = ",")`.
+`r if (sampling_divergences == 0) "The retained draws pass the reported divergence and chain-mixing checks." else paste0("The chain-mixing statistics are good, but ", sampling_divergences, " retained divergence", if (sampling_divergences == 1) " remains" else "s remain", "; its location should be checked before treating the posterior as final.")`
+Substantive posterior checks and comparison with deterministic uncertainty
+remain appropriate before using the draws in assessment decisions.
 
 ```{r}
 #| label: sparsenuts-plot-data
@@ -2361,6 +3474,7 @@ if (length(slow_parameter_names) > 0) {
 ```{r}
 #| label: fig-sparsenuts-pairs-slow
 #| fig-cap: "SparseNUTS package pairs plot for the six slowest RTMB-ADMB parameters by Rhat/ESS ranking, generated through the package S3 method `pairs.tmbfit` via `pairs(sparsenuts_fit, order = 'slow')`."
+#| fig-alt: "Matrix of pairwise scatterplots and marginal distributions for the six slowest-mixing SparseNUTS parameters, showing posterior associations and chain overlap."
 if (file.exists(sparsenuts_figures$pairs_slow)) {
   knitr::include_graphics(sparsenuts_figures$pairs_slow)
 }
@@ -2369,6 +3483,7 @@ if (file.exists(sparsenuts_figures$pairs_slow)) {
 ```{r}
 #| label: fig-sparsenuts-marginals-slow
 #| fig-cap: "SparseNUTS::plot_marginals output from the default RTMB-ADMB SparseNUTS run using `order = 'slow'` for the selected parameter set."
+#| fig-alt: "Posterior marginal-density and chain display for the slowest-mixing SparseNUTS parameters."
 if (file.exists(sparsenuts_figures$marginals_slow)) {
   knitr::include_graphics(sparsenuts_figures$marginals_slow)
 }
@@ -2377,6 +3492,7 @@ if (file.exists(sparsenuts_figures$marginals_slow)) {
 ```{r}
 #| label: fig-sparsenuts-sampler
 #| fig-cap: "SparseNUTS sampler-parameter diagnostics from the default RTMB-ADMB run."
+#| fig-alt: "SparseNUTS sampler diagnostic panels summarizing chain behavior and Hamiltonian Monte Carlo tuning quantities."
 if (file.exists(sparsenuts_figures$sampler)) {
   knitr::include_graphics(sparsenuts_figures$sampler)
 }
@@ -2385,6 +3501,7 @@ if (file.exists(sparsenuts_figures$sampler)) {
 ```{r}
 #| label: fig-sparsenuts-q
 #| fig-cap: "SparseNUTS::plot_Q output from the default RTMB-ADMB run."
+#| fig-alt: "Graphical display of the SparseNUTS sparse precision matrix, with colored cells indicating the magnitude and pattern of parameter dependence."
 if (file.exists(sparsenuts_figures$q)) {
   knitr::include_graphics(sparsenuts_figures$q)
 }
@@ -2393,12 +3510,36 @@ if (file.exists(sparsenuts_figures$q)) {
 ```{r}
 #| label: fig-sparsenuts-uncertainties
 #| fig-cap: "SparseNUTS::plot_uncertainties output from the default RTMB-ADMB run."
+#| fig-alt: "SparseNUTS uncertainty summary showing posterior estimates and intervals for monitored model quantities."
 if (file.exists(sparsenuts_figures$uncertainties)) {
   knitr::include_graphics(sparsenuts_figures$uncertainties)
 }
 ```
 
-## Data Tables
+## A-4 Data and output {.unnumbered}
+
+### Downloadable CSV files {.unnumbered}
+
+The following reader-facing files provide machine-readable versions of key
+inputs, diagnostics, and results used in this report:
+
+- [Model-level summary](data-output/model_glance.csv)
+- [Tidy model parameters](data-output/model_parameters.csv)
+- [Tidy model observations and predictions](data-output/model_observations.csv)
+- [BTS age-data bridge comparison](data-output/bts_age_data_bridge_comparison.csv)
+- [BTS age-data bridge diagnostics](data-output/bts_age_data_bridge_diagnostics.csv)
+- [BTS age-data bridge time series](data-output/bts_age_data_bridge_timeseries.csv)
+- [tinyVAST retrospective diagnostics](data-output/tinyvast_retro_diagnostics.csv)
+- [tinyVAST retrospective Mohn's rho](data-output/tinyvast_retro_mohn.csv)
+- [Corrected-run downstream lineage](data-output/downstream_lineage.csv)
+- [Fishery-selectivity model summary](data-output/fishery_selectivity_summary.csv)
+- [One-step-ahead residual summary](data-output/osa_summary.csv)
+- [Retrospective data-availability audit](data-output/retrospective_data_availability.csv)
+- [SPM projection summary](data-output/spmr_projection_summary.csv)
+- [Tier-3 seven-scenario projection table](data-output/tier3_seven_scenario_table.csv)
+- [Length-frequency summary counts](data-output/lf_length_frequency_summary.csv)
+
+### Input schedules {.unnumbered}
 
 ```{r}
 #| label: tbl-weight-at-age
@@ -2429,7 +3570,7 @@ maturity_tbl |>
   tab_header(title = "Maturity at Age")
 ```
 
-## Report Inventory
+### Report-object inventory {.unnumbered}
 
 ```{r}
 #| label: tbl-report-inventory
@@ -2449,6 +3590,93 @@ report_inventory |>
   tab_header(title = "Saved RTMB Report Inventory")
 ```
 
-# Notes
+## A-5 Length-frequency patterns {.unnumbered #sec-length-frequency-patterns}
 
-This report is intended to support model-port debugging and bridge diagnostics. It does not replace the parent cross-platform comparison documents in `doc/`, and it should not be interpreted as a final assessment report without additional convergence, estimability, retrospective, and sensitivity diagnostics.
+This appendix summarizes exploratory seasonal and spatial patterns in observed
+pollock length-frequency samples. It is intended to identify patterns that may
+warrant further investigation rather than to test an assessment-model
+configuration. The source analysis includes pollock observations from 1991
+onward, excludes observations below 20 cm, and accumulates fish 65 cm and
+longer in a 65-cm-plus group. Length frequencies are normalized within each
+displayed year and grouping. A season includes samples collected before June;
+B season data are from June onward. Earlier years appear at the top of each
+figure.
+
+### Change from 2025 to 2026 {.unnumbered}
+
+The observed length distribution shifted toward smaller fish from 2025 to
+2026. Across seasons, mean sampled length declined from 46.17 to 44.81 cm,
+while the median remained 46 cm. The percentage longer than 46 cm decreased
+from 46.40% to 43.96%, and the percentage at or below 35 cm increased from
+4.03% to 9.86%.
+
+The shift occurred primarily in the B-season samples. B-season mean length
+declined from 45.93 cm in 2025 to 42.55 cm in 2026, and the median declined
+from 46 to 43 cm. The proportion longer than 46 cm decreased from 48.90% to
+34.76%, while the proportion at or below 35 cm increased from 6.79% to 17.54%.
+Both B-season area groups shifted toward smaller fish. In the western group
+(`NMFS_AREA > 519`), mean length declined from 44.26 to 39.39 cm and the
+percentage at or below 35 cm increased from 9.86% to 29.24%. In the eastern
+group (`NMFS_AREA < 520`), mean length declined from 48.55 to 45.62 cm and the
+percentage longer than 46 cm decreased from 70.13% to 49.88%.
+
+The A-season change was smaller and differed in shape. Mean length declined
+from 46.39 to 45.82 cm and the median remained 46 cm, while the percentages
+longer than 46 cm and at or below 35 cm both increased. This indicates greater
+representation in the tails of the sampled A-season distribution in 2026.
+Sample coverage also changed: the A-season count increased from 91,912 to
+101,038 observations, whereas the B-season count decreased from 80,749 to
+45,057. These are unstandardized sample distributions, so the differences
+describe the available observations and may reflect changes in sampling as
+well as changes in the fish encountered by the fishery.
+
+### A- and B-season distributions {.unnumbered}
+
+![Pollock length-frequency proportions by season. The left panel shows samples collected before June; the right panel shows samples collected from June onward.](assets/appendices/fig-lf-seasons.png){#fig-appendix-lf-seasons fig-alt="Two-panel ridge plot of annual pollock length-frequency proportions from 1991 onward. A-season distributions appear in the left panel and B-season distributions in the right. Each row represents one year; a dashed vertical line marks 46 cm and a blue pie wedge gives the percentage longer than 46 cm."}
+
+### Combined-season distributions {.unnumbered}
+
+![Pollock length-frequency proportions across both seasons.](assets/appendices/fig-lf-combined.png){#fig-appendix-lf-combined fig-alt="Ridge plot of annual pollock length-frequency proportions across A and B seasons from 1991 onward. Each row represents one year; a dashed vertical line marks 46 cm and a blue pie wedge gives the percentage longer than 46 cm."}
+
+### B-season distributions by NMFS area {.unnumbered}
+
+![B-season pollock length-frequency proportions by NMFS area group. Samples were collected from June onward. The left panel represents samples west of 170 degrees W; the right panel represents samples east of 170 degrees W, approximately west and east of the Pribilof Islands.](assets/appendices/fig-lf-b-season-area.png){#fig-appendix-lf-b-season-area fig-alt="Two-panel ridge plot of annual B-season pollock length-frequency proportions from 1991 onward, divided into areas west and east of 170 degrees W. Each row represents one year; a dashed vertical line marks 46 cm and a blue pie wedge gives the percentage longer than 46 cm."}
+
+## A-6 Sex-ratio patterns {.unnumbered #sec-sex-ratio-patterns}
+
+This shortened BSAI-focused appendix summarizes exploratory patterns from
+fishery age samples and Bering Sea summer acoustic-survey samples. The source
+analysis covers 1986--2025, with catcher/processor A-season weekly summaries
+updated through 2026. Sex ratio is the proportion female among samples with a
+recorded female or male sex. Point sizes indicate sample size where shown.
+These unadjusted summaries identify seasonal, size-related, and interannual
+structure; they do not constitute a formal assessment-model test.
+
+### Pooled fishery patterns by age and length {.unnumbered}
+
+![BSAI pooled fishery sex ratios across all samples: by age with ages older than 13 pooled to 13 plus (top), and by 5-cm length bins for lengths 20--65 cm (bottom).](assets/appendices/fig-sex-ratio-overall-bsai.png){#fig-appendix-sex-ratio-overall-bsai fig-alt="Two-panel BSAI fishery summary of the proportion female. The upper panel shows sex ratio by age and the lower panel shows sex ratio by 5-cm length group; boxplots summarize variation among grouped observations and a horizontal reference line marks equal female and male proportions."}
+
+### A-season progression {.unnumbered}
+
+![BSAI catcher/processor A-season sex ratio by ISO calendar week for weeks 4--14, pooled across 2008--2026.](assets/appendices/fig-sex-ratio-week-a-bsai-all-years.png){#fig-appendix-sex-ratio-week-a-bsai fig-alt="Line and point plot of pooled BSAI catcher-processor A-season proportion female for ISO weeks 4 through 14 during 2008 through 2026. Point size represents the number of sampled fish and a horizontal dashed line marks 50 percent female."}
+
+### Length patterns by age and season {.unnumbered}
+
+![BSAI fishery sex ratio by length for ages younger than 11, with age in separate panels and season shown by color.](assets/appendices/fig-sex-ratio-length-age-bsai.png){#fig-appendix-sex-ratio-length-age-bsai fig-alt="Faceted BSAI fishery plots of proportion female against fish length for ages younger than 11. Separate colored series compare A and B seasons, point size represents sample size, smooth curves summarize each seasonal pattern, and dashed horizontal lines mark 50 percent female."}
+
+The seasonal patterns vary with age and length. In particular, the unadjusted
+age-4 panels suggest that A-season samples contain slightly larger fish than
+B-season samples. The source analysis treats this as an exploratory visual
+pattern; its adjusted growth model reverses that simple interpretation and
+estimates a positive B-versus-A age-4 length contrast in the BSAI.
+
+### Bering Sea summer acoustic survey {.unnumbered}
+
+![BSAI pooled acoustic-survey sex ratios across all samples: by age with ages older than 13 pooled to 13 plus (top), and by 5-cm length bins for lengths 20--65 cm (bottom).](assets/appendices/fig-acoustic-sex-ratio-overall-bsai.png){#fig-appendix-acoustic-sex-ratio-overall-bsai fig-alt="Two-panel Bering Sea summer acoustic-survey summary of proportion female. The upper panel shows sex ratio by age and the lower panel shows sex ratio by 5-cm length group; boxplots summarize variation among grouped observations and a horizontal reference line marks equal female and male proportions."}
+
+## A-7 Notes {.unnumbered}
+
+This report supports model-port debugging and bridge diagnostics. The parent
+cross-platform comparison documents in `doc/` remain the broader comparison
+record, and operational assessment use requires the full set of convergence,
+estimability, retrospective, sensitivity, simulation, and review gates.
