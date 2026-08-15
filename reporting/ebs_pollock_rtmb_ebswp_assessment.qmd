@@ -18,13 +18,11 @@ link-citations: true
 abstract: |
   The eastern Bering Sea walleye pollock assessment has long used a custom
   AD Model Builder (ADMB) model. This working paper documents its translation
-  to R Template Model Builder (RTMB), the fixed-parameter bridge used to test
-  implementation equivalence, and subsequent developments made possible by
-  the RTMB framework. The report brings the bridge, model fits, fishery and
-  survey selectivity work, projections, retrospective analysis, and
-  SparseNUTS diagnostics into one reproducible account. The accepted ADMB
-  model remains the management reference; the RTMB results presented here
-  support implementation testing and evaluation of candidate refinements.
+  to R Template Model Builder (RTMB) and evaluates agreement between the two
+  implementations at a common parameter set. The report presents model fits,
+  fishery and survey selectivity analyses, projections, retrospective results,
+  and SparseNUTS diagnostics. Candidate refinements are evaluated relative to
+  the accepted ADMB assessment model.
 execute:
   echo: false
   warning: false
@@ -569,42 +567,38 @@ plot_osa_comps_for_fleet <- function(fleet_name) {
 [Download a PDF version of this report](ebs_pollock_rtmb_ebswp_assessment.pdf){.btn .btn-primary download="ebs_pollock_rtmb_ebswp_assessment.pdf"}
 :::
 
-The custom ADMB pollock model has been translated into RTMB and tested at the
-same parameter point as a corrected ADMB bridge run. The corrected case
+The custom ADMB pollock model has been translated into RTMB and evaluated at
+the same parameter estimates as the ADMB model. The corrected comparison
 normalizes observed and predicted bottom trawl survey (BTS) age compositions
 across ages 1--15 and applies the nominal integer sample sizes. The
-fixed-parameter comparison separates code translation from optimization and
-later model development. The saved corrected RTMB bridge supplies a common
-starting point for model-fit summaries, projections, retrospective peels, and
-sensitivities in this report.
+fixed-parameter results isolate differences between implementations from
+differences caused by estimation. The same corrected specification was used
+for model-fit summaries, projections, retrospective peels, and sensitivities.
 
 The principal developments are:
 
-- an R implementation of the ADMB population dynamics and likelihood;
-- explicit object-by-object and likelihood-component bridge checks;
+- an RTMB implementation of the ADMB population dynamics and likelihood;
+- comparisons of state variables, predictions, and likelihood components;
 - selectable fishery-selectivity forms, including hierarchical
   time-varying and two-dimensional autoregressive alternatives;
-- RTMB-based retrospective and uncertainty workflows;
-- a reproducible lineage from the ADMB bridge files to saved RTMB results and
-  downstream analyses.
+- RTMB-based retrospective and uncertainty analyses.
 
-The corrected fixed-parameter bridge supports implementation equivalence for
-the tested configuration. The historical bridge remains in the repository as
-an explicit comparator. Alternative selectivity forms and diagnostic analyses
-remain development products, while the accepted ADMB model remains the
-management reference.
+The fixed-parameter comparison showed negligible differences between ADMB and
+RTMB for the tested configuration. Alternative selectivity formulations and
+diagnostic analyses are presented for review and do not alter current
+management advice, which remains based on the accepted ADMB assessment model.
 
 # Purpose and Scope
 
-This document summarizes the RTMB implementation of the EBS pollock ADMB bridge model in this standalone source repository. It follows the same assessment-reporting framework used by the FIMS, SPoRC, and Rceattle implementation documents, but reads the RTMB report object written by `Rscript R/write_output.R`.
+This document evaluates an RTMB translation of the EBS pollock ADMB assessment
+model. It follows the assessment-reporting framework used for the FIMS, SPoRC,
+and Rceattle comparisons and emphasizes agreement with ADMB, model fit,
+diagnostics, and candidate refinements.
 
-The current RTMB implementation is an ADMB-port bridge within a development
-workflow. It uses the corrected staged run in
-`analysis/output/corrected_full_age_bts/admb_root/runs/full_age_bts/` for
-initialization and comparison. This report reads the corrected RTMB output at
-`analysis/output/corrected_full_age_bts/rtmb_base.rds`. The historical
-`analysis/output/base.rds` provides a direct audit of the sample-size and
-composition-normalization change.
+The analyses use a corrected comparison in which observed and predicted BTS
+age compositions span ages 1--15 and nominal integer sample sizes enter the
+likelihood. A historical configuration is retained only to quantify the effect
+of that correction.
 
 # Initial RTMB Developments
 
@@ -613,8 +607,7 @@ composition-normalization change.
 The RTMB input series include annual fishery catch, fishery age compositions,
 BTS and ATS age compositions, the BTS biomass index, the ATS survey index,
 acoustic vessels of opportunity, and fishery CPUE. The input data and bridge
-ADMB output are resolved through `R/config.R` using the external pollock
-workspace supplied by `POLLOCK_ROOT`.
+ADMB results correspond to the corrected base configuration described above.
 
 ```{r}
 #| label: tbl-input-summary
@@ -882,12 +875,13 @@ age-composition residuals, selectivity surfaces, convergence, and effects on
 spawning biomass. Objective value alone provides an incomplete basis for
 choosing a selectivity specification. The detailed equations, fitted
 comparisons, and implementation references remain available in the companion
-[fishery-selectivity technical appendix](appendix_fishery_selectivity.html),
-generated from `reporting/appendix_fishery_selectivity.qmd`.
+[fishery-selectivity technical appendix](appendix_fishery_selectivity.html).
 
 ### Run Definitions
 
-The current report has one saved RTMB run, `base`, written by `R/write_output.R`. Refitting can be enabled at render time with `params$refit: true`, but the default render reads the saved RTMB report object to avoid rerunning the optimizer.
+Results are presented for one base RTMB configuration corresponding to the
+corrected ADMB comparison. Candidate fishery-selectivity formulations are
+identified separately from this base configuration.
 
 ```{r}
 #| label: tbl-run-definitions
@@ -932,11 +926,10 @@ into RTMB, and both implementations are evaluated at that identical parameter
 point. This isolates code translation from optimization behavior and later
 model alternatives.
 
-The refreshed corrected artifact is the authoritative starting point for the
-primary results below. Its configuration label, bridge statistics, and file
-identity propagate into the OSA diagnostics, Only-BTS sensitivity,
-retrospectives, and projections. The SparseNUTS appendix retains its separate
-hierarchical Form-2 development lineage and states that distinction explicitly.
+The OSA diagnostics, Only-BTS sensitivity, retrospectives, and projections use
+the same corrected base configuration. The SparseNUTS appendix instead
+evaluates the hierarchical Form-2 selectivity model and is identified
+separately throughout.
 
 ```{r}
 #| label: tbl-bridge-summary
@@ -969,11 +962,11 @@ difference among key outputs is
 `r sprintf("%.9f%%", bridge_metrics$maximum_key_percent_difference)`, and the
 largest absolute RTMB gradient at the ADMB estimates is
 `r format(bridge_metrics$maximum_absolute_gradient, scientific = TRUE, digits = 7)`.
-These values pass the repository's automated corrected-bridge tolerances.
+These values satisfy the prespecified corrected-comparison tolerances.
 
 ```{r}
 #| label: tbl-correction-effect
-#| tbl-cap: "Effect of replacing the historical RTMB-adjusted BTS composition treatment with the corrected full-age treatment. Percent differences summarize paired annual values from the two saved RTMB bridge reports."
+#| tbl-cap: "Effect of replacing the historical RTMB-adjusted BTS composition treatment with the corrected full-age treatment. Percent differences summarize paired annual values from the two RTMB configurations."
 correction_effect <- if (!is.null(legacy_report)) {
   bind_rows(
     lapply(
@@ -1139,7 +1132,13 @@ ggplot(bridge_difference, aes(year, absolute_relative_difference)) +
 
 ## Fit to Base RTMB-ADMB Run
 
-The current fitted results are for the saved RTMB-ADMB `base` run. The fitted spawning biomass trajectory is shown in @fig-ssb. Fishery observed and predicted catch are compared in @fig-catch-fit, while survey, CPUE, and AVO index fits are summarized in @fig-fits-by-fleet and residual patterns are shown in @fig-residuals. Expected age-composition outputs for fishery, BTS, and ATS are shown in @fig-agecomp-fishery, @fig-agecomp-bts, and @fig-agecomp-ats. Fleet selectivity curves are shown in @fig-selectivity-curves. Diagnostics and bridge comparisons are reported in @tbl-model-status, @tbl-diagnostics, @tbl-admb-bridge, and @fig-admb-bridge.
+The fitted results below are for the base RTMB-ADMB configuration. The spawning
+biomass trajectory is shown in @fig-ssb. Fishery observed and predicted catch
+are compared in @fig-catch-fit, while survey, CPUE, and AVO index fits are
+summarized in @fig-fits-by-fleet and residual patterns in @fig-residuals.
+Expected age compositions and fleet selectivity curves are shown in
+@fig-agecomp-fishery, @fig-agecomp-bts, @fig-agecomp-ats, and
+@fig-selectivity-curves.
 
 ```{r}
 #| label: rtmb-result-data
@@ -1273,7 +1272,7 @@ ggplot(ssb_overlay, aes(x = year, y = value, color = model, linetype = source)) 
 
 ```{r}
 #| label: fig-catch-fit
-#| fig-cap: "Observed fishery catch and predicted catch from the saved RTMB-ADMB model."
+#| fig-cap: "Observed fishery catch and predicted catch from the base RTMB-ADMB model."
 #| fig-alt: "Time-series chart with observed catch points and a predicted catch line across model years, showing close correspondence."
 ggplot(catch_df, aes(x = year)) +
   geom_line(aes(y = expected), color = "#377eb8", linewidth = 0.8) +
@@ -1286,7 +1285,7 @@ ggplot(catch_df, aes(x = year)) +
 
 ```{r}
 #| label: fig-fits-by-fleet
-#| fig-cap: "Observed and predicted index series from the saved RTMB-ADMB model, shown on arithmetic scales with separate facet axes."
+#| fig-cap: "Observed and predicted index series from the base RTMB-ADMB model, shown on arithmetic scales with separate facet axes."
 #| fig-alt: "Faceted time-series chart of observed points and predicted lines for BTS, ATS, CPUE, and AVO indices, with a separate vertical scale for each series."
 ggplot(index_df, aes(x = year)) +
   geom_line(aes(y = expected), color = "#377eb8", linewidth = 0.8) +
@@ -1313,7 +1312,7 @@ ggplot(index_df, aes(x = year, y = std_residual)) +
 
 ```{r}
 #| label: fig-agecomp-fishery
-#| fig-cap: "Observed and expected fishery age-composition patterns from the saved RTMB-ADMB model, faceted by year."
+#| fig-cap: "Observed and expected fishery age-composition patterns from the base RTMB-ADMB model, faceted by year."
 #| fig-alt: "Small-multiple fishery age-composition plots by year, with observed proportions shown as points and expected proportions shown as lines across ages 1 through 15."
 #| fig-width: 8
 #| fig-height: 11
@@ -1323,7 +1322,7 @@ plot_agecomp_fit(agecomp_df, "Fishery", ncol = 5)
 
 ```{r}
 #| label: fig-agecomp-bts
-#| fig-cap: "Observed and expected BTS age-composition patterns from the saved RTMB-ADMB model, faceted by year."
+#| fig-cap: "Observed and expected BTS age-composition patterns from the base RTMB-ADMB model, faceted by year."
 #| fig-alt: "Small-multiple bottom trawl survey age-composition plots by year, with observed points and expected lines across ages 1 through 15."
 #| fig-width: 8
 #| fig-height: 11
@@ -1333,7 +1332,7 @@ plot_agecomp_fit(agecomp_df, "BTS", ncol = 4)
 
 ```{r}
 #| label: fig-agecomp-ats
-#| fig-cap: "Observed and expected ATS age-composition patterns from the saved RTMB-ADMB model, faceted by year."
+#| fig-cap: "Observed and expected ATS age-composition patterns from the base RTMB-ADMB model, faceted by year."
 #| fig-alt: "Small-multiple acoustic-trawl survey age-composition plots by year, with observed points and expected lines across modeled ages."
 #| fig-width: 8
 #| fig-height: 11
@@ -1524,11 +1523,10 @@ ggplot(ridge_df |> filter(fleet == "ATS"), aes(x = age, y = year_factor, height 
 The projection analysis is also available as a self-contained attachment:
 [RTMB EBS pollock: standalone spmR projection attachment](reporting/appendix_spmr_projections.html).
 
-The RTMB bridge can now write a Standard Projection Model input directory for
-use with `spmR` [@ianelli2026spmR]. This report writes the current saved RTMB
-output to `r display_path(projection_dir)`, using the same SPM setup structure
-as the ADMB bridge projection directory while replacing the species assessment
-input file with an RTMB-derived `pm.prj`.
+The RTMB estimates were converted to Standard Projection Model inputs and
+evaluated with `spmR` [@ianelli2026spmR]. The projection configuration matches
+the ADMB assessment setup, with population quantities supplied by the RTMB
+model.
 
 ```{r}
 #| label: spmr-projection-inputs
@@ -1647,12 +1645,10 @@ spmr_alt_desc |>
 
 ## Seven Tier-3 Scenario Results
 
-The installed `spmR` package (version `r spmr_version`) is attached by the reproducible projection script
-`R/run_spmr_tier3_projection.R`. That script converts the saved RTMB pollock
-fit to the standard SPM inputs, runs all seven alternatives through the ADMB
-projection engine, and calls `spmR::tier3_scenario_table()` to produce the
-assessment-ready comparison below. The table begins with 2027 because catches
-for 2025 and 2026 are fixed at 1,350 thousand t in every alternative.
+The projection procedure converted the RTMB fit to standard SPM inputs and
+evaluated all seven alternatives with the ADMB projection engine in `spmR`
+(version `r spmr_version`). The comparison begins with 2027 because catches for
+2025 and 2026 are fixed at 1,350 thousand t in every alternative.
 
 ```{r}
 #| label: tbl-spmr-tier3-seven-scenarios
@@ -2142,10 +2138,9 @@ if (nrow(spmr_detail) > 0) {
 }
 ```
 
-The corrected projection directory is a reproducible input handoff. The rebuild
-script executes the production ADMB engine through `spmR::runSPM()` and records
-the corrected RTMB base checksum in `base_lineage.csv`. The current experimental
-RTMB projection engine remains available for implementation testing.
+The projections use the production ADMB projection engine through
+`spmR::runSPM()`. This preserves the accepted projection calculations while
+isolating the effect of using population estimates from the RTMB model.
 
 # Diagnostics
 
@@ -2282,7 +2277,12 @@ All `r sum(retro_diagnostics$peel > 0 & is.na(retro_diagnostics$error))` peels c
 
 ## Additional Bridge Diagnostics and Only-BTS Sensitivity
 
-The bridge comparison uses shared numeric objects from the saved RTMB report and the ADMB report loaded by `R/config.R`. The `Only BTS` curve is a separate RTMB fit from the same bridge configuration with the ATS biomass index, ATS age-1 index, and AVO index likelihood components excluded; BTS, CPUE, catch, composition, recruitment, selectivity, and weight-at-age components remain active. Differences should be interpreted as implementation diagnostics rather than assessment conclusions.
+The `Only BTS` curve is a separate RTMB sensitivity from the same base
+configuration with the ATS biomass index, ATS age-1 index, and AVO index
+likelihood components excluded. BTS, CPUE, catch, composition, recruitment,
+selectivity, and weight-at-age components remain active. This sensitivity
+illustrates the influence of the excluded indices and is not an alternative
+assessment model.
 
 ```{r}
 #| label: tbl-only-bts-status
@@ -2342,24 +2342,24 @@ the shared ADMB maximum-likelihood estimates. Observed and predicted BTS
 compositions each span ages 1--15 and sum to one, nominal integer sample sizes
 enter the multinomial likelihood, and the BTS total-numbers quantity used for
 composition scaling retains its ages 2--15 definition. The fitted BTS survey
-index is a biomass index. The corrected bridge provides a practical platform for
-diagnostics and model development, while the historical artifact provides an
-explicit comparison of the likelihood treatment.
+index is a biomass index. Comparison with the historical configuration shows
+the effect of correcting the BTS likelihood treatment.
 
-The OSA diagnostics, Only-BTS sensitivity, nine retrospective peels, and spmR
-projections all carry the corrected base checksum. The retrospective workflow
-preserves stream-specific data lags and fixes terminal-year selectivity at the
-penultimate-year curve. Positive Mohn's rho values identify a stability issue
-for continued evaluation. Candidate refinements require simulation testing and
-review for operational use. ADMB retains its role as the accepted management
-model during this development process, and the hierarchical Form-2 SparseNUTS
-appendix remains a separate development lineage.
+The OSA diagnostics, Only-BTS sensitivity, nine retrospective peels, and SPM
+projections use the same corrected base specification. The retrospective
+procedure preserves stream-specific data lags and fixes terminal-year
+selectivity at the penultimate-year curve. Positive Mohn's rho values identify
+a stability concern requiring continued evaluation. Candidate refinements
+require simulation testing and review before operational use. Current
+management advice remains based on the accepted ADMB assessment model; the
+hierarchical Form-2 SparseNUTS results characterize a separate candidate
+selectivity formulation.
 
 # Reproducibility
 
 ```{r}
 #| label: tbl-reproducibility
-#| tbl-cap: "Files and commands needed to reproduce the saved RTMB-ADMB output."
+#| tbl-cap: "Files and commands supporting reproducibility of the RTMB-ADMB results."
 repro_tbl <- tibble(
   item = c(
     "Working directory",
@@ -2427,7 +2427,7 @@ scalar_tbl |>
 
 ```{r}
 #| label: tbl-naa-comparison
-#| tbl-cap: "Initial and terminal estimated numbers-at-age from the saved RTMB-ADMB model."
+#| tbl-cap: "Initial and terminal estimated numbers-at-age from the base RTMB-ADMB model."
 naa_tbl <- bind_rows(
   tibble(year = first_year, age = ages, numbers = as.numeric(rtmb_report$N[1, ])),
   tibble(year = terminal_year, age = ages, numbers = as.numeric(rtmb_report$N[nrow(rtmb_report$N), ]))
@@ -2441,7 +2441,7 @@ naa_tbl |>
 
 ```{r}
 #| label: tbl-f-at-age
-#| tbl-cap: "Estimated terminal-year fishery F-at-age from the saved RTMB-ADMB model."
+#| tbl-cap: "Estimated terminal-year fishery F-at-age from the base RTMB-ADMB model."
 f_at_age_tbl <- tibble(
   year = terminal_year,
   age = ages,
@@ -3147,7 +3147,7 @@ GGally::ggpairs(
 
 ```{r}
 #| label: tbl-model-status
-#| tbl-cap: "Summary diagnostics for the current saved RTMB-ADMB base model."
+#| tbl-cap: "Summary diagnostics for the current RTMB-ADMB base model."
 model_status_tbl <- tibble(
   metric = c(
     "RTMB output",
@@ -3224,22 +3224,17 @@ nll_tbl |>
 
 ## A-3 SparseNUTS MCMC {.unnumbered}
 
-This analysis applies the current `SparseNUTS` package to the **hierarchical
-Form-2 double-logistic development model** (`fishery_sel_form = 2`). The
-accepted Form-0 ADMB bridge remains the management reference. The Form-2
+This analysis applies `SparseNUTS` to the **hierarchical Form-2 double-logistic
+candidate model** (`fishery_sel_form = 2`). The Form-2
 model declares annual selectivity deviations as random effects, which permits
 SparseNUTS to construct the sparse precision metric. The sampler uses
 `metric = "sparse"` and
 `adapt_delta = 0.95`; chains, cores, sampling iterations, warmup, and
 initialization remain at the package defaults. The model name and
 `globals = list(data = model_data)` are also supplied. Exporting that RTMB data
-object lets the package rebuild the objective in its parallel R workers, so the
-package-default chains can run concurrently.
-
-The completed fit is saved outside the rendered document. Every render reads
-that fit and rebuilds all MCMC tables and figures, preventing diagnostics from
-an older run from remaining in the report. The reproducible runner is
-`R/run_sparsenuts_fishery_sel_forms.R`.
+object allows the chains to run concurrently. These results characterize
+posterior sampling behavior for the candidate Form-2 model and do not replace
+the accepted assessment configuration.
 
 ```{r}
 #| label: sparsenuts-default-run
@@ -3706,7 +3701,8 @@ estimates a positive B-versus-A age-4 length contrast in the BSAI.
 
 ## A-7 Notes {.unnumbered}
 
-This report supports model-port debugging and bridge diagnostics. The parent
-cross-platform comparison documents in `doc/` remain the broader comparison
-record, and operational assessment use requires the full set of convergence,
-estimability, retrospective, sensitivity, simulation, and review gates.
+Operational consideration of the RTMB model requires satisfactory convergence,
+estimability, retrospective, sensitivity, and simulation results, followed by
+the established review process. The results presented here address several of
+these elements but do not constitute a recommendation to replace the accepted
+assessment model.
