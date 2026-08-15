@@ -5,11 +5,14 @@ for report_name in \
   ebs_pollock_rtmb_ebswp_assessment \
   appendix_fishery_selectivity
 do
-  staged_file="docs/reporting/${report_name}.html"
-  published_file="docs/${report_name}.html"
-  if [ -f "$staged_file" ]; then
-    mv "$staged_file" "$published_file"
-  fi
+  for extension in html pdf
+  do
+    staged_file="docs/reporting/${report_name}.${extension}"
+    published_file="docs/${report_name}.${extension}"
+    if [ -f "$staged_file" ]; then
+      mv "$staged_file" "$published_file"
+    fi
+  done
 done
 
 rmdir docs/reporting 2>/dev/null || true

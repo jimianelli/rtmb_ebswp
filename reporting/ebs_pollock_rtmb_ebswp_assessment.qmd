@@ -46,6 +46,20 @@ format:
     theme:
       light: cosmo
       dark: darkly
+  pdf:
+    toc: true
+    toc-depth: 3
+    number-sections: true
+    documentclass: scrreprt
+    classoption:
+      - open=any
+    papersize: letter
+    fontsize: 9pt
+    geometry:
+      - margin=0.7in
+    pdf-engine: xelatex
+    keep-tex: true
+    colorlinks: true
 params:
   bridge_case: "corrected_full_age_bts"
   admb_run_dir: "analysis/output/corrected_full_age_bts/admb_root/runs/full_age_bts"
@@ -163,8 +177,10 @@ rtmb_file <- function(...) normalizePath(file.path(rtmb_root, ...), mustWork = F
 pollock_file <- function(...) normalizePath(file.path(pollock_root, ...), mustWork = FALSE)
 display_path <- function(path) {
   path <- as.character(path)
-  path <- ifelse(startsWith(path, rtmb_root), paste0("[repo]", substring(path, nchar(rtmb_root) + 1L)), path)
-  path <- ifelse(startsWith(path, pollock_root), paste0("[pollock]", substring(path, nchar(pollock_root) + 1L)), path)
+  repo_label <- if (knitr::is_latex_output()) "repo" else "[repo]"
+  pollock_label <- if (knitr::is_latex_output()) "pollock" else "[pollock]"
+  path <- ifelse(startsWith(path, rtmb_root), paste0(repo_label, substring(path, nchar(rtmb_root) + 1L)), path)
+  path <- ifelse(startsWith(path, pollock_root), paste0(pollock_label, substring(path, nchar(pollock_root) + 1L)), path)
   path
 }
 
@@ -548,6 +564,10 @@ plot_osa_comps_for_fleet <- function(fleet_name) {
 ```
 
 # Executive Summary
+
+::: {.content-visible when-format="html"}
+[Download a PDF version of this report](ebs_pollock_rtmb_ebswp_assessment.pdf){.btn .btn-primary download="ebs_pollock_rtmb_ebswp_assessment.pdf"}
+:::
 
 The custom ADMB pollock model has been translated into RTMB and tested at the
 same parameter point as a corrected ADMB bridge run. The corrected case
@@ -1744,7 +1764,10 @@ if (nrow(spmr_alt2_detail) > 0) {
     ) |>
     gt_report() |>
     fmt_number(columns = c(Catch, ABC, OFL, `Mean B`), decimals = 0) |>
-    fmt_number(columns = `B/B35%`, decimals = 0, pattern = "{x}%") |>
+    fmt_number(
+      columns = `B/B35%`, decimals = 0,
+      pattern = if (knitr::is_latex_output()) "{x}\\%" else "{x}%"
+    ) |>
     cols_label(
       `Mean B` = md("Mean $B$"),
       `B/B35%` = md("$B/B_{35\\%}$")
@@ -1774,7 +1797,7 @@ if (nrow(spmr_detail) > 0) {
     mutate(Alt = as.character(Alt)) |>
     arrange(as.integer(Alt), Year)
 
-  if (requireNamespace("reactable", quietly = TRUE)) {
+  if (knitr::is_html_output() && requireNamespace("reactable", quietly = TRUE)) {
     alt_filter_options <- paste(
       sprintf(
         "React.createElement('option', { value: '%s' }, '%s')",
@@ -1872,7 +1895,10 @@ if (nrow(spmr_detail) > 0) {
       filter(Alt == "1") |>
       gt_report() |>
       fmt_number(columns = c(B, Catch, ABC, OFL), decimals = 0) |>
-      fmt_number(columns = `B/B35%`, decimals = 0, pattern = "{x}%") |>
+      fmt_number(
+        columns = `B/B35%`, decimals = 0,
+        pattern = if (knitr::is_latex_output()) "{x}\\%" else "{x}%"
+      ) |>
       fmt_number(columns = F, decimals = 3) |>
       cols_label(`B/B35%` = md("$B/B_{35\\%}$")) |>
       tab_header(title = "SPM Projection Means")
@@ -2165,7 +2191,11 @@ if (!is.null(retro_saved$availability)) {
 
   retrospective_availability |>
     gt_report() |>
-    tab_header(title = "Retrospective Data-Availability Audit")
+    tab_header(title = "Retrospective Data-Availability Audit") |>
+    tab_options(
+      table.font.size = px(8),
+      data_row.padding = px(1)
+    )
 }
 ```
 
