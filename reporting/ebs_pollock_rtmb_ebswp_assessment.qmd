@@ -80,7 +80,7 @@ params:
 
 ::: {.content-visible when-format="html"}
 ::: {.pollock-brand .framework-rtmb}
-![](assets/branding/ebs-pollock-model-development.png){fig-alt="Brand mark with a stylized walleye pollock and the words EBS Walleye Pollock Model Development, September 2026 Plan Team." width="100%"}
+![](assets/branding/alaska-pollock-logo.png){fig-alt="Circular Alaska Pollock mark showing a walleye pollock, mountain and water motifs, and Alaska Fisheries Science Center and NOAA NMFS identification." width="32%"}
 
 ::: {.pollock-brand-label}
 RTMB TECHNICAL REPORT

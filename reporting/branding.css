@@ -7,7 +7,7 @@
 
 .pollock-brand img {
   display: block;
-  width: 100%;
+  width: min(36%, 340px);
   height: auto;
   margin: 0 auto 0.55rem;
 }
@@ -35,5 +35,11 @@
   .pollock-brand {
     max-width: 100%;
     margin-top: 0.35rem;
+  }
+}
+
+@media (max-width: 575px) {
+  .pollock-brand img {
+    width: min(72%, 320px);
   }
 }
