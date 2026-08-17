@@ -1,201 +1,172 @@
 ---
-title: "EBS Pollock Model Bridge and Update Program"
-subtitle: "ADMB, RTMB, and Rceattle evidence through the 2025 assessment update"
-author: "EBS Pollock assessment development"
-date: last-modified
+title: "Eastern Bering Sea Pollock Model Development"
+subtitle: "Coordinating overview for the September 2026 Plan Team review"
+author:
+  - name: James Ianelli
+    corresponding: true
+    orcid: 0000-0002-7170-8677
+    email: jim.ianelli@noaa.gov
+    affiliation:
+      - name: Alaska Fisheries Science Center
+        city: Seattle
+        state: WA
+date: today
+date-format: "MMMM D, YYYY"
+lang: en-US
+abstract: |
+  Three working papers document complementary evaluations of candidate
+  modeling frameworks for eastern Bering Sea pollock. This overview defines
+  the role of each report, summarizes the common evidence and important
+  differences, identifies the proposed development path, and lists questions
+  for Plan Team review. The accepted ADMB assessment remains the basis for
+  current management advice.
 format:
   html:
     toc: true
     toc-location: left
-    toc-depth: 3
+    toc-depth: 2
     number-sections: true
-    code-fold: true
-    code-tools: true
     embed-resources: true
     link-external-newwindow: true
     smooth-scroll: true
     theme:
       light: cosmo
       dark: darkly
-    lightbox: true
+  pdf:
+    toc: true
+    toc-depth: 2
+    number-sections: true
+    documentclass: scrartcl
+    papersize: letter
+    fontsize: 10pt
+    geometry:
+      - margin=0.8in
+    pdf-engine: xelatex
+    colorlinks: true
+    keep-tex: true
 execute:
   echo: false
   warning: false
   message: false
-editor:
-  markdown:
-    wrap: 72
 ---
 
-# Purpose
+::: {.content-visible when-format="html"}
+[Download this overview as a PDF](plan_team_model_development_overview.pdf){.btn .btn-primary download="plan_team_model_development_overview.pdf"}
+:::
 
-This is the central orientation page for the EBS pollock model
-translation and annual-update work. It separates two questions that should
-not be conflated:
+# Purpose of this overview
 
-1. **Bridge fidelity:** does another implementation reproduce a specified
-   ADMB model when supplied the same model structure, data, and parameter
-   values?
-2. **Updated-data performance:** after extending the inputs through 2025,
-   do the implementations optimize reliably and give scientifically
-   comparable assessment results?
-
-The September 2025 ADMB--RTMB restoration is the numerical reference. The
-Rceattle work includes both an effectively exact fixed-parameter bridge to the
-modified `m23_rceattle_full` ADMB model and a close, independently fitted
-comparison. Both Rceattle results were unchanged after updating from version
-4.8.0 to 4.9.1. The 2025 comparison is the next controlled experiment; it is
-not yet presented as completed evidence.
+The September 2026 Plan Team review package contains three model-development
+working papers. They address related but distinct questions and should be read
+together rather than treated as three competing operational assessments. This
+overview provides the entry point for the package and identifies the feedback
+requested from the Plan Team.
 
 ::: {.callout-important}
-The exact RTMB and Rceattle bridge tests refer to different ADMB reference
-configurations. Their numerical statistics test implementation fidelity
-within each pair; they are not a direct ranking of the two software
-frameworks. The independently optimized Rceattle fit remains a separate close
-comparison.
+The accepted ADMB assessment remains the basis for current management advice.
+The RTMB, SPoRC, and Rceattle results evaluate implementation fidelity,
+diagnostics, and future development options; none constitutes a proposed
+replacement assessment for September 2026.
 :::
 
-# Evidence at a glance
+# Review package
 
-| Track | Reference and implementation | Current evidence | Interpretation |
-|---|---|---|---|
-| Exact bridge | `for_rtmb/pm.tpl` versus restored `R/Rpm.R` | Total NLL differs by 0.004097748; key outputs differ by less than 0.0005%; maximum absolute gradient is 6.37e-06 | Validated fixed-parameter bridge baseline |
-| Exact Rceattle forward pass | `ADMB/m23_rceattle_full/` MLE versus fixed-parameter Rceattle | Mean absolute differences are 0.000117% for SSB and 0.000143% for catch; unchanged under Rceattle 4.9.1 | Validated fixed-parameter implementation bridge |
-| Close bridge | `ADMB/m23_rceattle_full/` versus fitted Rceattle `NonParametricPM` | Terminal 2024 differences: SSB -0.2%, recruitment -0.9%, total biomass -0.2%; correlations are at least 0.9992 | Close fitted bridge, not bit-for-bit equivalence |
-| 2025 update | 2025 ADMB base run versus matched RTMB and Rceattle updates | ADMB input and run artifacts exist; matched RTMB and Rceattle results have not yet been accepted into this comparison | Work in progress |
-
-[Read the validated September 2025 ADMB--RTMB bridge](sept_2025_bridge_restoration.html){.btn .btn-primary}
-[Read the Rceattle refinements](grant_rceattle_handoff_results.html){.btn .btn-secondary}
-[Open the separate SparseNUTS report](rceattle_2024_results.html){.btn .btn-secondary}
-
-# 1. Exact ADMB--RTMB bridge
-
-The restored bridge compares the 2024 `for_rtmb` ADMB configuration with the
-historical `Rpm.R` implementation used for the September 2025 bridge. Its
-automated regression test recalculates the objective, key state variables,
-predictions, and gradient.
-
-| Metric | Result |
-|---|---:|
-| ADMB total NLL | 7940.720000000 |
-| RTMB total NLL | 7940.715902252 |
-| Absolute total NLL difference | 0.004097748 |
-| Maximum key output difference | 0.000492728% |
-| Maximum absolute gradient | 6.3653498e-06 |
-
-These are rounding-scale differences associated with transferring ADMB
-outputs through text artifacts. This pair is the deterministic regression
-gate for subsequent RTMB development.
-
-The source report records the exact template, RTMB sources, file hashes, and
-test procedure. Development changes should be introduced only after the base
-bridge continues to pass unchanged.
-
-# 2. ADMB--Rceattle bridge and fitted comparison
-
-The standalone fixed-parameter Rceattle bridge injects the
-`m23_rceattle_full` ADMB MLE and realized selectivity. It reproduces SSB and
-predicted catch to about 0.0001% mean absolute difference. Repeating this test
-after updating Rceattle from 4.8.0 to 4.9.1 changed none of the six stored
-bridge metrics. The two-stage base objectives, gradient, population
-trajectories, and OSA residuals were also unchanged. The package update only
-changed the inactive steepness reporting array by filling all years rather
-than leaving structural zeros.
-
-Grant Adams's Rceattle handoff uses the modified ADMB reference in
-`ADMB/m23_rceattle_full/` and the prepared
-`Data/2024_EBS_pollock_m23_rceattle_full.xlsx` workbook. Because Rceattle fits
-the model in two stages and resolves a multimodal fishery-selectivity problem,
-this is appropriately described as a **close fitted bridge** rather than an
-exact fixed-parameter translation.
-
-| Quantity | Correlation with ADMB | Mean absolute difference | Maximum absolute difference | 2024 difference |
-|---|---:|---:|---:|---:|
-| Spawning biomass | 0.9995 | 1.3% | 10.0% | -0.2% |
-| Recruitment | 1.0000 | 0.3% | 2.0% | -0.9% |
-| Total biomass | 0.9992 | 1.0% | 8.8% | -0.2% |
-
-The largest discrepancies occur near the beginning of the series, where
-initial abundance and fishery-selectivity scale are weakly identified. The
-terminal-year agreement is much closer.
-
-The 2D age-by-year AR1 selectivity sensitivity did not converge and is not an
-accepted bridge alternative. The SparseNUTS run is exploratory and remains in
-its own report so MCMC diagnostics are not confused with deterministic bridge
-validation.
-
-# 3. Controlled comparison with data through 2025
-
-The next comparison should begin from the operational 2025 ADMB base inputs
-and update the two alternate implementations without changing their model
-semantics. The comparison should preserve three named configurations:
-
-1. **ADMB 2025 reference** -- the operational 2025 base run and its complete
-   input/output manifest.
-2. **RTMB 2025 matched update** -- the validated RTMB bridge extended with the
-   same new observations and model settings.
-3. **Rceattle 2025 matched update** -- the close Rceattle bridge workbook
-   updated using Grant's annual-update workflow and the same observations.
-
-## Acceptance sequence
-
-| Gate | Required comparison | Minimum documentation |
+| Report | Primary question | Role in the review |
 |---|---|---|
-| Inputs | Years, fleets, indices, compositions, covariance inputs, weights, maturity, catches | Machine-readable input inventory and hashes |
-| Fixed-parameter bridge | Objective components and derived quantities at matched parameter values | Total and component likelihood differences, maximum state/prediction differences |
-| Optimization | Convergence code, maximum gradient, Hessian status, bounds, runtime | Common summary table and optimizer logs |
-| Assessment results | Recruitment, SSB, total biomass, F, selectivity, predicted observations | Overlay and relative-difference figures, including terminal values |
-| Diagnostics | Residuals, retrospectives, profiles, jitters or self-tests where available | Method-specific caveats and common diagnostics |
-| Uncertainty | ADMB uncertainty, RTMB uncertainty, and Rceattle uncertainty/MCMC where supportable | Interval comparison; MCMC only after its deterministic model passes |
+| [**RTMB: main report**](ebs_pollock_rtmb_ebswp_assessment.html) | Can the custom ADMB assessment be represented faithfully in RTMB, and what do the resulting diagnostics and candidate refinements show? | Primary technical report and common implementation baseline |
+| [**SPoRC: companion report**](https://jimianelli.github.io/sporc_ebswp/) | Can a general single-region stock-assessment framework reproduce the corrected ADMB candidate and support alternative process structures? | Independent framework comparison and continuing methods-development track |
+| [**Rceattle: companion report**](rceattle_ebswp.html) | Can a more general and extensible framework reproduce the principal assessment dynamics and support future operational development? | Leading candidate for future operational assessment development, subject to the remaining diagnostic and review requirements |
 
-::: {.callout-warning}
-No 2025 RTMB--Rceattle result is claimed here yet. The local 2025 ADMB run and
-data establish a reference, but a fair three-way comparison requires matched
-input manifests and completed deterministic runs from both alternate
-implementations.
-:::
+The [main RTMB report](ebs_pollock_rtmb_ebswp_assessment.html) contains the
+fullest documentation of the common data treatment, fixed-parameter bridge,
+model fits, selectivity analyses, projections, retrospectives, and uncertainty
+diagnostics. The SPoRC and Rceattle reports should be used to compare how the
+same assessment problem behaves in more general frameworks.
 
-# Interpretation rules
+# Common evidence
 
-- Use **exact bridge** only for a fixed-parameter comparison with
-  rounding-scale discrepancies and a passing regression test.
-- Use **close bridge** for independently optimized implementations with very
-  similar trajectories but meaningful structural or fitting differences.
-- Compare updated-data results only after confirming that all three models
-  received the same intended 2025 observations and assessment assumptions.
-- Keep structural sensitivities and exploratory MCMC outside the base bridge
-  claim, but link them as supporting analyses.
-- Report nonconvergence directly; do not use terminal-year similarity to
-  rehabilitate a failed optimization.
+The three reports establish several common points:
 
-# Documentation map
+- The corrected comparison treats observed and predicted bottom-trawl survey
+  age compositions over ages 1--15 and uses nominal multinomial sample sizes.
+- Fixed-parameter comparisons reproduce the principal ADMB population
+  dynamics closely, supporting the tested model mappings.
+- Independently estimated models reveal differences that arise from
+  parameterization, selectivity structure, and estimation rather than from the
+  population-dynamics translation alone.
+- Time-varying fishery and survey selectivity remains an important source of
+  model sensitivity and weak identification.
+- Positive retrospective patterns warrant continued evaluation before an
+  alternative framework is considered for operational use.
+- Sparse-metric Bayesian analyses remain exploratory until convergence and
+  effective-sample-size criteria are satisfied.
 
-## Primary evidence
+# Important differences among frameworks
 
-- [September 2025 bridge restoration](sept_2025_bridge_restoration.html):
-  exact ADMB--RTMB bridge, provenance, and regression test.
-- [Rceattle refinements](grant_rceattle_handoff_results.html): Rceattle model
-  developments, ADMB comparisons, selectivity results, and diagnostic limitations.
-- [Rceattle SparseNUTS report](rceattle_2024_results.html): separate exploratory
-  MCMC and selectivity comparisons.
+| Dimension | RTMB | SPoRC | Rceattle |
+|---|---|---|---|
+| Relationship to the custom assessment | Direct translation of the ADMB model | Re-expression in a general single-region assessment framework | Re-expression in a broader, extensible assessment framework |
+| Principal value | Transparent implementation baseline; rapid diagnostics and model experimentation | Independent comparison and access to generic population-process structures | Strongest path toward a maintainable future operational model and broader structural extensions |
+| Current strengths | Detailed bridge tests, diagnostics, retrospectives, projections, and flexible selectivity development | Close corrected bridge, stable deterministic fit, and independent confirmation of core dynamics | Numerical fixed-parameter bridge, independently estimated comparison, general data/model architecture, and capacity for recruitment extensions |
+| Main unresolved issues | Retrospective bias and evaluation of candidate selectivity structures | Self-test failures, retrospective bias, and posterior mixing in the correlated survey-selectivity model | Weak Hessian direction in annual selectivity, retrospective bias, observation-model sensitivity, and incomplete posterior mixing |
+| Proposed role after this review | Retain as the implementation reference and regression test for subsequent development | Continue as an independent methods and comparison track | Prioritize as the leading operational-development candidate, conditional on successful diagnostics, simulation testing, annual-update testing, and review |
 
-## Supporting RTMB development reports
+# Proposed development path
 
-- [RTMB assessment report](ebs_pollock_rtmb_ebswp_assessment.html)
-- [Fishery selectivity: methods, comparisons, and results](fishery_selectivity.html)
-- [Simulated-data workflow](simulated_data_workflow.html)
+The proposed path retains the distinct value of all three frameworks while
+concentrating operational-development effort on Rceattle.
 
-# Immediate work order
+1. **Retain ADMB for management advice.** Continue the accepted operational
+   assessment while candidate frameworks are evaluated.
+2. **Retain RTMB as the technical reference.** Use the corrected RTMB bridge
+   to test likelihood calculations, state variables, projections, and proposed
+   structural changes.
+3. **Continue SPoRC as an independent comparison.** Use SPoRC to test whether
+   conclusions depend on a particular software architecture and to evaluate
+   general process-model developments.
+4. **Prioritize Rceattle for operational development.** Resolve selectivity
+   identification and retrospective behavior, complete observation-model and
+   simulation evaluations, demonstrate a reproducible annual update, and
+   return with a defined candidate configuration.
+5. **Make any transition through formal review.** Present a future operational
+   candidate only after the deterministic model, uncertainty analysis,
+   projections, and update procedures pass agreed review criteria.
 
-1. Freeze and hash the 2025 ADMB reference inputs and outputs.
-2. Build a field-level crosswalk from the 2025 ADMB inputs to RTMB and
-   Rceattle.
-3. Run the RTMB fixed-parameter 2025 bridge before optimization.
-4. Update and fit Rceattle through 2025, retaining both stages and all
-   convergence diagnostics.
-5. Produce one common results object and a three-way Quarto comparison.
-6. Run uncertainty analyses only for deterministic configurations that pass
-   their acceptance gates.
+# Questions for the Plan Team
 
-This ordering preserves the validated 2024 evidence while making the 2025
-comparison the forward-looking assessment-development task.
+The review would benefit from direction on the following questions:
+
+1. Does the Plan Team agree that RTMB should serve as the implementation
+   baseline while Rceattle receives priority for future operational
+   development?
+2. Which selectivity and observation-model sensitivities are essential before
+   evaluating an operational Rceattle candidate?
+3. What magnitude and pattern of retrospective bias would require model
+   revision, additional uncertainty treatment, or rejection of a candidate?
+4. Which simulation tests should be required to evaluate bias, estimability,
+   and robustness under alternative recruitment and selectivity histories?
+5. What evidence is needed to demonstrate that the annual data-update and
+   projection procedures are ready for operational use?
+6. At what review stage should posterior uncertainty be incorporated, given
+   the current mixing limitations in candidate selectivity models?
+
+# Suggested meeting sequence
+
+For an efficient discussion, the reports can be presented in this order:
+
+1. Use this overview to establish the decision context and requested feedback.
+2. Present the RTMB report as the common technical baseline.
+3. Present the SPoRC comparison, emphasizing independent confirmation and the
+   remaining development issues.
+4. Present the Rceattle comparison, emphasizing its potential operational role
+   and the diagnostic work required before advancement.
+5. Conclude with Plan Team direction on priorities, required analyses, and the
+   criteria for the next review.
+
+# Documents
+
+- [RTMB main report](ebs_pollock_rtmb_ebswp_assessment.html)
+- [RTMB main report PDF](ebs_pollock_rtmb_ebswp_assessment.pdf)
+- [SPoRC companion report](https://jimianelli.github.io/sporc_ebswp/)
+- [Rceattle companion report](rceattle_ebswp.html)
+

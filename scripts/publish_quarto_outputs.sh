@@ -15,6 +15,28 @@ do
   done
 done
 
+for overview_html in \
+  docs/model_bridge_motherhood.html \
+  docs/reporting/model_bridge_motherhood.html \
+  reporting/model_bridge_motherhood.html
+do
+  if [ -f "$overview_html" ]; then
+    cp "$overview_html" docs/index.html
+    break
+  fi
+done
+
+for overview_pdf in \
+  docs/model_bridge_motherhood.pdf \
+  docs/reporting/model_bridge_motherhood.pdf \
+  reporting/model_bridge_motherhood.pdf
+do
+  if [ -f "$overview_pdf" ]; then
+    cp "$overview_pdf" docs/plan_team_model_development_overview.pdf
+    break
+  fi
+done
+
 rmdir docs/reporting 2>/dev/null || true
 
 # Publish stable, reader-facing CSV products referenced by the assessment.
