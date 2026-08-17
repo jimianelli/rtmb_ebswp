@@ -1,0 +1,18 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 220" role="img" aria-labelledby="title desc">
+  <title id="title">Eastern Bering Sea walleye pollock model development</title>
+  <desc id="desc">A restrained navy line drawing of a walleye pollock beside the words EBS Walleye Pollock, Model Development.</desc>
+  <rect x="3" y="3" width="1194" height="214" rx="24" fill="#f4f9fc" stroke="#0b3b60" stroke-width="6"/>
+  <g transform="translate(28 21)" fill="none" stroke="#0b3b60" stroke-width="4" stroke-linecap="round" stroke-linejoin="round">
+    <path fill="#dcecf4" d="M29 90c37-31 111-47 187-39 42 4 80 18 111 38l52-31-15 44 15 44-52-29c-31 20-69 34-111 38-76 8-150-8-187-39l-22-13 22-13z"/>
+    <path fill="#b7d6e6" d="M139 52l24-34 22 36m20 1 24-31 23 40m-83 86 22 25 18-27m22-2 24 25 17-31"/>
+    <path d="M46 92c12 10 12 18 0 28m19-38c-8 19-8 35 1 49m31-55c49 18 119 20 186 5m-186 61c51-15 119-17 186-3"/>
+    <circle cx="56" cy="98" r="6" fill="#0b3b60"/>
+    <path stroke="#4f91b4" d="M15 165c42-17 83 17 125 0s83 17 125 0 83 17 125 0"/>
+    <path stroke="#4f91b4" d="M38 179c34-12 67 12 101 0s67 12 101 0 67 12 101 0"/>
+  </g>
+  <line x1="432" y1="32" x2="432" y2="188" stroke="#8ebbd1" stroke-width="3"/>
+  <text x="475" y="94" fill="#0b3b60" font-family="Arial, Helvetica, sans-serif" font-size="46" font-weight="700" letter-spacing="2">EBS WALLEYE POLLOCK</text>
+  <text x="477" y="139" fill="#356f91" font-family="Arial, Helvetica, sans-serif" font-size="31" font-weight="600" letter-spacing="5">MODEL DEVELOPMENT</text>
+  <text x="479" y="175" fill="#3f5665" font-family="Arial, Helvetica, sans-serif" font-size="18" font-weight="600" letter-spacing="2">SEPTEMBER 2026 PLAN TEAM</text>
+</svg>

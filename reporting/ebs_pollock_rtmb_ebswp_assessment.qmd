@@ -29,6 +29,7 @@ execute:
   message: false
 format:
   html:
+    css: branding.css
     toc: true
     toc-depth: 3
     number-sections: true
@@ -51,11 +52,13 @@ format:
     documentclass: scrreprt
     classoption:
       - open=any
+      - titlepage=false
     papersize: letter
     fontsize: 9pt
     geometry:
       - margin=0.7in
     pdf-engine: xelatex
+    include-before-body: branding-rtmb.tex
     keep-tex: true
     colorlinks: true
 params:
@@ -74,6 +77,16 @@ params:
   run_sparsenuts: false
   force_sparsenuts: false
 ---
+
+::: {.content-visible when-format="html"}
+::: {.pollock-brand .framework-rtmb}
+![](assets/branding/ebs-pollock-model-development.png){fig-alt="Brand mark with a stylized walleye pollock and the words EBS Walleye Pollock Model Development, September 2026 Plan Team." width="100%"}
+
+::: {.pollock-brand-label}
+RTMB TECHNICAL REPORT
+:::
+:::
+:::
 
 ```{r setup}
 #| include: false

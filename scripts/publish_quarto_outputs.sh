@@ -15,27 +15,23 @@ do
   done
 done
 
-for overview_html in \
-  docs/model_bridge_motherhood.html \
-  docs/reporting/model_bridge_motherhood.html \
-  reporting/model_bridge_motherhood.html
-do
-  if [ -f "$overview_html" ]; then
-    cp "$overview_html" docs/index.html
-    break
-  fi
-done
+if [ -f reporting/model_bridge_motherhood.html ]; then
+  cp reporting/model_bridge_motherhood.html docs/index.html
+  cp reporting/model_bridge_motherhood.html docs/model_bridge_motherhood.html
+elif [ -f docs/reporting/model_bridge_motherhood.html ]; then
+  cp docs/reporting/model_bridge_motherhood.html docs/index.html
+  cp docs/reporting/model_bridge_motherhood.html docs/model_bridge_motherhood.html
+elif [ -f docs/model_bridge_motherhood.html ]; then
+  cp docs/model_bridge_motherhood.html docs/index.html
+fi
 
-for overview_pdf in \
-  docs/model_bridge_motherhood.pdf \
-  docs/reporting/model_bridge_motherhood.pdf \
-  reporting/model_bridge_motherhood.pdf
-do
-  if [ -f "$overview_pdf" ]; then
-    cp "$overview_pdf" docs/plan_team_model_development_overview.pdf
-    break
-  fi
-done
+if [ -f reporting/model_bridge_motherhood.pdf ]; then
+  cp reporting/model_bridge_motherhood.pdf docs/plan_team_model_development_overview.pdf
+elif [ -f docs/reporting/model_bridge_motherhood.pdf ]; then
+  cp docs/reporting/model_bridge_motherhood.pdf docs/plan_team_model_development_overview.pdf
+elif [ -f docs/model_bridge_motherhood.pdf ]; then
+  cp docs/model_bridge_motherhood.pdf docs/plan_team_model_development_overview.pdf
+fi
 
 rmdir docs/reporting 2>/dev/null || true
 
@@ -76,4 +72,9 @@ cp reporting/data/lf_length_frequency_summary.csv \
 rceattle_companion="../ebswp_rceattle/ebswp.html"
 if [ -f "$rceattle_companion" ]; then
   cp "$rceattle_companion" docs/rceattle_ebswp.html
+fi
+
+rceattle_companion_pdf="../ebswp_rceattle/ebswp.pdf"
+if [ -f "$rceattle_companion_pdf" ]; then
+  cp "$rceattle_companion_pdf" docs/rceattle_ebswp.pdf
 fi

@@ -10,6 +10,12 @@ author:
       - name: Alaska Fisheries Science Center
         city: Seattle
         state: WA
+  - name: Sophia Wassermann
+  - name: Carey McGilliard
+  - name: Grant Adams
+  - name: Matt Cheng
+  - name: Cody Szuwalski
+  - name: Cole Monnahan
 date: today
 date-format: "MMMM D, YYYY"
 lang: en-US
@@ -22,6 +28,8 @@ abstract: |
   current management advice.
 format:
   html:
+    css: branding.css
+    format-links: false
     toc: true
     toc-location: left
     toc-depth: 2
@@ -49,6 +57,14 @@ execute:
   warning: false
   message: false
 ---
+
+::: {.pollock-brand .framework-overview}
+![](assets/branding/ebs-pollock-model-development.png){fig-alt="Brand mark with a stylized walleye pollock and the words EBS Walleye Pollock Model Development, September 2026 Plan Team." width="100%"}
+
+::: {.pollock-brand-label}
+COORDINATING OVERVIEW
+:::
+:::
 
 ::: {.content-visible when-format="html"}
 [Download this overview as a PDF](plan_team_model_development_overview.pdf){.btn .btn-primary download="plan_team_model_development_overview.pdf"}
@@ -168,5 +184,6 @@ For an efficient discussion, the reports can be presented in this order:
 - [RTMB main report](ebs_pollock_rtmb_ebswp_assessment.html)
 - [RTMB main report PDF](ebs_pollock_rtmb_ebswp_assessment.pdf)
 - [SPoRC companion report](https://jimianelli.github.io/sporc_ebswp/)
+- [SPoRC companion report PDF](https://jimianelli.github.io/sporc_ebswp/EBS_wp_sporc.pdf)
 - [Rceattle companion report](rceattle_ebswp.html)
-
+- [Rceattle companion report PDF](rceattle_ebswp.pdf)

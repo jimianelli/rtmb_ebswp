@@ -1,0 +1,39 @@
+.pollock-brand {
+  max-width: 900px;
+  margin: 0.75rem auto 1.5rem;
+  text-align: center;
+  break-inside: avoid;
+}
+
+.pollock-brand img {
+  display: block;
+  width: 100%;
+  height: auto;
+  margin: 0 auto 0.55rem;
+}
+
+.pollock-brand p {
+  margin: 0;
+}
+
+.pollock-brand-label {
+  display: inline-block;
+  padding: 0.32rem 0.9rem;
+  border-radius: 999px;
+  color: #fff;
+  font-size: 0.83rem;
+  font-weight: 700;
+  letter-spacing: 0.09em;
+  line-height: 1.25;
+}
+
+.framework-overview .pollock-brand-label { background: #40566a; }
+.framework-rtmb .pollock-brand-label { background: #2f6f92; }
+.framework-rceattle .pollock-brand-label { background: #8a5a16; }
+
+@media print {
+  .pollock-brand {
+    max-width: 100%;
+    margin-top: 0.35rem;
+  }
+}
