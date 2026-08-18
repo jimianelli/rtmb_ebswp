@@ -895,7 +895,7 @@ fishery selectivity while retaining the common data and likelihood framework.
 | Form | Specification | Development status |
 |---|---|---|
 | Base coefficients | Age coefficients with deviations at configured change years; ages 11 and older share the age-11 value | Bridge reference |
-| Time-age varying double logistic | Shared ascending and descending curve with annual random effects at a fixed 20% process CV; the tested formulation evaluates ages through 15 separately | Converged staged development fit |
+| Time-age varying double logistic | Shared ascending and descending curve with annual random effects at a fixed 30% process CV; the tested formulation evaluates ages through 15 separately | Converged staged development fit |
 | Two-dimensional AR1 | Year-by-age latent field with separable AR1 correlation across years and ages; ages 11 and older share the age-11 value | Sensitivity fit |
 
 The initial double-logistic experiment estimated 183 annual fixed effects and
@@ -910,7 +910,9 @@ age-composition residuals, selectivity surfaces, convergence, and effects on
 spawning biomass. Objective value alone provides an incomplete basis for
 choosing a selectivity specification. The detailed equations, fitted
 comparisons, and implementation references remain available in the companion
-[fishery-selectivity technical appendix](appendix_fishery_selectivity.html).
+[fishery-selectivity supporting analysis](appendix_fishery_selectivity.html),
+with a [PDF version](appendix_fishery_selectivity.pdf) and
+[referenceable summary data](data-output/fishery_selectivity_summary.csv).
 
 ### Run Definitions
 

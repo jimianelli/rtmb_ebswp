@@ -1,35 +1,50 @@
 #!/usr/bin/env Rscript
 
 suppressPackageStartupMessages({
-  library(devtools)
   library(dplyr)
   library(purrr)
   library(readr)
   library(tibble)
   library(ggplot2)
+  library(ggthemes)
 })
 
 rtmb_root <- normalizePath(getwd(), mustWork = TRUE)
-afscosa_root <- Sys.getenv(
-  "AFSCOSA_ROOT",
-  "/Users/jim/_mymods/noaa-afsc/afscOSA"
-)
-afscosa_root <- normalizePath(afscosa_root, mustWork = TRUE)
-devtools::load_all(afscosa_root, quiet = TRUE)
+if (utils::packageVersion("afscOSA") < "0.0.1") {
+  stop("afscOSA >= 0.0.1 is required")
+}
 
-out_dir <- file.path(rtmb_root, "analysis", "output", "osa_selectivity_comparison")
+output_root <- Sys.getenv(
+  "SELECTIVITY_OUTPUT_ROOT",
+  file.path("analysis", "output", "corrected_full_age_bts")
+)
+double_logistic_cv <- as.numeric(Sys.getenv("DOUBLE_LOGISTIC_CV", "0.30"))
+if (!is.finite(double_logistic_cv) || double_logistic_cv <= 0) {
+  stop("DOUBLE_LOGISTIC_CV must be a positive number")
+}
+double_logistic_tag <- gsub(
+  "\\.", "p", format(double_logistic_cv, trim = TRUE, scientific = FALSE)
+)
+double_logistic_label <- sprintf(
+  "Time-age varying double logistic (%g%% CV)", 100 * double_logistic_cv
+)
+out_dir <- file.path(rtmb_root, output_root, "osa_selectivity_comparison")
 dir.create(out_dir, recursive = TRUE, showWarnings = FALSE)
 
 run_paths <- c(
   "Base coefficients" = file.path(
-    rtmb_root, "analysis", "output", "fishery_sel_forms", "fishery_sel_form_0.rds"
+    rtmb_root, output_root, "fishery_sel_forms", "fishery_sel_form_0.rds"
   ),
-  "Time-age varying double logistic (20% CV)" = file.path(
-    rtmb_root, "analysis", "output", "double_logistic_experiments",
-    "cv0p2_no_old_age_cap_stage2_random.rds"
-  ),
+  setNames(file.path(
+    rtmb_root, output_root, "double_logistic_experiments",
+    sprintf("cv%s_no_old_age_cap_stage2_random.rds", double_logistic_tag)
+  ), double_logistic_label),
   "2D AR1" = file.path(
-    rtmb_root, "analysis", "output", "fishery_sel_forms", "fishery_sel_form_5.rds"
+    rtmb_root, output_root, "fishery_sel_forms", "fishery_sel_form_5.rds"
+  ),
+  "2D AR1 (age-11 plus)" = file.path(
+    rtmb_root, output_root, "fishery_sel_forms",
+    "fishery_sel_form_5_age11_plus.rds"
   )
 )
 
@@ -119,9 +134,7 @@ for (gear in names(gear_specs)) {
       index = bins,
       years = years[keep],
       index_label = "Age",
-      seed = 202508L,
-      nonfinite_action = "truncate",
-      nonfinite_limit = 6
+      seed = 202508L
     )
   })
   all_outputs[[gear]] <- gear_outputs
@@ -141,6 +154,7 @@ for (gear in names(gear_specs)) {
     figheight = 13,
     figwidth = 16
   )
+  figure <- figure + ggthemes::theme_few()
   grDevices::dev.off()
   ggplot2::ggsave(
     filename = file.path(out_dir, paste0("osa_", gear, "_selectivity_comparison.png")),
@@ -153,9 +167,8 @@ summary <- bind_rows(all_summaries)
 write_csv(summary, file.path(out_dir, "osa_selectivity_summary.csv"))
 saveRDS(
   list(
-    afscOSA_commit = system2(
-      "git", c("-C", afscosa_root, "rev-parse", "HEAD"), stdout = TRUE
-    ),
+    afscOSA_version = as.character(utils::packageVersion("afscOSA")),
+    afscOSA_remote_sha = utils::packageDescription("afscOSA")$RemoteSha,
     seed = 202508L,
     run_paths = run_paths,
     run_md5 = unname(tools::md5sum(run_paths)),

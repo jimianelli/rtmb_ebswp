@@ -8,7 +8,21 @@ library(patchwork)
 library(tidyverse)
 # Read in last year's estimates for comparisons----------
 library(ebswp)
-pm<- read_rep(here::here("runs", "rtmb", "pm.rep")) # Read in the report file)
+bridge_case <- Sys.getenv("EBSWP_BRIDGE_CASE", unset = "legacy_pm_bridge")
+default_admb_run_dir <- here::here("runs", "rtmb")
+admb_run_dir <- normalizePath(
+  Sys.getenv("EBSWP_ADMB_RUN_DIR", unset = default_admb_run_dir),
+  mustWork = TRUE
+)
+bts_comp_normalization <- Sys.getenv(
+  "EBSWP_BTS_COMP_NORMALIZATION",
+  unset = if (bridge_case == "corrected_full_age_bts") {
+    "full_ages"
+  } else {
+    "legacy_age2plus"
+  }
+)
+pm <- read_rep(file.path(admb_run_dir, "pm.rep"))
 
 # Clean up some of the odd arrays from ADMB
 pm$phat_ats <- pm$phat_ats[,2:16]
@@ -21,8 +35,8 @@ pm$ats_like <- pm$surv_like[2]
 pm$ats_age1_like <- pm$surv_like[3]
 pm$SSB <- pm$SSB[,2]
 #--Get the parameters (from ADMB converged model!)------------
-parms <- read_pars(here::here("runs", "rtmb", "pm.par"))
-data <- Get_Data()
+parms <- read_pars(file.path(admb_run_dir, "pm.par"))
+data <- Get_Data(bts_comp_normalization = bts_comp_normalization)
 data$sam_bts <- floor(pm$sam_bts) # to avoid non-integer sample sizes, was an issue!
 map_obj <- c(create_map_from_par(parms,  parms,   
                                           exact_names = c(

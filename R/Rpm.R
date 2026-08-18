@@ -52,6 +52,7 @@ rpm <- function(parms) {
   } else if (as.integer(fishery_sel_form)[1] == 5L) {
     tmp <- compute_selectivity_fsh_tv_ar1(
       field = sel_tv_ar1_fsh, stsel = styr, endyr = endyr,
+      nages = nages,
       old_age_cap = fishery_sel_old_age_cap
     )
   } else {

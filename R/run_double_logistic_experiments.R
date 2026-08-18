@@ -13,7 +13,11 @@ rtmb_root <- normalizePath(getwd(), mustWork = TRUE)
 if (!file.exists(file.path(rtmb_root, "R", "Rpm.R"))) stop("Run from repository root")
 if (!nzchar(Sys.getenv("POLLOCK_ROOT"))) stop("Set POLLOCK_ROOT")
 source_commit <- system2("git", c("rev-parse", "HEAD"), stdout = TRUE)
-out_dir <- file.path(rtmb_root, "analysis", "output", "double_logistic_experiments")
+output_root <- Sys.getenv(
+  "SELECTIVITY_OUTPUT_ROOT",
+  file.path("analysis", "output")
+)
+out_dir <- file.path(rtmb_root, output_root, "double_logistic_experiments")
 dir.create(out_dir, recursive = TRUE, showWarnings = FALSE)
 
 make_fresh_env <- function() {
@@ -126,6 +130,11 @@ fit_model <- function(name, prior_scale, rw_scale, start_matrix = NULL,
   fitted <- obj$env$parList(fit$par)
   b$e$data$return_nll_only <- 0L
   report <- b$rpm(fitted)
+  common_input_names <- c(
+    "oac_fsh", "oac_bts", "oac_ats", "sam_fsh", "sam_bts", "sam_ats",
+    "yrs_fsh_data", "yrs_bts_data", "yrs_ats_data"
+  )
+  for (nm in common_input_names) report[[nm]] <- b$data[[nm]]
   idx <- which(names(obj$par) == "sel_double_logistic_fsh")
   at_bound <- if (length(idx)) sum(
     abs(fit$par[idx] - bounds$lower[idx]) < 1e-5 |
@@ -133,6 +142,11 @@ fit_model <- function(name, prior_scale, rw_scale, start_matrix = NULL,
   ) else 0L
   checkpoint <- list(
     name = name, source_commit = source_commit, seed = seed, pooled = pooled,
+    bridge_case = Sys.getenv("EBSWP_BRIDGE_CASE", "legacy_pm_bridge"),
+    admb_run_dir = Sys.getenv("EBSWP_ADMB_RUN_DIR", "runs/rtmb"),
+    bts_comp_normalization = Sys.getenv(
+      "EBSWP_BTS_COMP_NORMALIZATION", "legacy_age2plus"
+    ),
     hierarchical_stage = hierarchical_stage, cv = cv,
     old_age_cap = old_age_cap, prior_scale = prior_scale, rw_scale = rw_scale,
     fit_first = fit1, fit = fit, random_effects = random_effects,
@@ -159,6 +173,11 @@ fit_model <- function(name, prior_scale, rw_scale, start_matrix = NULL,
   }
   ans <- list(
     name = name, source_commit = source_commit, seed = seed, pooled = pooled,
+    bridge_case = Sys.getenv("EBSWP_BRIDGE_CASE", "legacy_pm_bridge"),
+    admb_run_dir = Sys.getenv("EBSWP_ADMB_RUN_DIR", "runs/rtmb"),
+    bts_comp_normalization = Sys.getenv(
+      "EBSWP_BTS_COMP_NORMALIZATION", "legacy_age2plus"
+    ),
     hierarchical_stage = hierarchical_stage, cv = cv,
     old_age_cap = old_age_cap,
     prior_scale = prior_scale, rw_scale = rw_scale, fit_first = fit1, fit = fit,

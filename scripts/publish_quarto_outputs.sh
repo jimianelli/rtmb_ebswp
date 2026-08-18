@@ -55,7 +55,7 @@ cp analysis/output/bts_age_data_bridge/tinyvast_retro_mohn.csv \
   docs/data-output/tinyvast_retro_mohn.csv
 cp analysis/output/corrected_full_age_bts/downstream_lineage.csv \
   docs/data-output/downstream_lineage.csv
-cp analysis/output/corrected_full_age_bts/fishery_sel_forms/summary.csv \
+cp reporting/data/fishery_selectivity_summary.csv \
   docs/data-output/fishery_selectivity_summary.csv
 cp analysis/output/corrected_full_age_bts/osa/osa_summary.csv \
   docs/data-output/osa_summary.csv

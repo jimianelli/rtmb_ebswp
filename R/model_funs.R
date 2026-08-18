@@ -102,8 +102,14 @@ compute_selectivity_fsh_double_logistic <- function(
 
 #' Build a centered year-by-age selectivity surface from a latent field.
 compute_selectivity_fsh_tv_ar1 <- function(
-    field, stsel, endyr, old_age_cap = 0L) {
-  log_sel <- field
+    field, stsel, endyr, nages = ncol(field), old_age_cap = 0L) {
+  "[<-" <- ADoverload("[<-")
+  n_field_ages <- ncol(field)
+  log_sel <- matrix(0, nrow(field), nages)
+  log_sel[, seq_len(n_field_ages)] <- field
+  if (n_field_ages < nages) {
+    log_sel[, (n_field_ages + 1L):nages] <- field[, n_field_ages]
+  }
   rownames(log_sel) <- as.character(stsel:endyr)
   for (i in seq_len(nrow(log_sel))) {
     log_sel[i, ] <- center_log_selectivity(log_sel[i, ])

@@ -13,7 +13,7 @@
 <meta name="author" content="Matt Cheng">
 <meta name="author" content="Cody Szuwalski">
 <meta name="author" content="Cole Monnahan">
-<meta name="dcterms.date" content="2026-08-16">
+<meta name="dcterms.date" content="2026-08-17">
 
 <title>Eastern Bering Sea Pollock Model Development</title>
 <style>
@@ -2414,7 +2414,10 @@ width: min(54%, 240px) !important;
    
   <ul class="collapse">
   <li><a href="#purpose-of-this-overview" id="toc-purpose-of-this-overview" class="nav-link active" data-scroll-target="#purpose-of-this-overview"><span class="header-section-number">1</span> Purpose of this overview</a></li>
-  <li><a href="#review-package" id="toc-review-package" class="nav-link" data-scroll-target="#review-package"><span class="header-section-number">2</span> Review package</a></li>
+  <li><a href="#review-package" id="toc-review-package" class="nav-link" data-scroll-target="#review-package"><span class="header-section-number">2</span> Review package</a>
+  <ul class="collapse">
+  <li><a href="#supporting-analysis" id="toc-supporting-analysis" class="nav-link" data-scroll-target="#supporting-analysis"><span class="header-section-number">2.1</span> Supporting analysis</a></li>
+  </ul></li>
   <li><a href="#common-evidence" id="toc-common-evidence" class="nav-link" data-scroll-target="#common-evidence"><span class="header-section-number">3</span> Common evidence</a></li>
   <li><a href="#important-differences-among-frameworks" id="toc-important-differences-among-frameworks" class="nav-link" data-scroll-target="#important-differences-among-frameworks"><span class="header-section-number">4</span> Important differences among frameworks</a></li>
   <li><a href="#proposed-development-path" id="toc-proposed-development-path" class="nav-link" data-scroll-target="#proposed-development-path"><span class="header-section-number">5</span> Proposed development path</a></li>
@@ -2486,7 +2489,7 @@ width: min(54%, 240px) !important;
     <div>
     <div class="quarto-title-meta-heading">Published</div>
     <div class="quarto-title-meta-contents">
-      <p class="date">August 16, 2026</p>
+      <p class="date">August 17, 2026</p>
     </div>
   </div>
   
@@ -2557,6 +2560,26 @@ Important
 </tbody>
 </table>
 <p>The <a href="ebs_pollock_rtmb_ebswp_assessment.html">main RTMB report</a> contains the fullest documentation of the common data treatment, fixed-parameter bridge, model fits, selectivity analyses, projections, retrospectives, and uncertainty diagnostics. The SPoRC and Rceattle reports should be used to compare how the same assessment problem behaves in more general frameworks.</p>
+<section id="supporting-analysis" class="level2" data-number="2.1">
+<h2 data-number="2.1" class="anchored" data-anchor-id="supporting-analysis"><span class="header-section-number">2.1</span> Supporting analysis</h2>
+<table class="caption-top table">
+<thead>
+<tr class="header">
+<th>Identifier</th>
+<th>Analysis</th>
+<th>Role in the review</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td>S-1</td>
+<td><a href="appendix_fishery_selectivity.html"><strong>Fishery selectivity alternatives</strong></a> (<a href="appendix_fishery_selectivity.pdf">PDF</a>)</td>
+<td>Detailed RTMB comparison of the bridge-reference, hierarchical double-logistic, and year-by-age AR1 fishery selectivity specifications; supports the selectivity discussion in the main RTMB report</td>
+</tr>
+</tbody>
+</table>
+<p>The supporting analysis is part of the RTMB evidence package rather than a fourth modeling framework. Its stable links allow the three primary reports to refer to the same equations, diagnostics, and summary data.</p>
+</section>
 </section>
 <section id="common-evidence" class="level1" data-number="3">
 <h1 data-number="3"><span class="header-section-number">3</span> Common evidence</h1>
@@ -2650,6 +2673,7 @@ Important
 <ol type="1">
 <li>Use this overview to establish the decision context and requested feedback.</li>
 <li>Present the RTMB report as the common technical baseline.</li>
+<li>Briefly summarize supporting analysis S-1, emphasizing the 30% CV double-logistic sensitivity and the AR1 residual comparisons.</li>
 <li>Present the SPoRC comparison, emphasizing independent confirmation and the remaining development issues.</li>
 <li>Present the Rceattle comparison, emphasizing its potential operational role and the diagnostic work required before advancement.</li>
 <li>Conclude with Plan Team direction on priorities, required analyses, and the criteria for the next review.</li>
@@ -2660,6 +2684,9 @@ Important
 <ul>
 <li><a href="ebs_pollock_rtmb_ebswp_assessment.html">RTMB main report</a></li>
 <li><a href="ebs_pollock_rtmb_ebswp_assessment.pdf">RTMB main report PDF</a></li>
+<li><a href="appendix_fishery_selectivity.html">Supporting analysis S-1: Fishery selectivity alternatives</a></li>
+<li><a href="appendix_fishery_selectivity.pdf">Supporting analysis S-1 PDF</a></li>
+<li><a href="data-output/fishery_selectivity_summary.csv">Fishery selectivity summary data</a></li>
 <li><a href="https://jimianelli.github.io/sporc_ebswp/">SPoRC companion report</a></li>
 <li><a href="https://jimianelli.github.io/sporc_ebswp/EBS_wp_sporc.pdf">SPoRC companion report PDF</a></li>
 <li><a href="rceattle_ebswp.html">Rceattle companion report</a></li>

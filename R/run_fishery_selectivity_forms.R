@@ -22,7 +22,11 @@ suppressPackageStartupMessages({
 
 rtmb_root <- normalizePath(getwd(), mustWork = TRUE)
 
-out_dir <- file.path(rtmb_root, "analysis", "output", "fishery_sel_forms")
+output_root <- Sys.getenv(
+  "SELECTIVITY_OUTPUT_ROOT",
+  file.path("analysis", "output")
+)
+out_dir <- file.path(rtmb_root, output_root, "fishery_sel_forms")
 dir.create(out_dir, recursive = TRUE, showWarnings = FALSE)
 form5_random <- tolower(Sys.getenv("FORM5_RANDOM_EFFECTS", "false")) %in%
   c("1", "true", "yes")
@@ -33,6 +37,7 @@ form5_fix_sigma <- tolower(Sys.getenv("FORM5_FIX_SIGMA", "false")) %in%
 form5_random_field_only <- tolower(Sys.getenv(
   "FORM5_RANDOM_FIELD_ONLY", "false"
 )) %in% c("1", "true", "yes")
+form5_max_age <- as.integer(Sys.getenv("FORM5_MAX_AGE", "15"))
 
 # Build a completely fresh model environment for each form to avoid any RTMB/env contamination.
 make_fresh_env <- function() {
@@ -86,7 +91,9 @@ fit_one <- function(form_id, label) {
     parms$sel_tv_ar1_rho_fsh <- c(0, 0)
     # Seed a small non-zero AR1 field (year x age)
     nyrs <- as.integer(data$endyr - data$styr + 1)
-    nages <- as.integer(data$nages)
+    nages <- min(as.integer(data$nages), form5_max_age)
+    if (nages < 2L) stop("FORM5_MAX_AGE must be at least 2")
+    data$fishery_sel_old_age_cap <- as.integer(nages < as.integer(data$nages))
     parms$sel_tv_ar1_fsh <- matrix(rnorm(nyrs * nages, sd = 0.05), nrow = nyrs, ncol = nages)
     if (form5_random) {
       data$fishery_sel_old_age_cap <- 0L
@@ -196,11 +203,21 @@ fit_one <- function(form_id, label) {
   fitted_parms <- obj$env$parList(fit$par)
   e$data$return_nll_only <- 0
   report <- rpm(fitted_parms)
+  common_input_names <- c(
+    "oac_fsh", "oac_bts", "oac_ats", "sam_fsh", "sam_bts", "sam_ats",
+    "yrs_fsh_data", "yrs_bts_data", "yrs_ats_data"
+  )
+  for (nm in common_input_names) report[[nm]] <- data[[nm]]
   evaluated_total <- report$tot_like %||% NA_real_
 
   res <- list(
     form = form_id,
     label = label,
+    bridge_case = Sys.getenv("EBSWP_BRIDGE_CASE", "legacy_pm_bridge"),
+    admb_run_dir = Sys.getenv("EBSWP_ADMB_RUN_DIR", "runs/rtmb"),
+    bts_comp_normalization = Sys.getenv(
+      "EBSWP_BTS_COMP_NORMALIZATION", "legacy_age2plus"
+    ),
     objective = fit$objective,
     evaluated_total = evaluated_total,
     convergence = fit$convergence,
@@ -213,6 +230,7 @@ fit_one <- function(form_id, label) {
     random_effects = !is.null(random),
     random_effect_names = random,
     old_age_cap = if (form_id == 5L) data$fishery_sel_old_age_cap %||% 1L else NA,
+    ar1_max_age = if (form_id == 5L) ncol(fitted_parms$sel_tv_ar1_fsh) else NA_integer_,
     ar1_weight = if (form_id == 5L) data$sel_tv_ar1_weight_fsh else NA_real_,
     estimate_ar1_hyperparameters = if (form_id == 5L) {
       form5_estimate_hyper
@@ -221,10 +239,25 @@ fit_one <- function(form_id, label) {
     random_field_only = form_id == 5L && form5_random_field_only,
     fixed_parameters = fitted_parms,
     optimizer_parameters = fit$par,
+    parameter_table = data.frame(
+      term = make.unique(names(fit$par)),
+      estimate = as.numeric(fit$par),
+      std.error = rep(NA_real_, length(fit$par)),
+      gradient = if (length(fit$par)) as.numeric(obj$gr(fit$par)) else numeric(),
+      estimation_type = rep("fixed_effect", length(fit$par)),
+      module = rep(NA_character_, length(fit$par)),
+      year = rep(NA_integer_, length(fit$par)),
+      age = rep(NA_integer_, length(fit$par)),
+      engine = rep("custom RTMB", length(fit$par)),
+      model = rep(label, length(fit$par)),
+      stringsAsFactors = FALSE
+    ),
     report = report
   )
 
-  suffix <- if (form_id == 5L && form5_random) {
+  suffix <- if (form_id == 5L && form5_max_age < 15L) {
+    paste0("_age", form5_max_age, "_plus")
+  } else if (form_id == 5L && form5_random) {
     if (form5_random_field_only) {
       "_random_field_only"
     } else if (form5_estimate_hyper && form5_fix_sigma) {

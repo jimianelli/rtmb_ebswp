@@ -99,6 +99,16 @@ model fits, selectivity analyses, projections, retrospectives, and uncertainty
 diagnostics. The SPoRC and Rceattle reports should be used to compare how the
 same assessment problem behaves in more general frameworks.
 
+## Supporting analysis
+
+| Identifier | Analysis | Role in the review |
+|---|---|---|
+| S-1 | [**Fishery selectivity alternatives**](appendix_fishery_selectivity.html) ([PDF](appendix_fishery_selectivity.pdf)) | Detailed RTMB comparison of the bridge-reference, hierarchical double-logistic, and year-by-age AR1 fishery selectivity specifications; supports the selectivity discussion in the main RTMB report |
+
+The supporting analysis is part of the RTMB evidence package rather than a
+fourth modeling framework. Its stable links allow the three primary reports
+to refer to the same equations, diagnostics, and summary data.
+
 # Common evidence
 
 The three reports establish several common points:
@@ -172,17 +182,22 @@ For an efficient discussion, the reports can be presented in this order:
 
 1. Use this overview to establish the decision context and requested feedback.
 2. Present the RTMB report as the common technical baseline.
-3. Present the SPoRC comparison, emphasizing independent confirmation and the
+3. Briefly summarize supporting analysis S-1, emphasizing the 30% CV
+   double-logistic sensitivity and the AR1 residual comparisons.
+4. Present the SPoRC comparison, emphasizing independent confirmation and the
    remaining development issues.
-4. Present the Rceattle comparison, emphasizing its potential operational role
+5. Present the Rceattle comparison, emphasizing its potential operational role
    and the diagnostic work required before advancement.
-5. Conclude with Plan Team direction on priorities, required analyses, and the
+6. Conclude with Plan Team direction on priorities, required analyses, and the
    criteria for the next review.
 
 # Documents
 
 - [RTMB main report](ebs_pollock_rtmb_ebswp_assessment.html)
 - [RTMB main report PDF](ebs_pollock_rtmb_ebswp_assessment.pdf)
+- [Supporting analysis S-1: Fishery selectivity alternatives](appendix_fishery_selectivity.html)
+- [Supporting analysis S-1 PDF](appendix_fishery_selectivity.pdf)
+- [Fishery selectivity summary data](data-output/fishery_selectivity_summary.csv)
 - [SPoRC companion report](https://jimianelli.github.io/sporc_ebswp/)
 - [SPoRC companion report PDF](https://jimianelli.github.io/sporc_ebswp/EBS_wp_sporc.pdf)
 - [Rceattle companion report](rceattle_ebswp.html)
