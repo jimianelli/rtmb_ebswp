@@ -1485,10 +1485,10 @@ into a relative vulnerable-biomass index.
 ### Selectivity Ridge Plots
 
 ```{r}
-#| label: fig-selectivity-ridge-fishery
-#| fig-cap: "Relative fishery selectivity over time from the RTMB-ADMB model. Ridge heights are normalized within year."
-#| fig-alt: "Ridgeline display of normalized fishery selectivity across ages for successive model years, showing changes in the age pattern through time."
-#| fig-width: 8
+#| label: fig-selectivity-ridges
+#| fig-cap: "Relative fishery, bottom trawl survey (BTS), and acoustic-trawl survey (ATS) selectivity over time from the RTMB-ADMB model. Ridge heights are normalized within year."
+#| fig-alt: "Three side-by-side ridgeline panels showing normalized selectivity across ages 2 through 10 for successive years. The fishery panel shows changes in the age pattern through time; the BTS and ATS panels show time variation in their respective survey selectivity patterns."
+#| fig-width: 15
 #| fig-height: 10
 #| out-width: "100%"
 ridge_df <- bind_rows(
@@ -1502,57 +1502,41 @@ ridge_df <- bind_rows(
   ungroup() |>
   mutate(year_factor = factor(year, levels = rev(sort(unique(year)))))
 
-ggplot(ridge_df |> filter(fleet == "Fishery"), aes(x = age, y = year_factor, height = relative_selectivity)) +
-  ggridges::geom_density_ridges(
-    stat = "identity",
-    scale = 3.8,
-    alpha = 0.22,
-    fill = "#7b3294",
-    color = "black",
-    linewidth = 0.25
+ridge_plot <- function(fleet_name, fill_color, show_year = TRUE) {
+  ggplot(
+    ridge_df |> filter(fleet == fleet_name),
+    aes(x = age, y = year_factor, height = relative_selectivity)
   ) +
-  scale_x_continuous(limits = c(2, 10), breaks = 2:10) +
-  labs(x = "Age", y = "Year", title = "Fishery Selectivity")
-```
+    ggridges::geom_density_ridges(
+      stat = "identity",
+      scale = 3.8,
+      alpha = 0.22,
+      fill = fill_color,
+      color = "black",
+      linewidth = 0.25
+    ) +
+    scale_x_continuous(limits = c(2, 10), breaks = 2:10) +
+    labs(
+      x = "Age",
+      y = if (show_year) "Year" else NULL,
+      title = paste(fleet_name, "Selectivity")
+    ) +
+    theme(axis.text.y = if (show_year) element_text() else element_blank(),
+          axis.ticks.y = if (show_year) element_line() else element_blank())
+}
 
-```{r}
-#| label: fig-selectivity-ridge-bts
-#| fig-cap: "Relative BTS selectivity over time from the RTMB-ADMB model. Ridge heights are normalized within year."
-#| fig-alt: "Ridgeline display of normalized bottom trawl survey selectivity across ages for successive survey years, showing time variation in the age pattern."
-#| fig-width: 8
-#| fig-height: 10
-#| out-width: "100%"
-ggplot(ridge_df |> filter(fleet == "BTS"), aes(x = age, y = year_factor, height = relative_selectivity)) +
-  ggridges::geom_density_ridges(
-    stat = "identity",
-    scale = 3.8,
-    alpha = 0.22,
-    fill = "#1b9e77",
-    color = "black",
-    linewidth = 0.25
-  ) +
-  scale_x_continuous(limits = c(2, 10), breaks = 2:10) +
-  labs(x = "Age", y = "Year", title = "BTS Selectivity")
-```
+fishery_ridge <- ridge_plot("Fishery", "#7b3294")
+bts_ridge <- ridge_plot("BTS", "#1b9e77", show_year = FALSE)
+ats_ridge <- ridge_plot("ATS", "#d95f02", show_year = FALSE)
 
-```{r}
-#| label: fig-selectivity-ridge-ats
-#| fig-cap: "Relative ATS selectivity over time from the RTMB-ADMB model. Ridge heights are normalized within year."
-#| fig-alt: "Ridgeline display of normalized acoustic-trawl survey selectivity across ages for successive survey years, showing time variation in the age pattern."
-#| fig-width: 8
-#| fig-height: 10
-#| out-width: "100%"
-ggplot(ridge_df |> filter(fleet == "ATS"), aes(x = age, y = year_factor, height = relative_selectivity)) +
-  ggridges::geom_density_ridges(
-    stat = "identity",
-    scale = 3.8,
-    alpha = 0.22,
-    fill = "#d95f02",
-    color = "black",
-    linewidth = 0.25
-  ) +
-  scale_x_continuous(limits = c(2, 10), breaks = 2:10) +
-  labs(x = "Age", y = "Year", title = "ATS Selectivity")
+cowplot::plot_grid(
+  fishery_ridge,
+  bts_ridge,
+  ats_ridge,
+  nrow = 1,
+  align = "hv",
+  axis = "tb"
+)
 ```
 
 # Projections
@@ -2511,13 +2495,38 @@ workflow and should be evaluated separately.
 
 ### FTNIRS age-data {.unnumbered #sec-ftnirs-age-data}
 
-TMA assigns age by preparing an otolith and visually counting annual growth
-zones under a microscope. FT-NIRS instead measures the wavelengths and amount
-of near-infrared light absorbed by an otolith and predicts age from its
-spectral and chemical signal using a calibration model. FT-NIRS can process
-otoliths substantially faster, but its predicted ages are methodologically
-different from direct microscope readings ([NOAA Fisheries age-method
-overview](https://www.fisheries.noaa.gov/feature-story/age-and-growth-homework-determining-how-old-fish-are)).
+The Alaska Fisheries Science Center's Age and Growth Program has produced more
+than 460,000 walleye pollock age estimates since 1971. From 2005 through 2024,
+annual production averaged 11,141 pollock ages and ranged from 8,408 to 14,441.
+Across Alaska pollock stocks, inter-reader precision was relatively high: the
+overall average coefficient of variation was 4.28%, percent agreement was
+68.6%, and reader and tester estimates generally differed by no more than one
+year. Eighty percent of pollock aged by the program were 3--10 years old, and
+the maximum observed age was 31 years. Radiometric analysis supports the
+accuracy of the program's ageing criteria through age 8, while marginal
+increment analyses, year-class tracking, hard-structure comparisons, and
+captive-rearing studies provide additional corroboration. Older ages occur
+more frequently in the Bering Sea and Aleutian Islands than in the Gulf of
+Alaska, and Bering Sea pollock generally grow more slowly but attain greater
+lengths and ages. Female pollock also become larger at age than males beginning
+at approximately age 5 [@matta2026agegrowth, pp. 33--42]. These production and
+precision statistics summarize AFSC pollock ageing across Alaska stocks rather
+than the eastern Bering Sea alone; the eastern Bering Sea assessment is the
+most data-rich pollock assessment.
+
+These results describe traditional microscope ageing (TMA), which assigns age
+by preparing an otolith and visually counting annual growth zones. FT-NIRS is
+being developed as a rapid secondary ageing method that depends on reference
+ages produced through traditional microscopic examination
+[@matta2026agegrowth]. FT-NIRS measures the wavelengths and amount of
+near-infrared light absorbed by an otolith and predicts age from its spectral
+and chemical signal using a calibration model. It can process otoliths
+substantially faster, but its predicted ages are methodologically different
+from direct microscope readings ([NOAA Fisheries age-method
+overview](https://www.fisheries.noaa.gov/feature-story/age-and-growth-homework-determining-how-old-fish-are)). The established scale, precision, and
+corroboration of the TMA series therefore provide important context for
+evaluating whether FT-NIRS predictions preserve the age structure and cohort
+signals used by the assessment.
 
 The 2025 CIE discussion paper compared the two methods using pollock data. For
 the same design-based BTS abundance-at-age inputs, TMA estimates showed a high
@@ -2845,6 +2854,13 @@ Replacing the historical BTS proportions with tinyVAST has a small effect on
 terminal spawning biomass and predicted catch in the controlled ADMB bridge,
 and a somewhat larger effect on recruitment. The positive retrospective
 pattern remains an important stability caveat when considering adoption.
+
+### Planned 2026 survey-data update {.unnumbered #sec-planned-2026-survey-data}
+
+Data from the 2026 Acoustic-Trawl Survey (ATS), along with 2026 AVO data, will
+be added to this report after processing and quality-control review are
+complete. The update will identify any resulting changes to the relevant time
+series, figures, tables, and model inputs.
 
 ## A-2 Evaluation of time-varying BTS availability {.unnumbered #sec-bts-availability}
 
