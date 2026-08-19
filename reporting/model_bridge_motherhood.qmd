@@ -197,14 +197,12 @@ For an efficient discussion, the reports can be presented in this order:
 ::: {.content-visible when-format="html"}
 The HTML reports are the preferred versions for reading. They provide easier
 navigation and direct links among the reports and supporting material. PDF
-copies are provided for downloading, printing, and archiving. The CSV file
-contains the data used to summarize the fishery selectivity comparisons.
+copies are provided for downloading, printing, and archiving.
 
 - [RTMB main report (HTML - preferred)](ebs_pollock_rtmb_ebswp_assessment.html)
 - [RTMB main report (PDF)](ebs_pollock_rtmb_ebswp_assessment.pdf)
 - [Supporting analysis S-1: Fishery selectivity alternatives (HTML - preferred)](appendix_fishery_selectivity.html)
 - [Supporting analysis S-1: Fishery selectivity alternatives (PDF)](appendix_fishery_selectivity.pdf)
-- [Fishery selectivity summary data (CSV)](data-output/fishery_selectivity_summary.csv)
 - [SPoRC companion report (HTML - preferred)](https://jimianelli.github.io/sporc_ebswp/)
 - [SPoRC companion report (PDF)](https://jimianelli.github.io/sporc_ebswp/EBS_wp_sporc.pdf)
 - [Rceattle companion report (HTML - preferred)](rceattle_ebswp.html)
@@ -219,5 +217,4 @@ download, printing, and archiving.
 - Fishery selectivity analysis: [HTML (preferred)](appendix_fishery_selectivity.html); [PDF](appendix_fishery_selectivity.pdf)
 - SPoRC companion report: [HTML (preferred)](https://jimianelli.github.io/sporc_ebswp/); [PDF](https://jimianelli.github.io/sporc_ebswp/EBS_wp_sporc.pdf)
 - Rceattle companion report: [HTML (preferred)](rceattle_ebswp.html); [PDF](rceattle_ebswp.pdf)
-- [Fishery selectivity summary data (CSV)](data-output/fishery_selectivity_summary.csv)
 :::
