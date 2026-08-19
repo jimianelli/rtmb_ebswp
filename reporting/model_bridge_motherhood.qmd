@@ -20,11 +20,10 @@ date: today
 date-format: "MMMM D, YYYY"
 lang: en-US
 abstract: |
-  Three working papers document complementary evaluations of candidate
-  modeling frameworks for eastern Bering Sea pollock. This overview defines
-  the role of each report, summarizes the common evidence and important
-  differences, identifies the proposed development path, and lists questions
-  for Plan Team review. The accepted ADMB assessment remains the basis for
+  Three working papers compare ways to build an eastern Bering Sea pollock
+  model. This overview explains what each report contributes, where the
+  results agree, how the approaches differ, and what guidance is requested
+  from the Plan Team. The accepted ADMB assessment remains the basis for
   current management advice.
 format:
   html:
@@ -72,93 +71,96 @@ COORDINATING OVERVIEW
 
 # Purpose of this overview
 
-The September 2026 Plan Team review package contains three model-development
-working papers. They address related but distinct questions and should be read
-together rather than treated as three competing operational assessments. This
-overview provides the entry point for the package and identifies the feedback
-requested from the Plan Team.
+The September 2026 Plan Team package brings together three working papers on
+RTMB, SPoRC, and Rceattle. Each addresses a different development question.
+This page explains how the papers fit together, where their results agree, and
+what guidance is requested from the Plan Team. The papers are development
+studies rather than competing operational assessments.
 
 ::: {.callout-important}
-The accepted ADMB assessment remains the basis for current management advice.
-The RTMB, SPoRC, and Rceattle results evaluate implementation fidelity,
-diagnostics, and future development options; none constitutes a proposed
-replacement assessment for September 2026.
+The accepted ADMB assessment continues to provide current management advice.
+RTMB, SPoRC, and Rceattle are being used to check the model calculations,
+improve diagnostics, and evaluate options for future development. None is
+proposed as a replacement assessment for September 2026.
 :::
 
 # Review package
 
 | Report | Primary question | Role in the review |
 |---|---|---|
-| [**RTMB: main report**](ebs_pollock_rtmb_ebswp_assessment.html) | Can the custom ADMB assessment be represented faithfully in RTMB, and what do the resulting diagnostics and candidate refinements show? | Primary technical report and common implementation baseline |
-| [**SPoRC: companion report**](https://jimianelli.github.io/sporc_ebswp/) | Can a general single-region stock-assessment framework reproduce the corrected ADMB candidate and support alternative process structures? | Independent framework comparison and continuing methods-development track |
-| [**Rceattle: companion report**](rceattle_ebswp.html) | Can a more general and extensible framework reproduce the principal assessment dynamics and support future operational development? | Leading candidate for future operational assessment development, subject to the remaining diagnostic and review requirements |
+| [**RTMB: main report**](ebs_pollock_rtmb_ebswp_assessment.html) | Can RTMB reproduce the base ADMB model, and what do its diagnostics and model alternatives show? | Main technical report and shared reference for comparing implementations |
+| [**SPoRC: companion report**](https://jimianelli.github.io/sporc_ebswp/) | Can SPoRC reproduce the same base model and support different population-process structures? | Independent software comparison and continuing methods-development track |
+| [**Rceattle: companion report**](rceattle_ebswp.html) | Can Rceattle reproduce the main assessment dynamics and provide a practical foundation for future operational development? | Leading candidate for future operational development, after the remaining diagnostic and review work |
 
-The [main RTMB report](ebs_pollock_rtmb_ebswp_assessment.html) contains the
-fullest documentation of the common data treatment, fixed-parameter bridge,
-model fits, selectivity analyses, projections, retrospectives, and uncertainty
-diagnostics. The SPoRC and Rceattle reports should be used to compare how the
-same assessment problem behaves in more general frameworks.
+The [main RTMB report](ebs_pollock_rtmb_ebswp_assessment.html) provides the
+most detail on the shared data definitions, checks made using the same
+parameter values as ADMB, model fits, selectivity analyses, projections,
+retrospectives, and uncertainty diagnostics. The SPoRC and Rceattle reports
+show how the same assessment problem behaves in more general software
+frameworks.
 
 ## Supporting analysis
 
 | Identifier | Analysis | Role in the review |
 |---|---|---|
-| S-1 | [**Fishery selectivity alternatives**](appendix_fishery_selectivity.html) ([PDF](appendix_fishery_selectivity.pdf)) | Detailed RTMB comparison of the bridge-reference, hierarchical double-logistic, and year-by-age AR1 fishery selectivity specifications; supports the selectivity discussion in the main RTMB report |
+| S-1 | [**Fishery selectivity alternatives**](appendix_fishery_selectivity.html) ([PDF](appendix_fishery_selectivity.pdf)) | Detailed RTMB comparison of the base, hierarchical double-logistic, and year-by-age AR1 fishery selectivity options; supports the selectivity discussion in the main RTMB report |
 
-The supporting analysis is part of the RTMB evidence package rather than a
-fourth modeling framework. Its stable links allow the three primary reports
-to refer to the same equations, diagnostics, and summary data.
+This analysis supports the RTMB report; it is not a fourth modeling
+framework. The stable links allow all three reports to use the same equations,
+diagnostics, and summary data.
 
-# Common evidence
+# Where the results agree
 
-The three reports establish several common points:
+The three reports reach several shared conclusions:
 
-- The corrected comparison treats observed and predicted bottom-trawl survey
-  age compositions over ages 1--15 and uses nominal multinomial sample sizes.
-- Fixed-parameter comparisons reproduce the principal ADMB population
-  dynamics closely, supporting the tested model mappings.
-- Independently estimated models reveal differences that arise from
-  parameterization, selectivity structure, and estimation rather than from the
-  population-dynamics translation alone.
+- All three comparisons use the base 2024 model with observed and predicted
+  bottom-trawl survey age compositions evaluated over ages 1--15 and with the
+  nominal multinomial sample sizes.
+- When the same parameter values are used, the implementations closely
+  reproduce the main ADMB population dynamics. This shows that the core model
+  calculations have been transferred consistently.
+- When each implementation estimates its own parameters, results differ
+  because the parameterization, selectivity structure, and estimation methods
+  differ.
 - Time-varying fishery and survey selectivity remains an important source of
-  model sensitivity and weak identification.
-- Positive retrospective patterns warrant continued evaluation before an
-  alternative framework is considered for operational use.
-- Sparse-metric Bayesian analyses remain exploratory until convergence and
-  effective-sample-size criteria are satisfied.
+  sensitivity and some parameters remain weakly identified.
+- Positive retrospective patterns require further evaluation before another
+  framework is considered for operational use.
+- Bayesian results remain exploratory until the chains mix adequately and
+  effective sample sizes improve.
 
-# Important differences among frameworks
+# How the frameworks differ
 
-| Dimension | RTMB | SPoRC | Rceattle |
+| Question | RTMB | SPoRC | Rceattle |
 |---|---|---|---|
-| Relationship to the custom assessment | Direct translation of the ADMB model | Re-expression in a general single-region assessment framework | Re-expression in a broader, extensible assessment framework |
-| Principal value | Transparent implementation baseline; rapid diagnostics and model experimentation | Independent comparison and access to generic population-process structures | Strongest path toward a maintainable future operational model and broader structural extensions |
-| Current strengths | Detailed bridge tests, diagnostics, retrospectives, projections, and flexible selectivity development | Close corrected bridge, stable deterministic fit, and independent confirmation of core dynamics | Numerical fixed-parameter bridge, independently estimated comparison, general data/model architecture, and capacity for recruitment extensions |
-| Main unresolved issues | Retrospective bias and evaluation of candidate selectivity structures | Self-test failures, retrospective bias, and posterior mixing in the correlated survey-selectivity model | Weak Hessian direction in annual selectivity, retrospective bias, observation-model sensitivity, and incomplete posterior mixing |
-| Proposed role after this review | Retain as the implementation reference and regression test for subsequent development | Continue as an independent methods and comparison track | Prioritize as the leading operational-development candidate, conditional on successful diagnostics, simulation testing, annual-update testing, and review |
+| What is it? | Direct RTMB representation of the base ADMB model | The same assessment expressed in a general single-region framework | The assessment expressed in a broader, extensible framework |
+| Why is it useful? | Clear technical reference for checking calculations, diagnostics, and model changes | Independent check using different software and general population-process tools | Most promising route to a maintainable future operational model and broader extensions |
+| What does it currently do well? | Detailed model-to-model checks, diagnostics, retrospectives, projections, and flexible selectivity development | Close reproduction of the base model, stable fits, and independent confirmation of the main dynamics | Close reproduction when parameter values are held fixed, an independently estimated comparison, general data and model architecture, and support for recruitment extensions |
+| What work remains? | Retrospective bias and evaluation of candidate selectivity structures | Self-test failures, retrospective bias, and slow Bayesian mixing in the correlated survey-selectivity model | One weakly identified combination of annual selectivity parameters, retrospective bias, dependence on the observation model, and slow Bayesian mixing |
+| Proposed use after this review | Keep as the technical reference and repeatable comparison test for later development | Continue as an independent methods and comparison track | Give priority as the operational-development candidate, after successful diagnostics, simulation testing, annual-update testing, and review |
 
-# Proposed development path
+# Proposed use of each framework
 
-The proposed path retains the distinct value of all three frameworks while
-concentrating operational-development effort on Rceattle.
+Each framework has a different development role. The proposed approach keeps
+those roles while concentrating operational-development effort on Rceattle.
 
 1. **Retain ADMB for management advice.** Continue the accepted operational
    assessment while candidate frameworks are evaluated.
-2. **Retain RTMB as the technical reference.** Use the corrected RTMB bridge
-   to test likelihood calculations, state variables, projections, and proposed
-   structural changes.
+2. **Retain RTMB as the technical reference.** Use the base RTMB
+   implementation to check likelihood calculations, state variables,
+   projections, and proposed structural changes.
 3. **Continue SPoRC as an independent comparison.** Use SPoRC to test whether
    conclusions depend on a particular software architecture and to evaluate
    general process-model developments.
 4. **Prioritize Rceattle for operational development.** Resolve selectivity
    identification and retrospective behavior, complete observation-model and
-   simulation evaluations, demonstrate a reproducible annual update, and
-   return with a defined candidate configuration.
+   simulation tests, demonstrate a reproducible annual update, and return with
+   a clearly defined candidate model.
 5. **Make any transition through formal review.** Present a future operational
-   candidate only after the deterministic model, uncertainty analysis,
+   candidate only after the fitted model, uncertainty analysis,
    projections, and update procedures pass agreed review criteria.
 
-# Questions for the Plan Team
+# Questions for Plan Team discussion
 
 The review would benefit from direction on the following questions:
 
@@ -176,18 +178,17 @@ The review would benefit from direction on the following questions:
 6. At what review stage should posterior uncertainty be incorporated, given
    the current mixing limitations in candidate selectivity models?
 
-# Suggested meeting sequence
+# Suggested order for the meeting
 
 For an efficient discussion, the reports can be presented in this order:
 
 1. Use this overview to establish the decision context and requested feedback.
-2. Present the RTMB report as the common technical baseline.
-3. Briefly summarize supporting analysis S-1, emphasizing the 30% CV
-   double-logistic sensitivity and the AR1 residual comparisons.
-4. Present the SPoRC comparison, emphasizing independent confirmation and the
-   remaining development issues.
-5. Present the Rceattle comparison, emphasizing its potential operational role
-   and the diagnostic work required before advancement.
+2. Present the RTMB report as the shared technical reference.
+3. Summarize supporting analysis S-1, including the 30% CV double-logistic and
+   AR1 comparisons.
+4. Present SPoRC, including its independent confirmation and remaining issues.
+5. Present Rceattle, including its potential operational role and required
+   diagnostics.
 6. Conclude with Plan Team direction on priorities, required analyses, and the
    criteria for the next review.
 
