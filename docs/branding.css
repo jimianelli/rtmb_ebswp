@@ -1,0 +1,73 @@
+.pollock-brand {
+  max-width: 900px;
+  margin: 0.75rem auto 1.5rem;
+  text-align: center;
+  break-inside: avoid;
+}
+
+.pollock-brand img {
+  display: block;
+  width: min(24%, 255px) !important;
+  height: auto;
+  margin: 0 auto 0.55rem;
+}
+
+.pollock-brand p {
+  margin: 0;
+}
+
+.pollock-brand-label {
+  display: inline-block;
+  padding: 0.32rem 0.9rem;
+  border-radius: 999px;
+  color: #fff;
+  background: #8a5a16;
+  font-size: 0.83rem;
+  font-weight: 700;
+  letter-spacing: 0.09em;
+  line-height: 1.25;
+}
+
+@media (min-width: 992px) {
+  #quarto-document-content {
+    position: relative;
+  }
+
+  #title-block-header {
+    padding-right: 250px;
+  }
+
+  .pollock-brand {
+    position: absolute;
+    top: 0.1rem;
+    right: 0;
+    z-index: 1;
+    width: 216px;
+    max-width: 24%;
+    margin: 0;
+  }
+
+  .pollock-brand img {
+    width: 100% !important;
+    max-width: none;
+  }
+
+  .pollock-brand-label {
+    padding: 0.28rem 0.7rem;
+    font-size: 0.7rem;
+    white-space: nowrap;
+  }
+}
+
+@media print {
+  .pollock-brand {
+    max-width: 100%;
+    margin-top: 0.35rem;
+  }
+}
+
+@media (max-width: 575px) {
+  .pollock-brand img {
+    width: min(54%, 240px) !important;
+  }
+}

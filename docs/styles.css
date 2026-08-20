@@ -1,0 +1,11 @@
+.gt_table .gt_col_heading,
+.gt_table .gt_column_spanner {
+  white-space: normal !important;
+  overflow-wrap: anywhere;
+  line-height: 1.15;
+}
+
+.gt_table {
+  width: 100% !important;
+  table-layout: auto;
+}
