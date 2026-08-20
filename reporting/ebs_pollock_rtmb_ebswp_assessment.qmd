@@ -2484,14 +2484,17 @@ f_at_age_tbl |>
 
 ## A-1 Data issues and revisions since the 2024 assessment {.unnumbered #sec-age-data-issues}
 
-This appendix documents two distinct age-data issues considered after the 2024
+This appendix documents two distinct age-composition product issues considered after the 2024
 assessment: the method used to assign ages to individual otoliths and the
 spatio-temporal method used to expand BTS age samples into annual proportions
 at age. The first concerns traditional microscope ages (TMA) versus ages
 predicted by Fourier-transform near-infrared spectroscopy (FT-NIRS). The
 second concerns replacement of the prior BTS age-composition estimator with a
-tinyVAST implementation. These changes occur at different stages of the data
-workflow and should be evaluated separately.
+tinyVAST implementation. In the second case, the survey observations have not
+changed; the estimated annual age-composition data product derived from those
+observations has changed because the expansion method was revised. These
+changes occur at different stages of the data workflow and should be evaluated
+separately.
 
 ### FTNIRS age-data {.unnumbered #sec-ftnirs-age-data}
 
@@ -2546,15 +2549,17 @@ bridge below concerns the subsequent expansion of age observations across
 space and time. Consequently, the controlled BTS bridge should not be
 interpreted as a test of TMA against FT-NIRS.
 
-### Impact of revised BTS age-data {.unnumbered #sec-bts-age-data-bridge}
+### Impact of revised BTS age-composition estimates {.unnumbered #sec-bts-age-data-bridge}
 
 This appendix isolates the effect of replacing the original bottom-trawl
-survey (BTS) proportions at age in `BTSProp.csv` with the revised proportions
-in `tinyVAST_props_new.csv`. Both ADMB runs use the complete 2025 input set and
-the same model specification, executable, starting parameter file, and
-tinyVAST 2025 BTS age observation. The sensitivity restores the original
-1982-2024 BTS proportions while holding the 2025 tinyVAST row constant. The
-comparison therefore addresses the historical estimator change.
+survey (BTS) estimates of proportions at age in `BTSProp.csv` with the revised
+estimates in `tinyVAST_props_new.csv`. This is a change in the age-composition
+data product derived from the survey observations, not a change in the
+underlying survey data. Both ADMB runs use the complete 2025 input set and the
+same model specification, executable, starting parameter file, and tinyVAST
+2025 BTS age-composition estimate. The sensitivity restores the original
+1982-2024 BTS proportion estimates while holding the 2025 tinyVAST row
+constant. The comparison therefore addresses the historical estimator change.
 
 The 2024 assessment used the previous spatio-temporal expansion of BTS age
 samples. The revised series uses an improved implementation in `tinyVAST`, a
@@ -2646,28 +2651,30 @@ bts_age_result_summary <- bts_age_comparison |>
 
 ```{r}
 #| label: tbl-bts-age-data-contrast
-#| tbl-cap: "Controlled input contrast for the revised BTS age-data bridge. The 2025 BTS age observation and all non-BTS-age inputs are identical between runs."
+#| tbl-cap: "Controlled input contrast for the revised BTS age-composition product. The 2025 BTS age-composition estimate and all other assessment inputs are identical between runs."
 bts_age_input_summary |>
   gt_report() |>
   tab_header(title = "BTS Age-Data Contrast")
 ```
 
-The source-data comparison uses the `both` region from `BTSProp.csv` as the
-original series and `tinyVAST_props_new.csv` as the revised series
+The derived-product comparison uses the `both` region from `BTSProp.csv` as
+the original estimated series and `tinyVAST_props_new.csv` as the revised
+estimated series
 (@fig-bts-age-input-change). Across the 42 matched survey years, relative
 changes range from
 `r sprintf("%.1f%%", bts_age_input_extremes$maximum_decrease)` to
 `r sprintf("%+.1f%%", bts_age_input_extremes$maximum_increase)`; the largest
 absolute change is
 `r sprintf("%.2f percentage points", bts_age_input_extremes$maximum_percentage_point_change)`.
-The calculation uses the original proportion as the denominator and describes
-the input revision rather than its influence on model results. The revised
-2025 row is excluded because the original file ends in 2024.
+The calculation uses the original estimated proportion as the denominator and
+describes the revision to the derived age-composition product rather than a
+change in the survey observations or its influence on model results. The
+revised 2025 row is excluded because the original file ends in 2024.
 
 ```{r}
 #| label: fig-bts-age-input-change
-#| fig-cap: "Percent change in BTS proportions at age from the original BTSProp.csv series to the revised tinyVAST_props_new.csv series for each matched historical survey year. Positive bars indicate a larger tinyVAST proportion and negative bars indicate a smaller tinyVAST proportion. Age 15 is the plus group; no BTS survey occurred in 2020."
-#| fig-alt: "Small-multiple bar chart for 42 matched BTS survey years from 1982 through 2024, excluding 2020. Each panel shows relative percent change from the original series to the tinyVAST series for ages 1 through 15. Bars above zero indicate increases and bars below zero indicate decreases. Changes range from about minus 12 percent to plus 55 percent, with the largest increase at age 12 in 2023."
+#| fig-cap: "Percent change in the estimated BTS proportions at age from the original BTSProp.csv data product to the revised tinyVAST_props_new.csv data product for each matched historical survey year. The underlying survey observations are unchanged. Positive bars indicate a larger tinyVAST estimate and negative bars indicate a smaller tinyVAST estimate. Age 15 is the plus group; no BTS survey occurred in 2020."
+#| fig-alt: "Small-multiple bar chart comparing two age-composition data products derived from the same BTS observations for 42 matched survey years from 1982 through 2024, excluding 2020. Each panel shows relative percent change from the original estimated proportions to the tinyVAST estimates for ages 1 through 15. Bars above zero indicate increases and bars below zero indicate decreases. Changes range from about minus 12 percent to plus 55 percent, with the largest increase at age 12 in 2023."
 #| fig-width: 13
 #| fig-height: 10
 bts_age_input_comparison |>
