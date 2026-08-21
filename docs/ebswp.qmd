@@ -1862,7 +1862,7 @@ below were provided by the EcoState case-study work [@goodman2026ecostatedsem].
 EcoState supplied covariate products; the Rceattle fits and their
 interpretation were developed separately for this working paper.
 
-### Causal graph and covariate roles
+### Causal graph proof of concept and covariate roles
 
 The integration of DSEM within the Rceattle package is an enhancement that we
 think provides greater facility to account for broader ecological aspects
@@ -1981,16 +1981,7 @@ value is carried forward to the DSEM row for that cohort's age-1 recruitment;
 the zero-lag path is therefore cohort-aligned rather than a claim that SST was
 measured in the age-1 year.
 
-IID means **independent and identically distributed**. In this section it is
-the no-recruitment-edge reference model. After the assessment model accounts
-for the population dynamics and average recruitment level, each year's
-remaining recruitment deviation is treated as an unrelated draw from the same
-zero-centered distribution with one estimated variance. "Independent" means
-that one year's remaining recruitment deviation does not directly predict the
-next; "identically distributed" means that the same residual-variation scale
-is used in every year. The environmental series still have their own fitted
-AR(1) persistence, but the IID reference has no arrow from an environmental
-series to recruitment.
+In this section "IID" refers to the no-recruitment-edge reference model.
 
 The comparisons can therefore be read as three increasingly specific
 questions:
@@ -2014,7 +2005,7 @@ comparison, not a causal R-squared or a predictive-skill score. Path intervals,
 convergence diagnostics, randomized controls, and blocked or terminal-year
 prediction remain necessary before a pathway is considered supported.
 
-### Initial environmental proof of concept
+### Introducing alternative covariates
 
 In plain language, these four models ask whether recruitment is better
 described with no environmental edge, a cold-pool edge, an age-0 late-summer
@@ -2487,11 +2478,8 @@ stable across timing assumptions, retrospective peels, and predictive checks.
 
 ## Summary
 
-The Rceattle 5.8.1 configuration uses the supported `MultinomialAFSC`
-composition likelihood, complete ages 1--15, nominal fishery sample sizes, and
-survey sample sizes aligned with the modified ADMB model. When Rceattle
-parameters and fishery selectivity are set to the values used in the ADMB
-model, Rceattle reproduces spawning
+When Rceattle parameters and fishery selectivity are set to the values used in
+the ADMB model, Rceattle reproduces spawning
 biomass and predicted catch to numerical precision. This establishes
 agreement in the tested population-dynamics calculations and parameter
 mapping. When Rceattle is fit to the data, the trajectories differ more,
@@ -2522,14 +2510,17 @@ adult-pollock index is partly population-derived, so neither result is treated
 as a causal recruitment effect.
 
 Immediate work should retain the ADMB-to-Rceattle comparison as a repeatable
-numerical check,
-evaluate selectivity and survey influence on the retrospective pattern,
-and continue sensitivity checks for the shared ATS/AVO annual selectivity
-deviations. The next-assessment
-workbook should be populated after complete new-year observations arrive.
-The exploratory DSEM work provides a reproducible approach for adding
-cohort-aligned covariates, while remaining separate from the final assessment
-configuration and projection results.
+numerical check, evaluate selectivity and survey influence on the retrospective
+pattern, and continue sensitivity checks for the shared ATS/AVO annual
+selectivity deviations. Given acceptance in other applications and the proven
+bridging aspects, we feel this approach should be adopted for operational
+management advice for November/December 2026. Future refinements will explore
+trade-offs in fitting data in alternative ways (e.g., using random effects
+approaches for selectivity variability, selecting alternatives to the
+robust-multinomial approach used in this example). The exploratory DSEM work
+provides a reproducible approach for adding cohort-aligned covariates, while
+remaining separate from the final assessment configuration and projection
+results.
 
 ## References {.unnumbered}
 
