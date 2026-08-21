@@ -1,0 +1,53 @@
+<script>
+document.addEventListener("DOMContentLoaded", () => {
+  const toc = document.querySelector("#TOC");
+  if (!toc) return;
+
+  const rootList = toc.querySelector(":scope > ul");
+  if (!rootList) return;
+
+  const branches = Array.from(rootList.children)
+    .map((item) => ({
+      item,
+      link: item.querySelector(":scope > a.nav-link"),
+      list: item.querySelector(":scope > ul.collapse")
+    }))
+    .filter((branch) => branch.link && branch.list);
+
+  branches.forEach((branch, index) => {
+    if (!branch.list.id) branch.list.id = `toc-subsections-${index + 1}`;
+    branch.link.setAttribute("aria-controls", branch.list.id);
+    branch.link.setAttribute("aria-expanded", "false");
+  });
+
+  const updateBranches = () => {
+    const activeLinks = Array.from(toc.querySelectorAll("a.nav-link.active"));
+    const activeLink = activeLinks.find((link) => link.closest("ul.collapse")) ||
+      activeLinks.at(-1);
+    const activeList = activeLink?.closest("ul.collapse") ||
+      activeLink?.parentElement?.querySelector(":scope > ul.collapse") || null;
+
+    branches.forEach((branch) => {
+      const expanded = branch.list === activeList;
+      branch.list.classList.toggle("toc-expanded", expanded);
+      branch.link.setAttribute("aria-expanded", String(expanded));
+    });
+  };
+
+  branches.forEach((branch) => {
+    branch.link.addEventListener("click", () => {
+      branches.forEach((candidate) => {
+        const expanded = candidate === branch;
+        candidate.list.classList.toggle("toc-expanded", expanded);
+        candidate.link.setAttribute("aria-expanded", String(expanded));
+      });
+    });
+  });
+
+  const observer = new MutationObserver(updateBranches);
+  toc.querySelectorAll("a.nav-link").forEach((link) => {
+    observer.observe(link, { attributes: true, attributeFilter: ["class"] });
+  });
+  updateBranches();
+});
+</script>

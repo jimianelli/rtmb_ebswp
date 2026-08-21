@@ -1,0 +1,2905 @@
+---
+title: "Refinements to Rceattle for eastern Bering Sea pollock"
+subtitle: "Rceattle 5.8.1 working paper for the 2024 assessment configuration"
+author:
+  - name: James Ianelli
+    corresponding: true
+    orcid: 0000-0002-7170-8677
+    email: jim.ianelli@noaa.gov
+    affiliation:
+      - name: Alaska Fisheries Science Center
+        city: Seattle
+        state: WA
+  - name: Grant Adams
+date: today
+date-format: "MMMM D, YYYY"
+lang: en-US
+bibliography: references.bib
+link-citations: true
+abstract: |
+  The custom AD Model Builder (ADMB) stock assessment model developed for eastern Bering Sea
+  walleye pollock has a long history of application. For a variety of
+  reasons, including general recommendations from the 2025 Center for
+  Independent Experts (CIE) reviews, the custom ADMB code has been
+  successfully ported to R Template Model Builder (RTMB). That
+  conversion provides access to advanced RTMB features and makes the
+  underlying code easier to understand and modify. Similarly, adopting
+  more generic platforms, such as Rceattle, can provide access to more
+  modern software developments. In this study, we tailored Rceattle code
+  and configurations so that Rceattle can closely mimic the custom
+  ADMB/RTMB assessment code. The Rceattle configuration uses the supported
+  AFSC multinomial composition likelihood and a non-parametric
+  selectivity form. We also evaluated a
+  two-dimensional, first-order autoregressive (AR1) selectivity sensitivity;
+  it did not converge and remains a research topic. An exploratory dynamic
+  structural equation modeling (DSEM) analysis shows how recruitment
+  covariates can be compared by cohort, separately from the final assessment
+  configuration.
+execute:
+  echo: false
+  warning: false
+  message: false
+format:
+  html:
+    css:
+      - styles.css
+      - branding.css
+    format-links: false
+    toc: true
+    toc-depth: 3
+    include-after-body: toc-collapse.html
+    number-sections: true
+    lightbox: true
+    code-fold: true
+    code-summary: "Show code"
+    code-copy: true
+    embed-resources: false
+    smooth-scroll: true
+    link-external-newwindow: true
+    fig-responsive: true
+    theme:
+      light: cosmo
+      dark: darkly
+  pdf:
+    documentclass: article
+    number-sections: true
+    colorlinks: true
+    geometry:
+      - margin=1in
+params:
+  method_file: "results/canonical_pm/ebs_pollock_method_fits.rds"
+  model_summary_file: "results/canonical_pm/model_summary.csv"
+  model_lineage_file: "results/canonical_pm/lineage.csv"
+  osa_file: "results/canonical_pm/ebs_pollock_osa_residuals.rds"
+  osa_diagnostics_file: "results/canonical_pm/ebs_pollock_osa_diagnostics.rds"
+  retrospective_file: "results/canonical_pm/ebs_pollock_nonparametric_two_stage_retro_9peels.rds"
+  retrospective_summary_file: "results/canonical_pm/ebs_pollock_nonparametric_two_stage_retro_9peels_mohns.csv"
+  fixed_parameter_comparison_file: "results/canonical_pm/bridge_forward_pass/bridge_forward_pass_results.rds"
+  fixed_parameter_summary_file: "results/canonical_pm/bridge_forward_pass/bridge_forward_pass_summary.csv"
+  rceattle_581_validation_summary_file: "results/rceattle_5.8.1_validation/self_test/validation_summary.csv"
+  rceattle_581_truncation_summary_file: "results/rceattle_5.8.1_validation/self_test/index_truncation_diagnostics_by_fleet.csv"
+  rceattle_581_restart_comparison_file: "results/rceattle_5.8.1_validation/self_test/self_test_restart_comparison.csv"
+  jitter_summary_file: "results/rceattle_5.8.1_validation/extended_diagnostics/jitter_50_summary.csv"
+  mortality_profile_file: "results/rceattle_5.8.1_validation/extended_diagnostics/profile_M_age3plus.csv"
+  model_input_workbook: "Data/EBS_24_pollock_m23_rceattle_full_1964-2024.xlsx"
+  bts_covariance_file: "Data/BTS_survey_covariance_2024.dat"
+  admb_retro_file: "ADMB/m23_rceattle_full/retro.rep"
+  legacy_admb_retro_file: "ADMB/m23/retro.rep"
+  two_stage_script: "2024 EBS pollock.R"
+  diagnostics_script: "2024 EBS pollock diagnostics.R"
+  retrospective_script: "2024 EBS pollock two-stage retrospectives.R"
+  update_script: "2024 EBS pollock update data for next assessment.R"
+  admb_comparison_script: "2024 EBS pollock bridging.R"
+  projection_dir: "results/canonical_pm/spmR_projection"
+  projection_alt2_dir: "results/canonical_pm/spmR_projection_alt2_fixed1300"
+  dsem_summary_file: "results/dsem_5.8.1_sst/dsem_model_summary.csv"
+  dsem_paths_file: "results/dsem_5.8.1_sst/dsem_path_estimates.csv"
+  dsem_variance_file: "results/dsem_5.8.1_sst/dsem_recruitment_variance.csv"
+  dsem_covariates_file: "results/dsem_5.8.1_sst/cohort_aligned_covariates.csv"
+  dsem_random_summary_file: "results/dsem_5.8.1_sst_randomized/dsem_model_summary.csv"
+  dsem_random_paths_file: "results/dsem_5.8.1_sst_randomized/dsem_path_estimates.csv"
+  dsem_design_file: "results/dsem_5.8.1_sst/dsem_run_design.csv"
+  dsem_random_design_file: "results/dsem_5.8.1_sst_randomized/dsem_run_design.csv"
+  dsem_aic_figure_file: "results/dsem_5.8.1_sst/dsem_aic_comparison.png"
+  dsem_edges_figure_file: "results/dsem_5.8.1_sst/dsem_edge_coefficients.png"
+  dsem_recruitment_figure_file: "results/dsem_5.8.1_sst/dsem_recruitment_comparison.png"
+  dsem_script: "2024 EBS pollock DSEM proof of concept.R"
+  ecostate_dsem_script: "2024 EBS pollock EcoState DSEM candidates.R"
+  ecostate_physical_dir: "results/dsem_5.8.1_ecostate_physical"
+  ecostate_physical_random_dir: "results/dsem_5.8.1_ecostate_physical_randomized"
+  ecostate_overlap_dir: "results/dsem_5.8.1_ecostate_overlap"
+  ecostate_overlap_random_dir: "results/dsem_5.8.1_ecostate_overlap_randomized"
+editor:
+  markdown:
+    wrap: 72
+---
+
+::: {.pollock-brand .framework-rceattle}
+![](assets/branding/alaska-pollock-logo.png){fig-alt="Circular Alaska Pollock mark showing a walleye pollock, mountain and water motifs, and Alaska Fisheries Science Center and NOAA NMFS identification." width="32%"}
+
+::: {.pollock-brand-label}
+Rceattle WORKING PAPER
+:::
+:::
+
+::: {.content-visible when-format="html"}
+[Download a PDF version of this report](ebswp.pdf){.btn .btn-primary download="ebswp.pdf"}
+:::
+
+```{r}
+#| label: setup
+#| include: false
+
+suppressPackageStartupMessages({
+  .libPaths(c(
+    file.path(getwd(), ".r-lib-rceattle-5.8.1"),
+    file.path(getwd(), ".r-lib-pm"),
+    .libPaths()
+  ))
+  library(afscOSA)
+  library(asar)
+  library(dplyr)
+  library(ggridges)
+  library(ggplot2)
+  library(ggthemes)
+  library(gt)
+  library(knitr)
+  library(Rceattle)
+  library(readr)
+  library(scales)
+  library(tibble)
+  library(tidyr)
+})
+
+stopifnot(packageVersion("Rceattle") == package_version("5.8.1"))
+
+theme_set(ggthemes::theme_few())
+
+`%||%` <- function(x, y) {
+  if (is.null(x) || length(x) == 0) y else x
+}
+
+qmd_file <- tryCatch(knitr::current_input(dir = TRUE), error = function(e) NULL)
+project_root <- if (is.null(qmd_file)) {
+  normalizePath(getwd(), mustWork = TRUE)
+} else {
+  dirname(normalizePath(qmd_file, mustWork = TRUE))
+}
+
+project_file <- function(...) {
+  normalizePath(file.path(project_root, ...), mustWork = FALSE)
+}
+
+parse_asar_glossary <- function(path) {
+  glossary_lines <- trimws(readLines(path, warn = FALSE))
+  pattern <- "^\\\\newacronym\\{([^}]*)\\}\\{([^}]*)\\}\\{([^}]*)\\}$"
+  matches <- regmatches(glossary_lines, regexec(pattern, glossary_lines))
+  matches <- matches[lengths(matches) == 4]
+  tibble(
+    label = vapply(matches, `[[`, character(1), 2),
+    Acronym = vapply(matches, `[[`, character(1), 3),
+    Definition = vapply(matches, `[[`, character(1), 4)
+  )
+}
+
+project_glossary <- parse_asar_glossary(project_file("report_glossary.tex"))
+
+absolute_or_project <- function(path) {
+  if (grepl("^file://", path)) {
+    return(normalizePath(sub("^file://", "", path), mustWork = FALSE))
+  }
+  if (grepl("^/", path)) {
+    normalizePath(path, mustWork = FALSE)
+  } else {
+    project_file(path)
+  }
+}
+
+file_size <- function(path) {
+  if (!file.exists(path)) {
+    return(NA_character_)
+  }
+  paste0(formatC(file.info(path)$size / 1024, format = "f", digits = 1), " KB")
+}
+
+read_admb_vector <- function(path, key) {
+  lines <- readLines(path)
+  start <- grep(paste0("^", key, "$"), lines)[1]
+  if (is.na(start)) {
+    return(tibble(Year = integer(), Value = numeric()))
+  }
+
+  rows <- list()
+  i <- start + 1
+  while (i <= length(lines)) {
+    values <- suppressWarnings(
+      as.numeric(strsplit(trimws(lines[i]), " +")[[1]])
+    )
+    if (anyNA(values) || length(values) < 2) {
+      break
+    }
+    rows[[length(rows) + 1]] <- values[1:2]
+    i <- i + 1
+  }
+
+  as_tibble(do.call(rbind, rows), .name_repair = "minimal") |>
+    setNames(c("Year", "Value"))
+}
+
+check_messages <- function(fit, levels = c("WARN", "FAIL")) {
+  checks <- fit$convergence$checks %||% list()
+  messages <- vapply(checks, function(check) {
+    severity <- check$severity %||% NA_character_
+    if (is.na(severity) || !severity %in% levels) {
+      return(NA_character_)
+    }
+    check$message %||% NA_character_
+  }, character(1))
+
+  messages <- messages[!is.na(messages)]
+  if (length(messages) == 0) {
+    "None"
+  } else {
+    paste(messages, collapse = "; ") |>
+      gsub(
+        pattern = "Hessian not invertible",
+        replacement = "Hessian inversion failed",
+        fixed = TRUE
+      )
+  }
+}
+
+objective_value <- function(fit) {
+  value <- fit$opt$objective %||% fit$opt$opt$objective %||% NA_real_
+  as.numeric(value)
+}
+
+convergence_row <- function(label, fit) {
+  max_gradient <- fit$convergence$checks$max_gradient$data$max_gradient %||%
+    NA_real_
+  worst_param <- fit$convergence$checks$max_gradient$data$worst$param %||%
+    NA_character_
+  pd_hessian <- fit$convergence$checks$max_gradient$data$pdHess %||% NA
+
+  tibble(
+    Model = label,
+    Status = fit$convergence$status %||% NA_character_,
+    Objective = objective_value(fit),
+    Max_gradient = max_gradient,
+    Worst_parameter = worst_param,
+    Positive_definite_Hessian = as.character(pd_hessian),
+    Warnings_or_failures = check_messages(fit)
+  )
+}
+
+method_file <- project_file(params$method_file)
+model_summary_file <- project_file(params$model_summary_file)
+model_lineage_file <- project_file(params$model_lineage_file)
+osa_file <- project_file(params$osa_file)
+osa_diagnostics_file <- project_file(params$osa_diagnostics_file)
+retrospective_file <- project_file(params$retrospective_file)
+retrospective_summary_file <- project_file(params$retrospective_summary_file)
+fixed_parameter_comparison_file <- project_file(params$fixed_parameter_comparison_file)
+fixed_parameter_summary_file <- project_file(params$fixed_parameter_summary_file)
+rceattle_581_validation_summary_file <- project_file(
+  params$rceattle_581_validation_summary_file
+)
+rceattle_581_truncation_summary_file <- project_file(
+  params$rceattle_581_truncation_summary_file
+)
+rceattle_581_restart_comparison_file <- project_file(
+  params$rceattle_581_restart_comparison_file
+)
+jitter_summary_file <- project_file(params$jitter_summary_file)
+mortality_profile_file <- project_file(params$mortality_profile_file)
+dsem_summary_file <- project_file(params$dsem_summary_file)
+dsem_paths_file <- project_file(params$dsem_paths_file)
+dsem_variance_file <- project_file(params$dsem_variance_file)
+dsem_covariates_file <- project_file(params$dsem_covariates_file)
+dsem_random_summary_file <- project_file(params$dsem_random_summary_file)
+dsem_random_paths_file <- project_file(params$dsem_random_paths_file)
+dsem_design_file <- project_file(params$dsem_design_file)
+dsem_random_design_file <- project_file(params$dsem_random_design_file)
+dsem_aic_figure_file <- project_file(params$dsem_aic_figure_file)
+dsem_edges_figure_file <- project_file(params$dsem_edges_figure_file)
+dsem_recruitment_figure_file <- project_file(params$dsem_recruitment_figure_file)
+
+ecostate_suite_files <- function(directory) {
+  directory <- project_file(directory)
+  list(
+    summary = file.path(directory, "dsem_model_summary.csv"),
+    paths = file.path(directory, "dsem_path_estimates.csv"),
+    variance = file.path(directory, "dsem_recruitment_variance.csv"),
+    covariates = file.path(directory, "cohort_aligned_covariates.csv"),
+    design = file.path(directory, "dsem_run_design.csv"),
+    covariate_figure = file.path(directory, "dsem_covariates.png"),
+    aic_figure = file.path(directory, "dsem_aic_comparison.png"),
+    edge_figure = file.path(directory, "dsem_edge_coefficients.png"),
+    recruitment_figure = file.path(directory, "dsem_recruitment_comparison.png")
+  )
+}
+
+ecostate_physical_files <- ecostate_suite_files(params$ecostate_physical_dir)
+ecostate_physical_random_files <- ecostate_suite_files(
+  params$ecostate_physical_random_dir
+)
+ecostate_overlap_files <- ecostate_suite_files(params$ecostate_overlap_dir)
+ecostate_overlap_random_files <- ecostate_suite_files(
+  params$ecostate_overlap_random_dir
+)
+
+core_files <- c(
+  method_file,
+  model_summary_file,
+  model_lineage_file,
+  osa_file,
+  osa_diagnostics_file,
+  retrospective_file,
+  fixed_parameter_comparison_file,
+  rceattle_581_validation_summary_file,
+  rceattle_581_truncation_summary_file,
+  rceattle_581_restart_comparison_file,
+  jitter_summary_file,
+  mortality_profile_file,
+  dsem_summary_file,
+  dsem_paths_file,
+  dsem_variance_file,
+  dsem_covariates_file,
+  dsem_random_summary_file,
+  dsem_random_paths_file,
+  dsem_design_file,
+  dsem_random_design_file,
+  dsem_aic_figure_file,
+  dsem_edges_figure_file,
+  dsem_recruitment_figure_file,
+  unlist(ecostate_physical_files),
+  unlist(ecostate_physical_random_files),
+  unlist(ecostate_overlap_files),
+  unlist(ecostate_overlap_random_files)
+)
+if (any(!file.exists(core_files))) {
+  stop(
+    "Missing required comparison inputs: ",
+    paste(core_files[!file.exists(core_files)], collapse = ", ")
+  )
+}
+
+fits <- readRDS(method_file)
+model_summary <- readr::read_csv(model_summary_file, show_col_types = FALSE)
+model_lineage <- readr::read_csv(model_lineage_file, show_col_types = FALSE)
+osa <- readRDS(osa_file)
+osa_diagnostics <- readRDS(osa_diagnostics_file)
+retrospective <- readRDS(retrospective_file)
+fixed_parameter_comparison <- readRDS(fixed_parameter_comparison_file)
+rceattle_581_validation <- readr::read_csv(
+  rceattle_581_validation_summary_file,
+  show_col_types = FALSE
+)
+rceattle_581_truncation <- readr::read_csv(
+  rceattle_581_truncation_summary_file,
+  show_col_types = FALSE
+)
+rceattle_581_restart <- readr::read_csv(
+  rceattle_581_restart_comparison_file,
+  show_col_types = FALSE
+)
+jitter_summary <- readr::read_csv(jitter_summary_file, show_col_types = FALSE)
+mortality_profile <- readr::read_csv(
+  mortality_profile_file,
+  show_col_types = FALSE
+) |>
+  rename(`Age-3+ natural mortality` = slot_1)
+dsem_summary <- readr::read_csv(dsem_summary_file, show_col_types = FALSE)
+dsem_paths <- readr::read_csv(dsem_paths_file, show_col_types = FALSE)
+dsem_variance <- readr::read_csv(dsem_variance_file, show_col_types = FALSE)
+dsem_covariates <- readr::read_csv(dsem_covariates_file, show_col_types = FALSE)
+dsem_random_summary <- readr::read_csv(
+  dsem_random_summary_file,
+  show_col_types = FALSE
+)
+dsem_random_paths <- readr::read_csv(
+  dsem_random_paths_file,
+  show_col_types = FALSE
+)
+dsem_design <- readr::read_csv(dsem_design_file, show_col_types = FALSE)
+dsem_random_design <- readr::read_csv(
+  dsem_random_design_file,
+  show_col_types = FALSE
+)
+
+dsem_model_labels <- c(
+  iid = "IID recruitment deviations",
+  cold_pool = "Cold pool",
+  late_summer_sst = "Age-0 late-summer SST",
+  combined = "Cold pool + age-0 late-summer SST"
+)
+dsem_summary <- dsem_summary |>
+  mutate(
+    Model = unname(dsem_model_labels[model]),
+    `Delta AIC` = AIC - min(AIC)
+  ) |>
+  left_join(
+    dsem_variance |>
+      select(model, variance_reduction_from_iid),
+    by = "model"
+  ) |>
+  mutate(
+    `Residual variation reduced (%)` = 100 * variance_reduction_from_iid
+  )
+dsem_recruitment_paths <- dsem_paths |>
+  filter(grepl("_to_R$", parameter)) |>
+  mutate(
+    Model = unname(dsem_model_labels[model]),
+    Covariate = recode(
+      parameter,
+      ColdPool_to_R = "Cold pool",
+      LateSummerSST_to_R = "Age-0 late-summer SST"
+    )
+  )
+dsem_random_summary <- dsem_random_summary |>
+  mutate(`Delta AIC` = AIC - min(AIC))
+dsem_random_recruitment_paths <- dsem_random_paths |>
+  filter(grepl("_to_R$", parameter))
+
+read_ecostate_suite <- function(files, model_labels, candidate_labels) {
+  variance <- readr::read_csv(files$variance, show_col_types = FALSE)
+  summary <- readr::read_csv(files$summary, show_col_types = FALSE) |>
+    mutate(
+      Model = unname(model_labels[model]),
+      `Delta AIC` = AIC - min(AIC)
+    ) |>
+    left_join(
+      variance |>
+        select(model, variance_reduction_from_iid),
+      by = "model"
+    ) |>
+    mutate(
+      `Residual variation reduced (%)` = 100 * variance_reduction_from_iid
+    )
+  paths <- readr::read_csv(files$paths, show_col_types = FALSE)
+  recruitment_paths <- paths |>
+    filter(grepl("_to_R$", parameter)) |>
+    mutate(
+      Model = unname(model_labels[model]),
+      Covariate = unname(candidate_labels[parameter])
+    )
+  list(
+    summary = summary,
+    paths = paths,
+    recruitment_paths = recruitment_paths,
+    variance = variance,
+    covariates = readr::read_csv(files$covariates, show_col_types = FALSE),
+    design = readr::read_csv(files$design, show_col_types = FALSE),
+    files = files
+  )
+}
+
+ecostate_physical_labels <- c(
+  iid = "IID recruitment deviations",
+  candidate1 = "Maximum winter sea ice",
+  candidate2 = "Age-0 April--May SST",
+  combined = "Both physical candidates"
+)
+ecostate_overlap_labels <- c(
+  iid = "IID recruitment deviations",
+  candidate1 = "Arrowtooth overlap",
+  candidate2 = "Adult-pollock overlap",
+  combined = "Both overlap candidates"
+)
+ecostate_physical_candidates <- c(
+  Candidate1_to_R = "Maximum winter sea ice",
+  Candidate2_to_R = "Age-0 April--May SST"
+)
+ecostate_overlap_candidates <- c(
+  Candidate1_to_R = "Arrowtooth--juvenile pollock overlap",
+  Candidate2_to_R = "Adult-pollock--juvenile pollock overlap"
+)
+
+ecostate_physical <- read_ecostate_suite(
+  ecostate_physical_files,
+  ecostate_physical_labels,
+  ecostate_physical_candidates
+)
+ecostate_physical_random <- read_ecostate_suite(
+  ecostate_physical_random_files,
+  ecostate_physical_labels,
+  ecostate_physical_candidates
+)
+ecostate_overlap <- read_ecostate_suite(
+  ecostate_overlap_files,
+  ecostate_overlap_labels,
+  ecostate_overlap_candidates
+)
+ecostate_overlap_random <- read_ecostate_suite(
+  ecostate_overlap_random_files,
+  ecostate_overlap_labels,
+  ecostate_overlap_candidates
+)
+est <- fits$data
+yrs <- fits$years
+nyr <- length(yrs)
+terminal_year <- max(yrs)
+
+retro_models <- retrospective$Rceattle_list
+retro_terminal_years <- as.integer(sub("Year_", "", names(retro_models)))
+retro_convergence <- tibble(
+  Terminal_year = retro_terminal_years,
+  Status = vapply(
+    retro_models,
+    function(x) x$opt$Convergence_check %||% NA_character_,
+    character(1)
+  ),
+  Maximum_gradient = vapply(
+    retro_models,
+    function(x) as.numeric(x$opt$max_gradient %||% NA_real_),
+    numeric(1)
+  )
+)
+retro_warning_years <- retro_convergence |>
+  filter(Terminal_year < terminal_year, grepl("likely.*converged", Status)) |>
+  pull(Terminal_year)
+
+retro_mohns <- retrospective$mohns |>
+  filter(`Forecast year` == 0) |>
+  transmute(
+    Quantity = recode(
+      Object,
+      biomass = "Total biomass",
+      ssb = "Spawning biomass",
+      R = "Recruitment",
+      F_spp = "Fishing mortality"
+    ),
+    Peels = N,
+    `Mohn's rho` = `EBS Pollock`
+  )
+
+retro_terminal_selectivity_max_difference <- max(
+  unlist(lapply(
+    retrospective$peel_details,
+    `[[`,
+    "terminal_selectivity_max_difference"
+  )),
+  na.rm = TRUE
+)
+
+fishery_control <- fits$nonparametric_pm$data_list$fleet_control |>
+  filter(Fleet_name == "Fishery")
+fishery_selectivity_dimension <- fishery_control$Selectivity_dimension
+fishery_selectivity_bins <- fishery_control$N_sel_bins
+stopifnot(
+  identical(fishery_selectivity_dimension, "Age"),
+  length(fishery_selectivity_bins) == 1L,
+  is.finite(fishery_selectivity_bins),
+  retro_terminal_selectivity_max_difference <= 1e-10
+)
+
+admb_rep <- absolute_or_project(file.path(fits$admb_directory, "pm.rep"))
+admb_ssb <- read_admb_vector(admb_rep, "SSB")
+admb_rec <- read_admb_vector(admb_rep, "R")
+admb_biomass <- fits$admb_biomass |>
+  rename(Value = val)
+
+quantity_long <- bind_rows(
+  tibble(
+    Year = yrs,
+    Value = as.numeric(fits$nonparametric_pm$quantities$ssb[1, seq_len(nyr)]),
+    Quantity = "Spawning biomass",
+    Method = "Rceattle NonParametricPM"
+  ),
+  tibble(
+    Year = yrs,
+    Value = as.numeric(fits$standard_multinomial$quantities$ssb[1, seq_len(nyr)]),
+    Quantity = "Spawning biomass",
+    Method = "Rceattle standard multinomial"
+  ),
+  tibble(
+    Year = yrs,
+    Value = as.numeric(fits$ar1_2d$quantities$ssb[1, seq_len(nyr)]),
+    Quantity = "Spawning biomass",
+    Method = "Rceattle 2D AR1"
+  ),
+  admb_ssb |>
+    mutate(Quantity = "Spawning biomass", Method = "ADMB reference"),
+  tibble(
+    Year = yrs,
+    Value = as.numeric(fits$nonparametric_pm$quantities$R[1, seq_len(nyr)]),
+    Quantity = "Recruitment",
+    Method = "Rceattle NonParametricPM"
+  ),
+  tibble(
+    Year = yrs,
+    Value = as.numeric(fits$standard_multinomial$quantities$R[1, seq_len(nyr)]),
+    Quantity = "Recruitment",
+    Method = "Rceattle standard multinomial"
+  ),
+  tibble(
+    Year = yrs,
+    Value = as.numeric(fits$ar1_2d$quantities$R[1, seq_len(nyr)]),
+    Quantity = "Recruitment",
+    Method = "Rceattle 2D AR1"
+  ),
+  admb_rec |>
+    mutate(Quantity = "Recruitment", Method = "ADMB reference"),
+  tibble(
+    Year = yrs,
+    Value = as.numeric(fits$nonparametric_pm$quantities$biomass[1, seq_len(nyr)]),
+    Quantity = "Total biomass",
+    Method = "Rceattle NonParametricPM"
+  ),
+  tibble(
+    Year = yrs,
+    Value = as.numeric(fits$standard_multinomial$quantities$biomass[1, seq_len(nyr)]),
+    Quantity = "Total biomass",
+    Method = "Rceattle standard multinomial"
+  ),
+  tibble(
+    Year = yrs,
+    Value = as.numeric(fits$ar1_2d$quantities$biomass[1, seq_len(nyr)]),
+    Quantity = "Total biomass",
+    Method = "Rceattle 2D AR1"
+  ),
+  admb_biomass |>
+    mutate(Quantity = "Total biomass", Method = "ADMB reference")
+) |>
+  mutate(
+    Method = factor(
+      Method,
+      levels = c(
+        "ADMB reference",
+        "Rceattle NonParametricPM",
+        "Rceattle standard multinomial",
+        "Rceattle 2D AR1"
+      )
+    )
+  )
+
+comparison_summary <- quantity_long |>
+  filter(!is.na(Method)) |>
+  select(Year, Quantity, Method, Value) |>
+  tidyr::pivot_wider(names_from = Method, values_from = Value) |>
+  tidyr::pivot_longer(
+    cols = starts_with("Rceattle"),
+    names_to = "Method",
+    values_to = "Estimate"
+  ) |>
+  filter(is.finite(Estimate), is.finite(`ADMB reference`), `ADMB reference` > 0) |>
+  group_by(Method, Quantity) |>
+  arrange(Year, .by_group = TRUE) |>
+  summarise(
+    Correlation = cor(Estimate, `ADMB reference`),
+    Mean_absolute_percent = mean(abs(100 * (Estimate / `ADMB reference` - 1))),
+    Max_absolute_percent = max(abs(100 * (Estimate / `ADMB reference` - 1))),
+    Terminal_percent = dplyr::last(100 * (Estimate / `ADMB reference` - 1)),
+    .groups = "drop"
+  ) |>
+  mutate(
+    Method = recode(
+      Method,
+      `Rceattle NonParametricPM` = "Rceattle configuration",
+      `Rceattle standard multinomial` = "Standard multinomial sensitivity",
+      `Rceattle 2D AR1` = "Historical 2D AR1 sensitivity"
+    )
+  )
+
+fixed_parameter_summary <- if (file.exists(fixed_parameter_summary_file)) {
+  readr::read_csv(fixed_parameter_summary_file, show_col_types = FALSE)
+} else {
+  as_tibble(fixed_parameter_comparison$comparison)
+}
+
+fixed_parameter_ratio_long <- fixed_parameter_comparison$trajectories |>
+  as_tibble() |>
+  select(Year, SSB_ratio, Catch_ratio) |>
+  pivot_longer(-Year, names_to = "Quantity", values_to = "Ratio") |>
+  mutate(
+    Quantity = recode(
+      Quantity,
+      SSB_ratio = "Spawning biomass",
+      Catch_ratio = "Predicted catch"
+    )
+  )
+
+selectivity_ridges <- bind_rows(
+  as.data.frame(fixed_parameter_comparison$selectivity$fishery) |>
+    mutate(Year = yrs, Model = "ADMB reference"),
+  as.data.frame(t(fits$nonparametric_pm$quantities$sel_at_age[
+    "Fishery", "Sex combined", , seq_len(nyr)
+  ])) |>
+    mutate(Year = yrs, Model = "Rceattle NonParametricPM"),
+  as.data.frame(t(fits$ar1_2d$quantities$sel_at_age[
+    "Fishery", "Sex combined", , seq_len(nyr)
+  ])) |>
+    mutate(Year = yrs, Model = "Rceattle 2D AR1 (failed)")
+) |>
+  pivot_longer(
+    cols = starts_with(c("V", "Age")),
+    names_to = "Age_label",
+    values_to = "Selectivity"
+  ) |>
+  mutate(
+    Age = readr::parse_number(Age_label),
+    Model = factor(
+      Model,
+      levels = c(
+        "ADMB reference",
+        "Rceattle NonParametricPM",
+        "Rceattle 2D AR1 (failed)"
+      )
+    )
+  ) |>
+  filter(is.finite(Selectivity), Age >= 1, Age <= 15) |>
+  group_by(Model, Year) |>
+  mutate(Relative_selectivity = Selectivity / max(Selectivity, na.rm = TRUE)) |>
+  ungroup() |>
+  mutate(Year_factor = factor(Year, levels = rev(sort(unique(Year)))))
+
+fleet_names <- est$fleet_control |>
+  select(Fleet_code, Fleet_name) |>
+  distinct()
+
+osa_table <- osa_diagnostics |>
+  left_join(fleet_names, by = c("fleet" = "Fleet_code")) |>
+  mutate(
+    Data_group = case_when(
+      group == "all" ~ "All residuals",
+      TRUE ~ paste(
+        coalesce(Fleet_name, paste("Fleet", fleet)),
+        source
+      )
+    ),
+    Pass = sdnr_ok & lower_ok & upper_ok
+  ) |>
+  select(
+    Data_group,
+    n,
+    sdnr,
+    sdnr_lo,
+    sdnr_hi,
+    lower,
+    upper,
+    Pass
+  )
+
+make_afscosa_composition <- function(fleet_code) {
+  fit <- fits$nonparametric_pm
+  comp_data <- fit$data_list$comp_data
+  rows <- which(comp_data$Fleet_code == fleet_code)
+
+  # afscOSA converts proportions to integer counts. A row is informative
+  # only when that conversion retains at least one observation.
+  valid <- rowSums(
+    round(
+      comp_data$Sample_size[rows] *
+        fit$quantities$comp_obs[rows, , drop = FALSE]
+    )
+  ) >= 1
+  rows <- rows[valid]
+  years <- comp_data$Year[rows]
+
+  internal_osa <- osa |>
+    filter(
+      source == "comp",
+      fleet == fleet_code,
+      year %in% years
+    ) |>
+    arrange(match(year, years), age_length_bin)
+
+  n_bins <- ncol(fit$quantities$comp_obs)
+  stopifnot(nrow(internal_osa) == length(rows) * (n_bins - 1L))
+  osa_matrix <- matrix(
+    internal_osa$residual,
+    nrow = length(rows),
+    ncol = n_bins - 1L,
+    byrow = TRUE
+  )
+
+  afscOSA::run_osa(
+    obs = fit$quantities$comp_obs[rows, , drop = FALSE],
+    exp = fit$quantities$comp_hat[rows, , drop = FALSE],
+    N = comp_data$Sample_size[rows],
+    fleet = comp_data$Fleet_name[rows[1]],
+    index = seq_len(n_bins),
+    years = years,
+    index_label = "Age",
+    res = osa_matrix
+  )
+}
+
+afscosa_composition <- lapply(c(1, 3, 4), make_afscosa_composition)
+
+convergence_summary <- bind_rows(
+  convergence_row("Stage 1 scale fit", fits$stage_a),
+  convergence_row("Rceattle fit", fits$nonparametric_pm),
+  convergence_row("Standard multinomial sensitivity", fits$standard_multinomial),
+  convergence_row("2D AR1 selectivity sensitivity", fits$ar1_2d)
+)
+
+rho_from_logit <- function(x) {
+  2 * plogis(x) - 1
+}
+
+ar1_field_years <- as.integer(
+  dimnames(fits$ar1_2d$estimated_params$sel_coff_dev)[[4]]
+)
+ar1_selectivity_field <- fits$ar1_2d$estimated_params$sel_coff_dev
+ar1_selectivity_parameter_summary <- tibble(
+  Quantity = c(
+    "Year AR1 correlation",
+    "Age AR1 correlation",
+    "Selectivity deviation scale"
+  ),
+  Internal_parameter = c(
+    "Sel_curve_pen1",
+    "Sel_curve_pen2",
+    "sel_dev_log_sd"
+  ),
+  Penalized_effects_initialization = c(
+    rho_from_logit(fits$ar1_penalized$estimated_params$sel_curve_pen[1, 1]),
+    rho_from_logit(fits$ar1_penalized$estimated_params$sel_curve_pen[1, 2]),
+    exp(fits$ar1_penalized$estimated_params$sel_dev_log_sd[1])
+  ),
+  Final_random_effects_fit = c(
+    rho_from_logit(fits$ar1_2d$estimated_params$sel_curve_pen[1, 1]),
+    rho_from_logit(fits$ar1_2d$estimated_params$sel_curve_pen[1, 2]),
+    exp(fits$ar1_2d$estimated_params$sel_dev_log_sd[1])
+  ),
+  Final_internal_value = c(
+    fits$ar1_2d$estimated_params$sel_curve_pen[1, 1],
+    fits$ar1_2d$estimated_params$sel_curve_pen[1, 2],
+    fits$ar1_2d$estimated_params$sel_dev_log_sd[1]
+  )
+)
+
+initial_development_status <- tibble::tribble(
+  ~Item, ~Initial_development, ~September_review_result, ~Plan_Team_interpretation,
+  "1",
+  "Prepared Rceattle model-input workbook",
+  "Used the delivered workbook directly.",
+  "Input files are available and reproducible from stored files.",
+  "2",
+  "Rceattle fit and 2D AR1 sensitivity",
+  "The Rceattle fit completed; 2D AR1 received a FAIL convergence status.",
+  "The NonParametricPM configuration is the relevant Rceattle comparison; 2D AR1 is diagnostic only.",
+  "3",
+  "Convergence and model diagnostics",
+  "Structured convergence checks, OSA diagnostics, nine retrospective peels, 50 self-tests, 50 jitters, and a natural-mortality profile are saved.",
+  "The ATS/AVO coefficient-increment penalty resolves the prior Hessian-conditioning warning; two inferior jitter solutions remain.",
+  "4",
+  "Next-assessment data update workflow",
+  "Update script review is complete; execution awaits complete new-year observations.",
+  "Useful as a template only after complete new-year observations are inserted.",
+  "5",
+  "ADMB-to-Rceattle comparison diagnostics",
+  "Setting Rceattle to the ADMB values reproduces ADMB to rounding-scale precision.",
+  "This is the strongest evidence that the ADMB comparison is correct."
+)
+
+diagnostic_status <- tibble::tribble(
+  ~Diagnostic, ~Current_status, ~Use_for_September_2026_review,
+  "ADMB-parameter comparison",
+  "Completed and saved in the ADMB-to-Rceattle comparison outputs.",
+  "Primary numerical agreement check.",
+  "Rceattle fit",
+  "Completed with OK status, a positive-definite Hessian, and a condition number of approximately 489,000.",
+  "Primary Rceattle comparison fit to the data.",
+  "2D AR1 selectivity sensitivity",
+  "Received a FAIL convergence status, an unsuccessful Hessian inversion, and parameter-bound warnings.",
+  "Requires further research before it can be considered as an alternative selectivity form.",
+  "OSA residuals",
+  "Completed for 1,864 residuals and saved in RDS outputs.",
+  "Useful, but analytical and exactly reproduced index groups need interpretation.",
+  "Rceattle retrospectives",
+  "Nine peels completed for the Rceattle fit with OK status.",
+  "The revised peels preserve data availability and fix terminal fishery/CPUE selectivity increments at zero, holding the terminal selectivity-at-age curve at its preceding-year value.",
+  "Legacy ADMB retrospectives",
+  "Existing ADMB retro.rep files are present.",
+  "Provides historical context distinct from the Rceattle retrospective peels.",
+  "Rceattle 5.8.1 self-tests",
+  "Fifty initial-start and 50 estimated-start refits completed with OK status.",
+  "Supports the revised positive-index simulation workflow; it does not resolve observed-data multimodality.",
+  "Jitters and likelihood profile",
+  "Forty-eight of 50 jitters returned to the best mode; two WARN fits reached an inferior mode. The age-3+ M profile was shallow with its grid minimum at 0.20.",
+  "Documents multimodality and weak information about natural mortality."
+)
+
+file_inventory <- tibble::tribble(
+  ~Role, ~Location, ~Path,
+  "Prepared model-input workbook", "Local workbook", params$model_input_workbook,
+  "BTS covariance input", "Local data file", params$bts_covariance_file,
+  "Saved fitted Rceattle objects", "Local R serialized-data (RDS) file", params$method_file,
+  "OSA residuals", "Local RDS file", params$osa_file,
+  "OSA diagnostics", "Local RDS file", params$osa_diagnostics_file,
+  "Nine-peel Rceattle retrospective", "Local RDS file", params$retrospective_file,
+  "Nine-peel Mohn's rho summary", "Local CSV file", params$retrospective_summary_file,
+  "Nine-peel retrospective script", "Local R script", params$retrospective_script,
+  "ADMB-to-Rceattle comparison output", "Local RDS file", params$fixed_parameter_comparison_file,
+  "Rceattle 5.8.1 self-test summary", "Local CSV file", params$rceattle_581_validation_summary_file,
+  "Rceattle 5.8.1 truncation diagnostics", "Local CSV file", params$rceattle_581_truncation_summary_file,
+  "Rceattle 5.8.1 restart comparison", "Local CSV file", params$rceattle_581_restart_comparison_file,
+  "Rceattle 5.8.1 jitter summary", "Local CSV file", params$jitter_summary_file,
+  "Age-3+ natural-mortality profile", "Local CSV file", params$mortality_profile_file,
+  "ADMB-to-Rceattle comparison summary", "Local comma-separated-values (CSV) file", params$fixed_parameter_summary_file,
+  "Rceattle fitting script", "Local R script", params$two_stage_script,
+  "Diagnostics script", "Local R script", params$diagnostics_script,
+  "Next-assessment update script", "Local R script", params$update_script,
+  "ADMB comparison script", "Local R script", params$admb_comparison_script,
+  "Exploratory DSEM script", "Local R script", params$dsem_script,
+  "DSEM model comparison", "Local CSV file", params$dsem_summary_file,
+  "DSEM recruitment-path estimates", "Local CSV file", params$dsem_paths_file,
+  "Randomized DSEM control", "Local CSV file", params$dsem_random_summary_file,
+  "Physical and overlap DSEM script", "Local R script", params$ecostate_dsem_script,
+  "Physical-forcing DSEM comparison", "Local CSV file", file.path(params$ecostate_physical_dir, "dsem_model_summary.csv"),
+  "Top-down-overlap DSEM comparison", "Local CSV file", file.path(params$ecostate_overlap_dir, "dsem_model_summary.csv"),
+  "DSEM AIC comparison figure", "Local PNG file", params$dsem_aic_figure_file,
+  "DSEM edge-coefficient figure", "Local PNG file", params$dsem_edges_figure_file,
+  "DSEM recruitment-trajectory figure", "Local PNG file", params$dsem_recruitment_figure_file,
+  "Modified ADMB retrospective file", "Local ADMB output", params$admb_retro_file,
+  "Legacy ADMB retrospective file", "Local ADMB output", params$legacy_admb_retro_file
+) |>
+  mutate(
+    Absolute_path = vapply(Path, absolute_or_project, character(1)),
+    Available = file.exists(Absolute_path),
+    Size = vapply(Absolute_path, file_size, character(1))
+  ) |>
+  select(Role, Location, Available, Size)
+```
+
+## Executive Summary
+
+Building from the ADMB-to-RTMB conversion, this analysis evaluates
+whether Rceattle can be configured to reproduce the main features of
+the 2024 eastern Bering Sea pollock "PM" assessment while providing a
+model that is easier to extend. This 5.8.1 update focuses on
+the Rceattle configuration, comparison with the modified ADMB model,
+model diagnostics, and projection inputs.
+
+When the Rceattle parameters and fishery selectivity are set to the same values
+used in the ADMB model, Rceattle reproduces numbers-at-age, spawning biomass,
+and predicted catch to numerical precision. Mean absolute differences are
+`r sprintf("%.6f", fixed_parameter_summary$Value[fixed_parameter_summary$Metric == "SSB mean absolute percent difference"])`%
+for spawning biomass and
+`r sprintf("%.6f", fixed_parameter_summary$Value[fixed_parameter_summary$Metric == "Catch mean absolute percent difference"])`%
+for predicted catch. This result establishes agreement in the population
+dynamics when both implementations use the same parameter values.
+
+When Rceattle was fit to the data, it reached `OK` convergence status with a
+positive-definite Hessian. The least-identified direction remained in annual
+ATS/AVO selectivity deviations, but the added direct coefficient-increment
+penalty reduced the condition number below the warning threshold. Relative to the
+ADMB fit, mean absolute differences were
+`r sprintf("%.1f", comparison_summary$Mean_absolute_percent[comparison_summary$Method == "Rceattle configuration" & comparison_summary$Quantity == "Spawning biomass"])`%
+for spawning biomass,
+`r sprintf("%.1f", comparison_summary$Mean_absolute_percent[comparison_summary$Method == "Rceattle configuration" & comparison_summary$Quantity == "Recruitment"])`%
+for recruitment, and
+`r sprintf("%.1f", comparison_summary$Mean_absolute_percent[comparison_summary$Method == "Rceattle configuration" & comparison_summary$Quantity == "Total biomass"])`%
+for total biomass. These small differences are concentrated in the earliest
+years; the remaining uncertainty is primarily estimability of the annual
+selectivity deviations.
+
+The 2D age-by-year AR1 selectivity sensitivity was included as an
+initial diagnostic attempt. Results appeared broadly similar to the
+non-parametric constrained selectivity fits. However, because some
+parameters reached bounds, the model failed to converge. Closer
+examination of this selectivity form will continue as a research topic.
+
+One-step-ahead residuals and nine terminal-year-consistent retrospective
+peels have been generated from the Rceattle configuration. Aggregate
+composition residual dispersion is lower than the standard-normal reference. Mohn's rho
+is
+`r sprintf("%.3f", retro_mohns[["Mohn's rho"]][retro_mohns$Quantity == "Spawning biomass"])`
+for spawning biomass,
+`r sprintf("%.3f", retro_mohns[["Mohn's rho"]][retro_mohns$Quantity == "Total biomass"])`
+for total biomass,
+`r sprintf("%.3f", retro_mohns[["Mohn's rho"]][retro_mohns$Quantity == "Recruitment"])`
+for recruitment, and
+`r sprintf("%.3f", retro_mohns[["Mohn's rho"]][retro_mohns$Quantity == "Fishing mortality"])`
+for fishing mortality. Forty-eight of 50 jitters returned to the best solution;
+two found a substantially poorer mode. These results focus subsequent work on
+selectivity identification, retrospective bias, and observation-model
+sensitivity.
+
+## Purpose and Scope
+
+The September 2026 review focuses on whether the Rceattle configuration
+has sufficient documentation for Plan Team evaluation. This working
+paper serves that focused purpose rather than the broader purpose of a
+full Stock Assessment and Fishery Evaluation (SAFE) chapter.
+
+This working paper therefore records:
+
+- what was run from those development files;
+- how the Rceattle outputs compare with the modified ADMB reference;
+- which diagnostics are available now;
+- which sensitivities remain research-only; and
+- what work would help structure the next evaluation pass.
+
+The report uses the [Alaska Stock Assessment Report (`asar`)
+package](https://github.com/nmfs-ost/asar) for glossary conventions and
+accessibility guidance [@schiano2026asar]. Those practices helped prepare the
+Quarto source for Section 508 review, including semantic headings and tables,
+descriptive figure captions, and alternative text. They support accessibility
+but do not replace final manual and agency-approved compliance checks.
+
+Standard SAFE report sections such as background material, fishery
+history, ecosystem narrative, reference-point tables, and harvest advice
+are outside the scope of this document. Projection calculations are
+included only to test the export and use of the Rceattle results.
+
+## Rceattle Configuration
+
+### Model Inputs
+
+The Rceattle configuration uses the prepared workbook
+`Data/EBS_24_pollock_m23_rceattle_full_1964-2024.xlsx`. The data builder retains
+every age from 1 through 15. Fishery compositions use nominal sample sizes;
+bottom trawl survey (BTS) and acoustic-trawl survey (ATS) sample sizes use the
+integer values aligned with the modified ADMB model. Age-1 survey selectivity
+remains separately parameterized from the age-2--15 curve, and each likelihood
+contribution evaluates the complete 15-age composition. Compositions use the
+supported `MultinomialAFSC` likelihood. We added a robustness constant of
+0.001 to both observed and expected proportions before evaluating the
+likelihood. This prevents `log(0)` and limits the influence of observations in
+bins with expected proportions near zero.
+
+The run uses Rceattle version
+`r model_lineage$Value[model_lineage$Item == "Rceattle version"]` from
+upstream commit
+`r substr(model_lineage$Value[model_lineage$Item == "Rceattle upstream commit"], 1, 12)`,
+with the model configuration synchronized to `Rceattle-models` commit
+`r substr(model_lineage$Value[model_lineage$Item == "Rceattle-models upstream commit"], 1, 12)`.
+
+The next-assessment update script review is complete, and execution
+awaits complete new-year observations. The script
+duplicates terminal records and places placeholders for new catch,
+composition, and survey observations. The script serves as a template until
+complete new-year observations are available; after population, it creates a
+complete assessment workbook.
+
+### Selectivity
+
+The configuration uses `NonParametricPM` fishery selectivity with annual
+deviations. When fit to the data, the model reached a small maximum gradient.
+The Hessian condition number was approximately 489,000 and received `OK`
+status. Its least-identified direction remained concentrated in
+`sel_coff_dev`, specifically the shared ATS/AVO block rather than the shared
+fishery/CPUE block.
+
+The time-varying selectivity penalties use explicit standard deviations
+on log-selectivity random-walk increments. The fishery and its shared
+CPUE selectivity block use an SD of 0.500, ATS and AVO use 0.138, and BTS
+uses 1.000. ATS and AVO also use a direct coefficient-increment penalty
+(`Sel_curve_pen3 = 0.1`) to constrain the across-age common-mode direction
+that is removed by annual selectivity normalization. The
+fishery specification also retains the ADMB-matched curve-shape penalty
+weights (12.5, 1/60, and 1) and an average-selectivity centering weight
+of 10. These values are penalty coefficients rather than SDs.
+
+The fitting sequence, composition-likelihood sensitivity, and 2D age-by-year
+AR1 development work are documented in the appendix.
+
+```{r}
+#| label: fig-selectivity-ridges
+#| fig-cap: "Relative fishery selectivity by year for the ADMB model and Rceattle configuration. Each annual curve is normalized to a maximum of one."
+#| fig-alt: "Two side-by-side ridge plots show relative fishery selectivity at ages 1 through 15 for years 1964 through 2024 for the ADMB model and Rceattle configuration."
+#| fig-width: 15
+#| fig-height: 10
+#| out-width: "100%"
+
+ggplot(
+  selectivity_ridges |>
+    filter(Model %in% c("ADMB reference", "Rceattle NonParametricPM")),
+  aes(
+    x = Age,
+    y = Year_factor,
+    height = Relative_selectivity,
+    fill = Model
+  )
+) +
+  ggridges::geom_ridgeline(
+    scale = 3.8,
+    alpha = 0.28,
+    color = "black",
+    linewidth = 0.2,
+    show.legend = FALSE
+  ) +
+  facet_wrap(vars(Model), nrow = 1) +
+  scale_fill_manual(values = c(
+    "ADMB reference" = "#1f78b4",
+    "Rceattle NonParametricPM" = "#1b9e77"
+  )) +
+  scale_x_continuous(limits = c(1, 15), breaks = 1:15) +
+  labs(x = "Age", y = "Year") +
+  ggthemes::theme_few() +
+  theme(
+    strip.text = element_text(face = "bold"),
+    panel.spacing.x = grid::unit(1.2, "lines")
+  )
+```
+
+## ADMB Comparison Results
+
+When the Rceattle parameters and fishery selectivity are set to the ADMB values,
+the two programs give nearly identical population calculations. Mean absolute
+differences are
+`r sprintf("%.6f", fixed_parameter_summary$Value[fixed_parameter_summary$Metric == "SSB mean absolute percent difference"])`%
+for spawning biomass and
+`r sprintf("%.6f", fixed_parameter_summary$Value[fixed_parameter_summary$Metric == "Catch mean absolute percent difference"])`%
+for predicted catch. Annual Rceattle-to-ADMB ratios for both quantities remain
+extremely close to one (@fig-admb-parameter-comparison).
+
+The reported Rceattle likelihood contributions are
+`r sprintf("%.3f", fixed_parameter_summary$Value[fixed_parameter_summary$Metric == "Rceattle reported index negative log-likelihood"])`
+for indices,
+`r sprintf("%.3f", fixed_parameter_summary$Value[fixed_parameter_summary$Metric == "Rceattle reported catch negative log-likelihood"])`
+for catch,
+`r sprintf("%.3f", fixed_parameter_summary$Value[fixed_parameter_summary$Metric == "Rceattle reported composition negative log-likelihood"])`
+for age compositions, and
+`r sprintf("%.3f", fixed_parameter_summary$Value[fixed_parameter_summary$Metric == "Rceattle reported recruitment-deviation negative log-likelihood"])`
+for recruitment deviations. Their sum is
+`r sprintf("%.3f", fixed_parameter_summary$Value[fixed_parameter_summary$Metric == "Rceattle reported likelihood-component sum"])`.
+The ADMB `tot_like` and `dat_like` values are
+`r sprintf("%.3f", fixed_parameter_summary$Value[fixed_parameter_summary$Metric == "ADMB total negative log-likelihood (tot_like; not directly comparable)"])`
+and
+`r sprintf("%.3f", fixed_parameter_summary$Value[fixed_parameter_summary$Metric == "ADMB data negative log-likelihood (dat_like; not directly comparable)"])`,
+respectively, but cannot be compared directly because the two programs include
+different likelihood terms, penalties, and constants. The ADMB maximum absolute
+gradient is
+`r scientific(fixed_parameter_summary$Value[fixed_parameter_summary$Metric == "ADMB maximum gradient component"], digits = 3)`;
+no Rceattle model-parameter gradient is available from this comparison because
+Rceattle does not estimate parameters in this run.
+
+```{r}
+#| label: fig-admb-parameter-comparison
+#| fig-cap: "Rceattle-to-ADMB ratios for spawning biomass and predicted catch when Rceattle uses the ADMB parameter values."
+#| fig-alt: "Two time-series panels show Rceattle divided by ADMB for spawning biomass and predicted catch from 1964 through 2024. Both lines remain extremely close to one."
+#| fig-width: 10
+#| fig-height: 5.5
+
+ggplot(fixed_parameter_ratio_long, aes(x = Year, y = Ratio)) +
+  geom_hline(yintercept = 1, linetype = 2, color = "gray45") +
+  geom_line(color = "#1b9e77", linewidth = 0.75) +
+  facet_wrap(vars(Quantity), ncol = 1, scales = "free_y") +
+  scale_y_continuous(labels = label_number(accuracy = 0.000001)) +
+  labs(x = NULL, y = "Rceattle / ADMB") +
+  ggthemes::theme_few()
+```
+
+```{r}
+#| label: tbl-fitted-comparison
+#| tbl-cap: "Agreement between fitted Rceattle trajectories and the modified ADMB reference. Correlation is the Pearson correlation across annual estimates. Mean absolute (%) and maximum absolute (%) are the average and largest absolute annual percentage differences, respectively. The 2024 difference (%) is the signed terminal-year difference of Rceattle relative to ADMB; negative values indicate that the Rceattle estimate is lower."
+#| tbl-pos: H
+
+comparison_summary |>
+  filter(Method == "Rceattle configuration") |>
+  gt(groupname_col = "Method") |>
+  fmt_number(
+    columns = c(
+      Correlation,
+      Mean_absolute_percent,
+      Max_absolute_percent,
+      Terminal_percent
+    ),
+    decimals = 2
+  ) |>
+  cols_label(
+    Mean_absolute_percent = "Mean absolute (%)",
+    Max_absolute_percent = "Maximum absolute (%)",
+    Terminal_percent = paste0(terminal_year, " difference (%)")
+  ) |>
+  cols_width(
+    Quantity ~ px(150),
+    Correlation ~ px(90),
+    everything() ~ px(110)
+  )
+```
+
+```{r}
+#| label: fig-trajectories
+#| fig-cap: "ADMB and fitted Rceattle trajectories for spawning biomass, recruitment, and total biomass. The Rceattle series is from the fit in which its parameters were estimated."
+#| fig-alt: "Three vertically stacked time-series panels compare ADMB estimates with estimates from the fitted Rceattle model for spawning biomass, recruitment, and total biomass from 1964 through 2024."
+#| fig-width: 11
+#| fig-height: 8
+
+ggplot(
+  quantity_long |>
+    filter(Method %in% c("ADMB reference", "Rceattle NonParametricPM")) |>
+    mutate(
+      Method = recode(
+        as.character(Method),
+        "Rceattle NonParametricPM" = "Rceattle fit (parameters estimated)"
+      )
+    ),
+  aes(x = Year, y = Value, color = Method, linetype = Method)
+) +
+  geom_line(linewidth = 0.75) +
+  facet_wrap(vars(Quantity), ncol = 1, scales = "free_y") +
+  scale_color_manual(values = c(
+    "ADMB reference" = "#1b9e77",
+    "Rceattle fit (parameters estimated)" = "#d95f02"
+  )) +
+  scale_linetype_manual(values = c(
+    "ADMB reference" = "22",
+    "Rceattle fit (parameters estimated)" = "solid"
+  )) +
+  labs(x = NULL, y = NULL, color = NULL, linetype = NULL) +
+  ggthemes::theme_few()
+```
+
+When Rceattle estimates its parameters, the fitted trajectories differ most
+from ADMB during the early period and in the terminal recruitment estimate
+(@fig-trajectories). These trajectories are distinct from the run in which
+Rceattle parameters are set to the ADMB values. The fitted trajectories remain
+highly correlated with the ADMB reference, with relatively small mean annual
+differences (@tbl-fitted-comparison). Development sensitivities are documented
+in the appendix.
+
+The Rceattle fit has a small maximum gradient and a positive-definite Hessian.
+Adding the direct ATS/AVO coefficient-increment penalty reduced the condition
+number from approximately 1.14 million to 489,000 and removed the prior
+Hessian-conditioning warning. The residual weakest direction remains almost
+entirely in the shared time-varying ATS/AVO selectivity coefficients, not the
+fishery/CPUE coefficients, so this block remains an appropriate focus for
+sensitivity checks even though the formal warning is resolved.
+
+## Diagnostics
+
+The numerical convergence checks for the fitted Rceattle model, including the
+objective, maximum gradient, and Hessian status, indicated convergence
+(@tbl-convergence). The fit and status of the other diagnostic products are
+provided in @tbl-diagnostic-status.
+
+```{r}
+#| label: tbl-convergence
+#| tbl-cap: "Stored Rceattle convergence checks for the evaluated configurations."
+#| tbl-pos: H
+
+convergence_summary |>
+  filter(Model == "Rceattle fit") |>
+  select(
+    Model,
+    Status,
+    Objective,
+    Max_gradient,
+    Worst_parameter,
+    Positive_definite_Hessian
+  ) |>
+  gt() |>
+  fmt_number(columns = c(Objective, Max_gradient), decimals = 6) |>
+  cols_label(
+    Max_gradient = "Max gradient",
+    Worst_parameter = "Weakest component",
+    Positive_definite_Hessian = "PD Hessian"
+  ) |>
+  cols_width(
+    Model ~ px(135),
+    Status ~ px(65),
+    Objective ~ px(95),
+    Max_gradient ~ px(95),
+    Worst_parameter ~ px(105),
+    Positive_definite_Hessian ~ px(80)
+  )
+```
+
+```{r}
+#| label: tbl-diagnostic-status
+#| tbl-cap: "Diagnostic status for the September 2026 review."
+#| tbl-pos: H
+
+diagnostic_status |>
+  gt() |>
+  cols_width(
+    Diagnostic ~ px(110),
+    Current_status ~ px(205),
+    Use_for_September_2026_review ~ px(190)
+  ) |>
+  cols_label(
+    Current_status = "Current status",
+    Use_for_September_2026_review = "Review use"
+  )
+```
+
+### Rceattle 5.8.1 self-test validation
+
+Rceattle 5.8.1 changed simulation of natural-scale normal and multivariate
+normal survey indices. The fitted likelihood remains an untruncated normal;
+the simulator redraws non-positive values because `data_check()` excludes
+them. The resulting self-test therefore uses a normal distribution truncated
+at zero whenever rejection occurs.
+
+The ADMB-to-Rceattle comparison was rerun first with Rceattle 5.8.1. Its saved
+summary gives mean absolute differences of
+`r sprintf("%.6f", fixed_parameter_summary$Value[fixed_parameter_summary$Metric == "SSB mean absolute percent difference"])`%
+for spawning biomass and
+`r sprintf("%.6f", fixed_parameter_summary$Value[fixed_parameter_summary$Metric == "Catch mean absolute percent difference"])`%
+for predicted catch. This confirms that the package update preserved the
+agreement in the population calculations.
+
+The self-test uses the same delivered EBS workbook and supported
+`MultinomialAFSC` composition criterion as the Rceattle configuration. The
+observed-data fit reproduced the stored
+objective of 716.948070, maximum gradient of 0.000041, and `OK` status with a
+positive-definite Hessian. The Hessian condition number was approximately
+$4.9 \times 10^5$; its least-identified direction remained concentrated in the
+shared ATS/AVO `sel_coff_dev` block rather than fishery/CPUE.
+
+```{r}
+#| label: tbl-rceattle-581-self-test
+#| tbl-cap: "Rceattle 5.8.1 self-test and paired-restart validation for the upstream-supported EBS configuration."
+
+rceattle_581_validation |>
+  mutate(
+    Value = case_when(
+      grepl("difference|probability", Metric, ignore.case = TRUE) ~
+        format(Value, digits = 6, scientific = TRUE),
+      grepl("bias", Metric, ignore.case = TRUE) ~ sprintf("%.3f%%", Value),
+      TRUE ~ format(Value, trim = TRUE)
+    )
+  ) |>
+  gt() |>
+  cols_width(Metric ~ px(520), Value ~ px(150))
+```
+
+All 50 phased simulations converged with `OK` status when refitted from the
+original initial values. Repeating the same simulated datasets from the fitted
+parameter values also produced 50 `OK` fits. Paired objectives agreed within
+$3.1 \times 10^{-8}$, so these simulations showed no start-dependent mode.
+Median spawning-biomass bias was -1.06% across years and -0.91% in the terminal
+year. These results validate the revised self-test workflow; they do not rule
+out the mode previously encountered when fitting the observed data.
+
+```{r}
+#| label: tbl-rceattle-581-truncation
+#| tbl-cap: "Fleet-level probability of a non-positive index draw under the fitted, untruncated observation distribution."
+
+rceattle_581_truncation |>
+  gt() |>
+  fmt_percent(
+    columns = c(
+      Maximum_nonpositive_probability,
+      Mean_nonpositive_probability
+    ),
+    decimals = 2
+  ) |>
+  cols_label(
+    Fleet_name = "Fleet",
+    Fleet_code = "Code",
+    Index_distribution = "Distribution",
+    Maximum_nonpositive_probability = "Maximum row probability",
+    Mean_nonpositive_probability = "Mean row probability",
+    Rows_above_2_percent = "Rows above 2%"
+  )
+```
+
+One AVO row had a 3.76% non-positive probability and one BTS multivariate-normal
+row had a 6.67% probability. Those rows exceed the package's 2% warning
+threshold and should be identified when interpreting recovery. CPUE and the
+remaining index series had negligible or zero marginal rejection probability.
+
+### OSA Residuals
+
+OSA residuals run on the Rceattle configuration. The aggregate composition
+fits are generally close, while all three OSA quantile plots are narrower than
+the standard-normal reference (@fig-osa). These diagnostics apply to the fitted
+`NonParametricPM` selectivity configuration. The failed 2D-AR1 sensitivity and
+ADMB-to-Rceattle calculation use separate results. The composition diagnostics use `afscOSA` version
+`r as.character(utils::packageVersion("afscOSA"))` and pass Rceattle's
+internally calculated residuals to `afscOSA::run_osa()`. The residual builder
+uses complete ages 1--15, with nominal fishery sample sizes and the integer
+BTS and ATS sample sizes aligned with the modified ADMB model. This follows
+the current [afscOSA interpretation
+guidance](https://noaa-afsc.github.io/afscOSA/#interpretation-and-use-of-diagnostics)
+while retaining Rceattle's residual calculation.
+
+Following that guidance, the aggregate age-composition fits are the first check for systematic
+misfit, including patterns that could indicate an unsuitable selectivity
+form. The red vertical ranges contain 95% of data simulated from the
+fitted multinomial model conditional on the aggregate sample size and
+estimated parameter values held constant. They represent conditional simulation
+variability. The quantile--quantile
+plots then assess whether the OSA residuals resemble a standard normal
+distribution. The standard deviation of normalized residuals (SDNR)
+should be near one, and the displayed tail statistics provide a separate
+check on extreme residual behavior. Finally, the OSA and Pearson bubble
+plots are used to look for age, year, or cohort patterns that may suggest
+the source of misfit. Each statistic and nominal interval contributes to
+an integrated diagnostic interpretation rather than an automatic
+model-rejection rule.
+
+```{r}
+#| label: fig-osa
+#| fig-cap: "Age-composition diagnostics for the Rceattle fit. The fit uses complete ages 1--15, nominal fishery sample sizes, and BTS and ATS integer sample sizes aligned with the modified ADMB model. Diagnostics were produced with afscOSA for the fishery, bottom trawl survey (BTS), and acoustic-trawl survey (ATS). The top row compares aggregate observed proportions (blue bars) with fitted proportions (red points and lines); red vertical ranges contain 95% of data simulated conditionally from the fitted multinomial model, aggregate sample size, and estimated parameter values held constant. The second row shows quantile--quantile plots of Rceattle's internal one-step-ahead (OSA) residuals with the standard deviation of normalized residuals (SDNR), its expected 95% interval, and lower and upper tail diagnostics. The lower rows show OSA and Pearson residuals by age and year; red and blue indicate positive and negative residuals, and bubble area represents magnitude. Absolute residuals greater than 6 are capped at 6 for display. The fitted model retains ATS 2020; its sample size of one yields zero rounded counts in the afscOSA plotting conversion, so the plotting layer omits that row."
+#| fig-alt: "Four rows of age-composition diagnostics in columns for the fishery, bottom trawl survey, and acoustic-trawl survey. Aggregate fits are generally close. All three OSA quantile plots are narrower than the standard-normal reference, with SDNR values below one. Bubble plots show age- and year-related residual patterns."
+#| fig-width: 12
+#| fig-height: 13
+
+osa_panels <- afscOSA::plot_osa(
+  afscosa_composition,
+  plot = FALSE,
+  use_agg_proportions = TRUE,
+  figheight = 13,
+  figwidth = 12
+)
+
+osa_panels$aggcomp <- osa_panels$aggcomp +
+  ggthemes::theme_few(base_size = 10)
+osa_panels$qq <- osa_panels$qq +
+  ggthemes::theme_few(base_size = 10)
+osa_panels$bubble <- osa_panels$bubble +
+  ggthemes::theme_few(base_size = 10) +
+  theme(
+    legend.position = "top",
+    legend.title = element_text(size = 9),
+    legend.box.spacing = grid::unit(0, "pt"),
+    legend.margin = margin(t = 0, b = 0, unit = "pt"),
+    legend.box.margin = margin(t = -5, r = 0, b = 0, l = 0, unit = "pt")
+  )
+osa_panels$bubble_pearson <- osa_panels$bubble_pearson +
+  ggthemes::theme_few(base_size = 10) +
+  theme(legend.position = "none")
+
+cowplot::plot_grid(
+  osa_panels$aggcomp,
+  osa_panels$qq,
+  osa_panels$bubble,
+  osa_panels$bubble_pearson,
+  nrow = 4,
+  rel_heights = c(5, 5, 4.5, 4)
+)
+```
+
+The aggregate observed and fitted compositions are generally close,
+although the survey panels contain some age-specific departures. The
+OSA distributions are narrower than the standard-normal reference for
+all three composition sources: SDNR is
+`r sprintf("%.2f", osa_table$sdnr[osa_table$Data_group == "Fishery comp"])`
+for the fishery,
+`r sprintf("%.2f", osa_table$sdnr[osa_table$Data_group == "BTS comp"])`
+for BTS, and
+`r sprintf("%.2f", osa_table$sdnr[osa_table$Data_group == "ATS comp"])`
+for ATS. Their tail diagnostics also show shorter-than-expected tails.
+Together these results indicate underdispersion relative to the fitted
+multinomial observation model. Model selection requires this information
+alongside the full suite of diagnostics. The bubble
+plots should instead be used to identify persistent age, year, or cohort
+patterns and to guide focused checks of selectivity, composition
+weighting, and observation-model assumptions. One Pearson residual
+(8.86) is capped at 6 in the figure, following the package's plotting
+convention.
+
+### Retrospective patterns
+
+Nine retrospective peels were run from the Rceattle fit. The unpeeled model ends in `r terminal_year`, and
+the peeled fits end in `r terminal_year - 1` through
+`r terminal_year - 9`. Each peel preserves the data-availability pattern
+of the 2024 model. Thus, fishery age compositions end one year before
+the peel terminal year, survey series retain their historical sampling
+schedule and terminal lags, and earlier discontinued series retain their
+original ending years.
+
+Each peel applies the fitting sequence documented in the appendix. The
+terminal-year fishery and mirrored catch-per-unit-effort selectivity
+increments are fixed at zero. All nine final fits received
+`OK` convergence status, with maximum gradients from
+`r scientific(min(retro_convergence$Maximum_gradient[retro_convergence$Terminal_year < terminal_year]), digits = 2)`
+to
+`r scientific(max(retro_convergence$Maximum_gradient[retro_convergence$Terminal_year < terminal_year]), digits = 2)`.
+
+The NonParametricPM fishery selectivity is parameterized at age. The base
+`sel_coff` parameters and annual `sel_coff_dev` random-walk increments apply
+to age bins; the fishery uses `r fishery_selectivity_bins` estimated bins and
+holds older ages at the last estimated value. Fixing every terminal-year increment at zero therefore
+holds the realized terminal selectivity-at-age curve at the preceding-year
+curve. Across all peels and both the fishery and mirrored catch-per-unit-effort
+series, the maximum absolute terminal-to-preceding-year difference was
+`r scientific(retro_terminal_selectivity_max_difference, digits = 2)`.
+These Rceattle fits are separate from the legacy AD Model Builder (ADMB)
+retrospective files.
+
+```{r}
+#| label: fig-rceattle-retrospectives
+#| fig-cap: "Nine retrospective peels for the Rceattle configuration. The black line is the unpeeled model ending in 2024; colored lines are successive peels ending in 2023 through 2015 and are plotted through each peel's terminal year. Each peel preserves the original data-availability lags and fixes the terminal fishery/CPUE selectivity-at-age increment at zero, holding the terminal curve at its preceding-year value. All nine fits received OK convergence status."
+#| fig-alt: "Faceted line plots of spawning biomass, total biomass, recruitment, and fishing mortality for the 2024 Rceattle fit and nine retrospective peels. The peeled trajectories show moderate systematic departures from the base fit, especially for spawning biomass."
+#| fig-width: 10
+#| fig-height: 8
+
+retro_plot_data <- bind_rows(lapply(seq_along(retro_models), function(i) {
+  model <- retro_models[[i]]
+  end_year <- retro_terminal_years[i]
+  model_years <- seq(model$data_list$styr, end_year)
+  n <- length(model_years)
+  bind_rows(
+    tibble(
+      Year = model_years,
+      Value = as.numeric(model$quantities$ssb[1, seq_len(n)]),
+      Quantity = "Spawning biomass"
+    ),
+    tibble(
+      Year = model_years,
+      Value = as.numeric(model$quantities$biomass[1, seq_len(n)]),
+      Quantity = "Total biomass"
+    ),
+    tibble(
+      Year = model_years,
+      Value = as.numeric(model$quantities$R[1, seq_len(n)]),
+      Quantity = "Recruitment"
+    ),
+    tibble(
+      Year = model_years,
+      Value = as.numeric(model$quantities$F_spp[1, seq_len(n)]),
+      Quantity = "Fishing mortality"
+    )
+  ) |>
+    mutate(
+      Terminal_year = factor(end_year, levels = sort(retro_terminal_years)),
+      Series = if_else(end_year == terminal_year, "Base", "Peel")
+    )
+}))
+
+ggplot(retro_plot_data, aes(Year, Value, group = Terminal_year)) +
+  geom_line(
+    data = filter(retro_plot_data, Series == "Peel"),
+    aes(color = Terminal_year),
+    linewidth = 0.65,
+    alpha = 0.85
+  ) +
+  geom_line(
+    data = filter(retro_plot_data, Series == "Base"),
+    color = "black",
+    linewidth = 1
+  ) +
+  facet_wrap(vars(Quantity), scales = "free_y", ncol = 2) +
+  scale_color_viridis_d(option = "C", end = 0.9, direction = -1) +
+  scale_y_continuous(labels = label_number(big.mark = ",")) +
+  labs(x = NULL, y = NULL, color = "Terminal year") +
+  ggthemes::theme_few() +
+  theme(legend.position = "bottom")
+```
+
+```{r}
+#| label: tbl-rceattle-mohns-rho
+#| tbl-cap: "Mohn's rho for the nine retrospective peels of the Rceattle configuration. Values are the mean relative difference between a peeled estimate in its terminal year and the corresponding estimate from the unpeeled model. Each peel preserves the 2024 data-availability pattern and fixes the terminal fishery/CPUE selectivity-at-age increment at zero."
+
+retro_mohns |>
+  gt() |>
+  fmt_number(columns = `Mohn's rho`, decimals = 3) |>
+  cols_align(align = "left", columns = Quantity) |>
+  cols_align(align = "right", columns = c(Peels, `Mohn's rho`))
+```
+
+The estimated Mohn's rho values are
+`r sprintf("%.3f", retro_mohns[["Mohn's rho"]][retro_mohns$Quantity == "Spawning biomass"])`
+for spawning biomass,
+`r sprintf("%.3f", retro_mohns[["Mohn's rho"]][retro_mohns$Quantity == "Total biomass"])`
+for total biomass,
+`r sprintf("%.3f", retro_mohns[["Mohn's rho"]][retro_mohns$Quantity == "Recruitment"])`
+for recruitment, and
+`r sprintf("%.3f", retro_mohns[["Mohn's rho"]][retro_mohns$Quantity == "Fishing mortality"])`
+for fishing mortality. The positive biomass and recruitment values
+indicate that the peeled models generally estimate higher quantities at
+their terminal years than the corresponding unpeeled estimates. The
+negative fishing-mortality value indicates lower terminal fishing
+mortality in the peels. Spawning biomass shows the largest average
+relative difference. The consistent `OK` statuses and small gradients
+support interpretation of these values as properties of the revised
+retrospective specification, while the magnitude of spawning-biomass
+rho motivates continued evaluation of selectivity, survey influence,
+and recent recruitment estimates.
+
+## Projections
+
+The saved Rceattle fit supplies every population and
+fishery input for the Standard Projection Model calculations implemented in
+`spmR` [@ianelli2026spmR]. The run uses `spmR` version 0.3.0 from pinned
+main-branch commit `e86fc6aa`. The adapter in
+`R/write_spmr_projection_inputs.R` writes terminal abundance, natural
+mortality, maturity, spawning and fishery weights, terminal fishery
+selectivity, recruitment, and spawning-biomass histories to `pm.prj`. The
+reproducible runner `R/run_spmr_tier3_projection.R` then applies those inputs
+to all seven Tier 3 alternatives. The report reads the saved projection
+products, so every table and figure in this section comes from the same saved
+Rceattle fit.
+
+```{r}
+#| label: spmr-projection-products
+#| include: false
+projection_dir <- project_file(params$projection_dir)
+projection_alt2_dir <- project_file(params$projection_alt2_dir)
+spmr_manifest <- readr::read_csv(
+  file.path(projection_dir, "manifest.csv"), show_col_types = FALSE
+)
+spmr_lineage <- readr::read_csv(
+  file.path(projection_dir, "lineage.csv"), show_col_types = FALSE
+)
+spmr_age_schedules <- readr::read_csv(
+  file.path(projection_dir, "age_schedules.csv"), show_col_types = FALSE
+)
+spmr_detail <- readr::read_csv(
+  file.path(projection_dir, "spm_detail.csv"), show_col_types = FALSE
+)
+spmr_alt2_detail <- readr::read_csv(
+  file.path(projection_alt2_dir, "spm_detail.csv"), show_col_types = FALSE
+)
+spmr_alt_desc <- tibble(
+  Alternative = 1:7,
+  Name = c(
+    "Maximum permissible ABC", "Author-specified ABC", "Average recent F",
+    "Alternative SPR rate", "No fishing", "OFL threshold determination",
+    "Status-determination ramp"
+  ),
+  Description = c(
+    "Maximum permissible Tier 3 ABC harvest rate.",
+    "Author-specified adjustment to the Tier 3 ABC harvest rate; the current multiplier is 1.0.",
+    "Recent average fishing mortality from the Rceattle-derived input file.",
+    "User-specified SPR rate of 0.60.",
+    "Zero fishing mortality after the fixed-catch years.",
+    "OFL harvest rate for threshold and status-determination calculations.",
+    "Maximum permissible ABC for three years followed by the OFL status-determination calculation."
+  )
+)
+```
+
+```{r}
+#| label: tbl-spmr-projection-files
+#| tbl-cap: "Projection files generated from the saved Rceattle fit for the spmR/SPM calculations."
+spmr_manifest |>
+  select(file, role, exists, md5) |>
+  gt() |>
+  tab_header(title = "spmR Projection Files")
+```
+
+```{r}
+#| label: tbl-spmr-projection-settings
+#| tbl-cap: "Key settings and source information for the Rceattle-derived SPM projection."
+tibble(
+  Item = c(
+    "Rceattle source fit", "Source checksum", "Composition likelihood",
+    "Composition sample sizes", "spmR version", "spmR commit",
+    "Terminal assessment year",
+    "Spawning timing", "Rceattle encoding", "SPM encoding",
+    "Timing compatibility check", "Spawning-biomass timing convention", "Projection begin year",
+    "Projection years", "Simulations", "Alternatives"
+  ),
+  Value = c(
+    spmr_lineage$fit, spmr_lineage$source_md5,
+    spmr_lineage$composition_likelihood,
+    spmr_lineage$composition_sample_sizes,
+    spmr_lineage$spmR, substr(spmr_lineage$spmR_commit, 1, 8),
+    spmr_lineage$terminal_year,
+    "0.25 year from January 1 (start of April)",
+    "spawn_month = 3 elapsed months; 3/12 = 0.25",
+    "Spawnmo = 4 as a one-based calendar-month code; (4 - 1)/12 = 0.25",
+    "Matched: both calculations apply survival through 0.25 of the year",
+    "Mature spawning biomass after survival through 0.25 of the year: N × exp(-0.25 Z) × maturity × spawning weight",
+    spmr_lineage$terminal_year + 1L, 14, 1000, paste(1:7, collapse = ", ")
+  )
+) |>
+  gt() |>
+  tab_header(title = "Generated SPM Setup and Source Information")
+```
+
+```{r}
+#| label: tbl-spmr-alternative-descriptions
+#| tbl-cap: "SPM projection alternatives included in the generated setup file."
+spmr_alt_desc |>
+  gt() |>
+  tab_header(title = "SPM Projection Alternatives")
+```
+
+### Seven Tier 3 Scenario Results
+
+Catches for 2025 and 2026 are fixed at 1,350 thousand t in every alternative;
+the alternatives therefore first diverge in 2027
+(@tbl-spmr-tier3-seven-scenarios). The reported values are simulation means
+from 1,000 SPM simulations.
+
+```{r}
+#| label: tbl-spmr-tier3-seven-scenarios
+#| tbl-cap: 'Tier 3 projection results for all seven FMP alternatives using inputs generated from the Rceattle EBS pollock model. Catch and biomass quantities are in thousand t; B/B~35%~ is spawning biomass relative to the Tier 3 B~35%~ proxy.'
+readr::read_csv(
+  file.path(projection_dir, "tier3_seven_scenario_table.csv"),
+  show_col_types = FALSE
+) |>
+  gt() |>
+  fmt_number(columns = matches("^(Catch|ABC|OFL|SSB)_"), decimals = 0) |>
+  fmt_number(columns = matches("^F_"), decimals = 3) |>
+  fmt_number(columns = matches("^B_B35_"), decimals = 2) |>
+  tab_spanner(label = "2027", columns = ends_with("_2027")) |>
+  tab_spanner(label = "2028", columns = ends_with("_2028")) |>
+  tab_header(title = "Seven Tier 3 Projection Alternatives")
+```
+
+```{r}
+#| label: tbl-spmr-projection-age-schedules
+#| tbl-cap: "Age-specific schedules generated from the terminal-year Rceattle fit and applied in SPM."
+spmr_age_schedules |>
+  gt() |>
+  fmt_number(columns = -Age, decimals = 3) |>
+  tab_header(title = "Projection Age-Specific Schedules")
+```
+
+### Alternative 2 Fixed-Catch Projection
+
+This additional run applies Alternative 2 and fixes catch at 1,300 thousand t
+for 2025--2032. The projection horizon includes every fixed-catch year.
+
+```{r}
+#| label: tbl-spmr-alt2-fixed-results
+#| tbl-cap: 'Candidate ABC projection given assumed future catches. Catch is fixed at 1,300 thousand t; ABC is the maximum permissible ABC calculated by SPM. B/B~35%~ is mean spawning biomass relative to the Tier 3 proxy.'
+spmr_alt2_detail |>
+  filter(Alt == 2) |>
+  group_by(Year) |>
+  summarize(
+    Catch = mean(Catch), ABC = mean(ABC), OFL = mean(OFL),
+    `Mean B` = mean(SSB), `B/B35%` = 100 * mean(SSB / B35), .groups = "drop"
+  ) |>
+  gt() |>
+  fmt_number(columns = c(Catch, ABC, OFL, `Mean B`), decimals = 0) |>
+  fmt_number(
+    columns = `B/B35%`,
+    decimals = 0,
+    pattern = if (knitr::is_latex_output()) "{x}\\%" else "{x}%"
+  ) |>
+  cols_label(`Mean B` = md("Mean $B$"), `B/B35%` = md("$B/B_{35\\%}$")) |>
+  tab_header(title = "Candidate ABC Projection Given Assumed Future Catches")
+```
+
+```{r}
+#| label: tbl-spmr-projection-results
+#| tbl-cap: 'Mean SPM results by alternative and projection year. Biomass, catch, ABC, and OFL are in thousand t.'
+spmr_detail |>
+  group_by(Alt, Year) |>
+  summarize(
+    B = mean(SSB), Catch = mean(Catch), ABC = mean(ABC), OFL = mean(OFL),
+    F = mean(F), `B/B35%` = 100 * mean(SSB / B35), .groups = "drop"
+  ) |>
+  gt() |>
+  fmt_number(columns = c(B, Catch, ABC, OFL), decimals = 0) |>
+  fmt_number(columns = F, decimals = 3) |>
+  fmt_number(
+    columns = `B/B35%`,
+    decimals = 0,
+    pattern = if (knitr::is_latex_output()) "{x}\\%" else "{x}%"
+  ) |>
+  cols_label(`B/B35%` = md("$B/B_{35\\%}$")) |>
+  tab_header(title = "SPM Projection Means")
+```
+
+### Projection Figures
+
+The figures summarize the 1,000 simulations for each alternative. Lines show
+simulation medians and ribbons show central 90% intervals.
+
+```{r}
+#| label: fig-spmr-projection-stock-status
+#| fig-cap: "Projected spawning biomass under all seven Tier 3 alternatives. Lines are simulation medians, ribbons span the 5th to 95th percentiles, and dashed lines mark B35%."
+#| fig-alt: "Seven-panel chart of projected spawning biomass. Each panel shows a median trajectory, a central 90-percent interval, and the B35-percent reference line for one Tier 3 alternative."
+#| fig-width: 10
+#| fig-height: 9
+spmr_alt_names <- setNames(
+  paste0("Alt ", spmr_alt_desc$Alternative, ": ", spmr_alt_desc$Name),
+  spmr_alt_desc$Alternative
+)
+spmr_plot_data <- spmr_detail |>
+  mutate(Scenario = factor(spmr_alt_names[as.character(Alt)], levels = spmr_alt_names))
+spmr_plot_data |>
+  group_by(Scenario, Year) |>
+  summarize(
+    Lower = quantile(SSB, 0.05), Median = median(SSB), Upper = quantile(SSB, 0.95),
+    B35 = first(B35), .groups = "drop"
+  ) |>
+  ggplot(aes(Year, Median)) +
+  geom_ribbon(aes(ymin = Lower, ymax = Upper), fill = "#2b7a9b", alpha = 0.22) +
+  geom_line(color = "#102f3d", linewidth = 0.9) +
+  geom_line(aes(y = B35), color = "#4d4d4d", linetype = "dashed") +
+  facet_wrap(vars(Scenario), ncol = 2) +
+  scale_y_continuous(labels = label_comma()) +
+  labs(x = "Year", y = "Spawning biomass (thousand t)") +
+  ggthemes::theme_few()
+```
+
+```{r}
+#| label: fig-spmr-projection-removals
+#| fig-cap: "Projected catch, ABC, and OFL under all seven Tier 3 alternatives. Lines are simulation medians and catch ribbons span the 5th to 95th percentiles."
+#| fig-alt: "Seven-panel chart of projected removals. Each panel compares median catch, ABC, and OFL trajectories and shows the central 90-percent interval for catch."
+#| fig-width: 10
+#| fig-height: 9
+removal_summary <- spmr_plot_data |>
+  select(Scenario, Year, Catch, ABC, OFL) |>
+  pivot_longer(c(Catch, ABC, OFL), names_to = "Quantity", values_to = "Value") |>
+  group_by(Scenario, Year, Quantity) |>
+  summarize(
+    Lower = quantile(Value, 0.05), Median = median(Value), Upper = quantile(Value, 0.95),
+    .groups = "drop"
+  )
+ggplot(removal_summary, aes(Year, Median, linetype = Quantity)) +
+  geom_ribbon(
+    data = filter(removal_summary, Quantity == "Catch"),
+    mapping = aes(x = Year, ymin = Lower, ymax = Upper),
+    inherit.aes = FALSE,
+    fill = "#5b8c5a", alpha = 0.2
+  ) +
+  geom_line(color = "#102f3d", linewidth = 0.8) +
+  facet_wrap(vars(Scenario), ncol = 2) +
+  scale_y_continuous(labels = label_comma()) +
+  labs(x = "Year", y = "Thousand metric tons", linetype = "Quantity") +
+  ggthemes::theme_few()
+```
+
+```{r}
+#| label: fig-spmr-projection-fishing-mortality
+#| fig-cap: "Projected fishing mortality under all seven Tier 3 alternatives. Lines are simulation medians and ribbons span the 5th to 95th percentiles."
+#| fig-alt: "Seven-panel chart of projected fishing mortality. Each panel shows the median trajectory and central 90-percent interval for one Tier 3 alternative."
+#| fig-width: 10
+#| fig-height: 8
+spmr_plot_data |>
+  group_by(Scenario, Year) |>
+  summarize(
+    Lower = quantile(F, 0.05), Median = median(F), Upper = quantile(F, 0.95),
+    .groups = "drop"
+  ) |>
+  ggplot(aes(Year, Median)) +
+  geom_ribbon(aes(ymin = Lower, ymax = Upper), fill = "#d18b2c", alpha = 0.24) +
+  geom_line(color = "#4d3210", linewidth = 0.9) +
+  facet_wrap(vars(Scenario), ncol = 2) +
+  labs(x = "Year", y = "Fishing mortality") +
+  ggthemes::theme_few()
+```
+
+```{=latex}
+\clearpage
+```
+
+## Exploratory DSEM Recruitment Pathways
+
+This section is organized around causal pathways, the covariates used to
+represent them, and the comparison approach. It adapts the bottom-up energy,
+top-down overlap, transport, and switching-control hypotheses developed in the
+[EBS pollock Early Survival Pathways synthesis](https://afsc-assessments.github.io/ebswp_esp/)
+[@ianelli2026ebswpesp]. The Rceattle experiments target the age-1 recruitment
+state, whereas the broader synthesis follows cohorts through survival to age
+3. Some annual sea-ice, spring-SST, and juvenile-predator-overlap series used
+below were provided by the EcoState case-study work [@goodman2026ecostatedsem].
+EcoState supplied covariate products; the Rceattle fits and their
+interpretation were developed separately for this working paper.
+
+The DSEM work is an exploratory extension rather than part of the final
+Rceattle configuration. All assessment comparisons, diagnostics, and
+projections in this report use the official Rceattle 5.8.1 release. Because
+that release does not include the DSEM interface, these recruitment runs use a
+locally labeled 5.8.1.9000 test build: the official 5.8.1 source
+(`r substr(dsem_design$official_base_commit, 1, 8)`) with the current DSEM
+addition (`r substr(dsem_design$dsem_patch_commit, 1, 8)`). This version record
+keeps the DSEM experiment separate from the released 5.8.1 package.
+
+### Causal graph and covariate roles
+
+Environmentally informed recruitment models benefit from covariates linked to
+plausible mechanisms, evaluated at relevant temporal and spatial scales, and
+tested for predictive and management value; otherwise added complexity can
+produce unstable or spurious relationships [@haltuch2019recruitment]. DSEM
+provides a computational framework for representing simultaneous and lagged
+ecological pathways in incomplete multivariate time series
+[@thorson2024dsem]. Causal interpretation also requires checking whether the
+proposed graph is consistent with its implied conditional-independence
+relationships [@thorson2025validating]. A recent Gulf of Alaska pollock
+application embedded DSEM within a state-space stock assessment and found that
+an intermediate-complexity causal model reduced unexplained recruitment
+variance and improved one-year-ahead forecasts, illustrating the value of
+parsimonious, hypothesis-driven model comparison [@champagnat2026causal].
+
+The conceptual pathway links spawning and environmental conditions to
+recruitment while identifying the two covariates used here within that broader
+context (@fig-dsem-dag). The current proof of concept estimates only the two
+dashed paths to age-1 recruitment; the solid paths identify mechanisms and
+covariates for future expansion rather than fitted paths in this analysis.
+
+```{mermaid}
+%%| label: fig-dsem-dag
+%%| fig-cap: "Compact conceptual directed acyclic graph for eastern Bering Sea pollock early survival. Solid arrows summarize broader mechanisms that motivate future covariates. Dashed arrows identify the two direct environmental effects estimated in the current DSEM proof of concept: age-0 late-summer SST and age-1-year cold-pool extent on age-1 recruitment."
+%%| fig-alt: "A compact directed graph links spawning timing and location plus physical transport to egg-larval distribution; physical conditions to prey production, juvenile condition, and overwinter survival; and adult pollock biomass and cold-pool extent to predator overlap and juvenile survival. Solid arrows show conceptual mechanisms. Dashed arrows from late-summer sea surface temperature and cold-pool extent to age-1 recruitment show the two environmental effects fitted in the proof of concept."
+%%| fig-width: 7.5
+%%| fig-pos: H
+flowchart TB
+  SPAWN["Spawning timing<br/>and location"] --> COHORT["Egg-larval<br/>distribution"]
+  PHYS["Sea ice, temperature,<br/>wind, and circulation"] --> PREY["Prey production<br/>and match"]
+  PHYS --> COHORT
+  SST["Age-0 late-summer<br/>SST"] --> CONDITION
+  PREY --> CONDITION["Age-0 size,<br/>condition, and energy"]
+  CONDITION --> WINTER["Overwinter survival<br/>to age 1"]
+  COHORT --> JUV["Juvenile<br/>distribution"]
+
+  ADULT["Adult pollock<br/>biomass"] --> CANN["Cannibalism<br/>pressure"]
+  COLD["Cold-pool<br/>extent"] --> PREDIST["Predator<br/>distribution"]
+  JUV --> OVERLAP["Juvenile-predator<br/>overlap"]
+  CANN --> OVERLAP
+  PREDIST --> OVERLAP
+
+  WINTER --> SURV["Age-1 and age-2<br/>survival"]
+  OVERLAP --> SURV
+  SURV --> RECRUIT["Recruitment"]
+
+  SST -. "fitted path" .-> RECRUIT
+  COLD -. "fitted path" .-> RECRUIT
+
+  classDef physical fill:#e8f2f7,stroke:#26739b,stroke-width:2px,color:#1f2933;
+  classDef prey fill:#ecf5eb,stroke:#6b8f24,stroke-width:2px,color:#1f2933;
+  classDef early fill:#fff3df,stroke:#c68519,stroke-width:2px,color:#1f2933;
+  classDef predator fill:#fdf2e8,stroke:#c8523f,stroke-width:2px,color:#1f2933;
+  classDef survival fill:#e8f6f2,stroke:#13856f,stroke-width:2px,color:#1f2933;
+  class SPAWN,PHYS,COLD,SST physical;
+  class PREY prey;
+  class COHORT,CONDITION,JUV early;
+  class ADULT,CANN,PREDIST,OVERLAP predator;
+  class WINTER,SURV,RECRUIT survival;
+```
+
+```{=latex}
+\clearpage
+```
+
+```{r}
+#| label: tbl-dsem-pathway-covariates
+#| tbl-cap: "Causal pathways, their representation in the exploratory Rceattle-DSEM runs, and the next measurements needed to represent each pathway more directly."
+#| tbl-pos: "H"
+
+tibble::tribble(
+  ~Pathway, ~Representation_in_current_runs, ~Next_direct_measurements,
+  "Bottom-up energy", "Cold-pool extent; late-summer SST; maximum winter sea ice; April--May SST", "Sea-ice days after February; lipid-rich copepods; fall age-0 energy; bloom or prey-match timing",
+  "Top-down overlap", "Arrowtooth and adult-pollock range-overlap indices", "Uncertainty-aware overlap; predation mortality; age-specific juvenile distributions",
+  "Transport and match", "Physical covariates serve only as indirect proxies", "Wind and circulation; spawning distribution; larval-delivery and spatial prey-match indices",
+  "Switching control", "Separate physical and overlap suites with stationary coefficients", "Interactions or regime models; rolling stability; blocked prediction"
+) |>
+  gt() |>
+  cols_width(
+    Pathway ~ px(105),
+    Representation_in_current_runs ~ px(255),
+    Next_direct_measurements ~ px(270)
+  ) |>
+  cols_label(
+    Representation_in_current_runs = "Representation in current runs",
+    Next_direct_measurements = "Next direct measurements"
+  ) |>
+  tab_options(
+    table.font.size = px(10)
+  )
+```
+
+The dashed arrows in @fig-dsem-dag identify the direct environmental paths in
+the initial proof of concept. The solid paths organize covariates by mechanism
+and show why a temperature or sea-ice index is an upstream proxy rather than a
+measured energy, transport, or predation process. The two later suites test
+alternative physical proxies and observed range-overlap indices; they do not
+fit the full mediated graph in @fig-dsem-dag.
+
+### Cohort alignment and model-comparison approach
+
+The proof of concept treats recruitment deviations as random effects and
+aligns covariates with the year in which each cohort enters the model at age 1.
+The spawning-biomass proxy was removed. The two standardized environmental
+series are cold-pool extent in the age-1 calendar year
+(`r sum(is.finite(dsem_covariates$ColdPool))` observations) and late-summer sea
+surface temperature (SST) in the cohort's age-0 year
+(`r sum(is.finite(dsem_covariates$LateSummerSST))` observations). The age-0 SST
+value is carried forward to the DSEM row for that cohort's age-1 recruitment;
+the zero-lag path is therefore cohort-aligned rather than a claim that SST was
+measured in the age-1 year.
+
+IID means **independent and identically distributed**. In this section it is
+the no-recruitment-edge reference model. After the assessment model accounts
+for the population dynamics and average recruitment level, each year's
+remaining recruitment deviation is treated as an unrelated draw from the same
+zero-centered distribution with one estimated variance. "Independent" means
+that one year's remaining recruitment deviation does not directly predict the
+next; "identically distributed" means that the same residual-variation scale
+is used in every year. The environmental series still have their own fitted
+AR(1) persistence, but the IID reference has no arrow from an environmental
+series to recruitment.
+
+The comparisons can therefore be read as three increasingly specific
+questions:
+
+- **IID reference:** how much recruitment variation remains when neither
+  candidate is connected directly to recruitment?
+- **One-edge model:** does adding one specified arrow explain enough of the
+  between-year recruitment pattern to improve the model?
+- **Two-edge model:** does the second arrow add information after accounting
+  for the first, or are the two covariates largely describing the same years?
+
+Each arrow is a statistical test of the biological hypothesis represented by
+that covariate, not proof of the full mechanism in the causal graph. Models
+within a suite use the same observation years, missingness pattern,
+standardization, and AR1 covariate processes. AIC is therefore interpreted
+only within a suite. The tables also report the percentage by which each
+model's estimated residual recruitment variance is lower than its suite's IID
+reference. A positive value means less recruitment variation remains
+unexplained; zero identifies the IID baseline. This is an in-sample variance
+comparison, not a causal R-squared or a predictive-skill score. Path intervals,
+convergence diagnostics, randomized controls, and blocked or terminal-year
+prediction remain necessary before a pathway is considered supported.
+
+### Initial environmental proof of concept
+
+In plain language, these four models ask whether recruitment is better
+described with no environmental edge, a cold-pool edge, an age-0 late-summer
+SST edge, or both edges estimated together.
+
+```{r}
+#| label: tbl-dsem-model-comparison
+#| tbl-cap: "Exploratory DSEM recruitment-covariate models based on Rceattle 5.8.1. Delta AIC and the percentage reduction in residual recruitment variance are calculated relative to models using the same years and covariate observations."
+#| tbl-pos: "H"
+
+dsem_summary |>
+  select(
+    Model,
+    AIC,
+    `Delta AIC`,
+    `Residual variation reduced (%)`
+  ) |>
+  arrange(AIC) |>
+  gt() |>
+  fmt_number(columns = c(AIC, `Delta AIC`), decimals = 2) |>
+  fmt_number(columns = `Residual variation reduced (%)`, decimals = 1) |>
+  cols_label(
+    `Residual variation reduced (%)` = "Residual variation reduced (%)"
+  ) |>
+  cols_width(
+    Model ~ px(180),
+    `Residual variation reduced (%)` ~ px(125),
+    everything() ~ px(95)
+  )
+```
+
+All four initial fits reached `OK` status with positive-definite Hessians and
+maximum absolute gradients no larger than
+`r format(max(dsem_summary$maximum_gradient), scientific = TRUE, digits = 2)`.
+The model containing only age-0 late-summer SST had the lowest AIC
+(@tbl-dsem-model-comparison; @fig-dsem-aic). Its estimated residual
+recruitment variance was
+`r sprintf("%.1f", 100 * dsem_variance$variance_reduction_from_iid[dsem_variance$model == "late_summer_sst"])`%
+lower than in the IID model; adding cold pool changed that reduction only to
+`r sprintf("%.1f", 100 * dsem_variance$variance_reduction_from_iid[dsem_variance$model == "combined"])`%.
+The cold-pool recruitment coefficient was small and its interval included
+zero in both the single-covariate and combined models. The SST coefficient was
+negative and its interval excluded zero in both configurations. This is a
+modest in-sample signal: the SST-only model improved AIC by
+`r sprintf("%.2f", dsem_summary$AIC[dsem_summary$model == "iid"] - dsem_summary$AIC[dsem_summary$model == "late_summer_sst"])`
+units relative to IID, but the result has not yet passed a blocked or
+terminal-year predictive test.
+
+```{r}
+#| label: fig-dsem-aic
+#| fig-cap: "Akaike information criterion differences for the four exploratory DSEM recruitment models. The age-0 late-summer SST model has the lowest AIC; bars show the increase in AIC relative to that model."
+#| fig-alt: "Horizontal bars compare delta AIC for IID recruitment deviations, cold pool, age-0 late-summer SST, and the combined environmental model. The SST-only model has the lowest AIC, followed by the combined model, IID, and cold-pool-only model."
+#| out-width: "78%"
+#| fig-align: center
+
+knitr::include_graphics(dsem_aic_figure_file)
+```
+
+```{r}
+#| label: tbl-dsem-recruitment-paths
+#| tbl-cap: "Standardized DSEM paths to age-1 recruitment. Intervals are estimate plus or minus 1.96 standard errors."
+#| tbl-pos: "H"
+
+dsem_recruitment_paths |>
+  select(Model, Covariate, estimate, standard_error, lower_95, upper_95) |>
+  gt(groupname_col = "Model") |>
+  fmt_number(
+    columns = c(estimate, standard_error, lower_95, upper_95),
+    decimals = 3
+  ) |>
+  cols_label(
+    estimate = "Estimate",
+    standard_error = "Standard error",
+    lower_95 = "Lower 95%",
+    upper_95 = "Upper 95%"
+  )
+```
+
+The age-0 late-summer SST effect is negative and separated from zero, whereas
+the cold-pool effect remains near zero (@fig-dsem-edges). This direction is
+consistent with the hypothesized warm-year energetic constraint on age-0
+pollock, but the fitted path does not by itself identify the intervening prey,
+condition, or overwinter-survival mechanism [@heintz2013; @duffyanderson2016].
+The resulting recruitment trajectories remain visually similar despite the
+AIC differences (@fig-dsem-recruitment).
+
+```{r}
+#| label: fig-dsem-edges
+#| fig-cap: "Standardized directed-edge coefficients for the four exploratory DSEM models. Points are estimates and horizontal lines are 95% intervals. Blue edges describe temporal persistence in the observed covariates; orange edges describe direct effects on age-1 recruitment."
+#| fig-alt: "Four panels show standardized DSEM coefficients. Both environmental covariates have positive temporal persistence. Age-0 late-summer SST has a negative recruitment effect with its interval below zero, while the cold-pool recruitment effect is close to zero and its interval overlaps zero."
+#| out-width: "100%"
+
+knitr::include_graphics(dsem_edges_figure_file)
+```
+
+```{r}
+#| label: fig-dsem-recruitment
+#| fig-cap: "Estimated age-1 recruitment from the IID, cold-pool, age-0 late-summer SST, and combined exploratory DSEM models."
+#| fig-alt: "Four nearly overlapping recruitment trajectories from 1964 through 2024 show the same large cohort peaks and low-recruitment periods, with small differences among the DSEM specifications."
+#| out-width: "100%"
+
+knitr::include_graphics(dsem_recruitment_figure_file)
+```
+
+As a randomization check, the analysis replaced both observed environmental
+series with independent standard-normal values while preserving their
+missing-year patterns (seed
+`r sprintf("%d", as.integer(dsem_random_design$seed))`). None of the randomized recruitment paths
+improved on the randomized IID model: their delta AIC values ranged from
+`r sprintf("%.2f", min(dsem_random_summary[["Delta AIC"]][dsem_random_summary$model != "iid"]))`
+to
+`r sprintf("%.2f", max(dsem_random_summary[["Delta AIC"]][dsem_random_summary$model != "iid"]))`,
+and every randomized path interval included zero. This result shows that the
+same procedure did not identify an effect in these randomized series, but it
+does not replace out-of-sample validation.
+
+### Covariate suites
+
+The experiments use three small, biologically prespecified covariate suites.
+The initial environmental suite compares cold-pool extent with age-0
+late-summer SST. The physical-forcing suite compares maximum winter regional
+sea ice with April--May southeastern Bering Sea SST. The top-down suite
+compares juvenile-pollock range overlap with arrowtooth flounder and adult
+pollock. The latter four annual series were supplied by the EcoState case-study
+repository [@goodman2026ecostatedsem]; they serve only as covariate inputs to
+the separate Rceattle-DSEM runs reported here.
+
+The overlap products are occurrence-range indices rather than biomass-weighted
+overlap or direct predation mortality. The adult-pollock index is also partly
+population-derived. These properties, and the missing uncertainty across the
+100 occurrence simulations used to construct the means, limit causal
+interpretation. The physical and overlap suites are therefore tests of direct
+proxy paths in the larger causal graph rather than estimates of the intervening
+energy or mortality processes.
+
+### Physical-forcing pathway
+
+The physical-candidate suite is a separate Rceattle-DSEM run from the earlier
+cold-pool and late-summer-SST analysis. It compares IID recruitment deviations,
+maximum winter regional sea-ice extent, April--May southeastern Bering Sea SST,
+and both physical candidates. The source-year values describe the cohort's
+age-0 winter and spring and are carried to the following age-1 DSEM row. The
+model contains 45 finite sea-ice values and 41 finite spring-SST values; the 41
+paired values have correlation
+`r sprintf("%.3f", cor(ecostate_physical$covariates$Candidate1, ecostate_physical$covariates$Candidate2, use = "complete.obs"))`.
+AIC comparisons are valid within this suite; they should not be compared
+directly with AIC from a run containing a different environmental observation
+block.
+
+In plain language, the comparison asks whether recruitment is better described
+with no physical edge, a winter-sea-ice edge, a spring-SST edge, or both edges.
+The combined model asks whether each physical proxy contributes after the
+other is already included; it does not assume that both arrows represent
+separate mechanisms.
+
+The model graph includes AR(1) persistence for each observed covariate and
+tests either or both dashed paths to age-1 recruitment
+(@fig-ecostate-physical-dag). The sea-ice-to-SST arrow is a mechanistic
+hypothesis shown for interpretation; the fitted combined model estimates two
+direct recruitment paths rather than that intermediate edge.
+
+```{mermaid}
+%%| label: fig-ecostate-physical-dag
+%%| fig-cap: "Directed graph for the physical-forcing Rceattle-DSEM suite. Solid horizontal arrows are fitted AR(1) covariate-persistence paths. Dashed arrows are the direct recruitment paths fitted singly and jointly. The sea-ice-to-SST arrow is a conceptual mechanism and is not estimated in this run."
+%%| fig-alt: "Prior-year maximum winter sea ice points to current maximum winter sea ice, and prior-year spring SST points to current spring SST. Current sea ice and spring SST each have dashed candidate paths to age-1 recruitment. A separate conceptual arrow links sea ice to spring SST."
+%%| fig-width: 8
+flowchart LR
+  ICEPREV["Maximum winter<br/>sea ice (t-1)"] --> ICE["Maximum winter<br/>sea ice (t)"]
+  SSTPREV["April-May SST<br/>(t-1)"] --> SST["April-May SST<br/>(t)"]
+  ICE -. "fitted candidate path" .-> REC["Age-1<br/>recruitment"]
+  SST -. "fitted candidate path" .-> REC
+  ICE -->|"conceptual; not fitted"| SST
+
+  classDef physical fill:#e8f2f7,stroke:#26739b,stroke-width:2px,color:#1f2933;
+  classDef response fill:#e8f6f2,stroke:#13856f,stroke-width:2px,color:#1f2933;
+  class ICEPREV,ICE,SSTPREV,SST physical;
+  class REC response;
+```
+
+```{r}
+#| label: fig-ecostate-physical-covariates
+#| fig-cap: "Physical-forcing source series and the standardized, cohort-aligned values supplied to the Rceattle-DSEM suite."
+#| fig-alt: "Two upper time-series panels show maximum winter regional sea-ice extent and April-May southeastern Bering Sea SST. A lower panel overlays their standardized cohort-aligned values and shows their opposing long-term variation and missing years."
+#| out-width: "90%"
+#| fig-align: center
+
+knitr::include_graphics(ecostate_physical$files$covariate_figure)
+```
+
+```{r}
+#| label: tbl-ecostate-physical-models
+#| tbl-cap: "Separate Rceattle-DSEM physical-candidate model comparison. Delta AIC and the percentage reduction in residual recruitment variance are calculated only within the common physical-candidate observation block."
+#| tbl-pos: "H"
+
+ecostate_physical$summary |>
+  select(
+    Model,
+    AIC,
+    `Delta AIC`,
+    `Residual variation reduced (%)`
+  ) |>
+  arrange(AIC) |>
+  gt() |>
+  fmt_number(columns = c(AIC, `Delta AIC`), decimals = 2) |>
+  fmt_number(columns = `Residual variation reduced (%)`, decimals = 1) |>
+  cols_label(
+    `Residual variation reduced (%)` = "Residual variation reduced (%)"
+  )
+```
+
+All four physical-candidate fits reached `OK` status with positive-definite
+Hessians and maximum absolute gradients no larger than
+`r format(max(ecostate_physical$summary$maximum_gradient), scientific = TRUE, digits = 2)`
+(@tbl-ecostate-physical-models). The combined model had the lowest AIC and
+reduced estimated unexplained recruitment variance by
+`r sprintf("%.1f", 100 * ecostate_physical$variance$variance_reduction_from_iid[ecostate_physical$variance$model == "combined"])`%
+relative to IID. April--May SST was negative in its single-path fit and in the
+combined fit. Maximum winter sea ice was weakly positive by itself, then
+negative with an interval spanning zero in the combined fit. This sign change,
+together with the strong inverse correlation between the two covariates,
+indicates a suppression pattern; the joint AIC improvement should not be
+interpreted as two independently identified causal effects.
+
+```{r}
+#| label: fig-ecostate-physical-aic
+#| fig-cap: "Akaike information criterion differences for the four models in the physical-forcing Rceattle-DSEM suite."
+#| fig-alt: "Horizontal bars compare delta AIC for IID recruitment, maximum winter sea ice, April-May SST, and both physical candidates. The combined model has the lowest AIC."
+#| out-width: "78%"
+#| fig-align: center
+
+knitr::include_graphics(ecostate_physical$files$aic_figure)
+```
+
+```{r}
+#| label: tbl-ecostate-physical-paths
+#| tbl-cap: "Standardized direct paths to age-1 recruitment in the physical-forcing Rceattle-DSEM suite."
+#| tbl-pos: "H"
+
+ecostate_physical$recruitment_paths |>
+  select(Model, Covariate, estimate, standard_error, lower_95, upper_95) |>
+  gt(groupname_col = "Model") |>
+  fmt_number(
+    columns = c(estimate, standard_error, lower_95, upper_95),
+    decimals = 3
+  ) |>
+  cols_label(
+    estimate = "Estimate",
+    standard_error = "Standard error",
+    lower_95 = "Lower 95%",
+    upper_95 = "Upper 95%"
+  )
+```
+
+```{r}
+#| label: fig-ecostate-physical-edges
+#| fig-cap: "Standardized directed-edge coefficients for the physical-forcing Rceattle-DSEM suite. Points are estimates and horizontal lines are 95% intervals."
+#| fig-alt: "Four panels show AR1 persistence and recruitment coefficients for IID, maximum winter sea ice, April-May SST, and the combined physical-candidate models. April-May SST has a negative recruitment coefficient, while the combined sea-ice coefficient spans zero."
+#| out-width: "100%"
+
+knitr::include_graphics(ecostate_physical$files$edge_figure)
+```
+
+```{r}
+#| label: fig-ecostate-physical-recruitment
+#| fig-cap: "Estimated age-1 recruitment from the four models in the physical-forcing Rceattle-DSEM suite."
+#| fig-alt: "Four largely overlapping recruitment trajectories compare IID recruitment with maximum winter sea ice, April-May SST, and both physical candidates."
+#| out-width: "100%"
+
+knitr::include_graphics(ecostate_physical$files$recruitment_figure)
+```
+
+The matching missingness-preserving randomization control used independent
+standard-normal values with seed
+`r sprintf("%d", as.integer(ecostate_physical_random$design$seed))`.
+Every randomized physical-candidate model had higher AIC than its IID model;
+the AIC increases ranged from
+`r sprintf("%.2f", min(ecostate_physical_random$summary$AIC[ecostate_physical_random$summary$model != "iid"] - ecostate_physical_random$summary$AIC[ecostate_physical_random$summary$model == "iid"]))`
+to
+`r sprintf("%.2f", max(ecostate_physical_random$summary$AIC[ecostate_physical_random$summary$model != "iid"] - ecostate_physical_random$summary$AIC[ecostate_physical_random$summary$model == "iid"]))`
+units, and every randomized recruitment-path interval included zero.
+
+### Top-down overlap pathway
+
+The second separate run compares IID recruitment deviations with annual
+arrowtooth--juvenile pollock range overlap, adult-pollock--juvenile pollock
+range overlap, and both overlap indices. Each index has 40 observations from
+1982--2022 with the 2020 survey gap, and their paired correlation is
+`r sprintf("%.3f", cor(ecostate_overlap$covariates$Candidate1, ecostate_overlap$covariates$Candidate2, use = "complete.obs"))`.
+The indices are aligned to the same calendar year as the age-1 recruitment
+state. Because the bottom-trawl survey occurs after the start-of-year state,
+these are contemporaneous exploratory associations rather than established
+predation effects.
+
+In plain language, the four models ask whether recruitment is better described
+with no overlap edge, an arrowtooth-overlap edge, an adult-pollock-overlap
+edge, or both edges. The combined model asks whether arrowtooth overlap adds
+information after adult-pollock overlap is known, and vice versa; it does not
+estimate predation or cannibalism mortality directly.
+
+The graph distinguishes the direct paths actually fitted from the intervening
+predation and cannibalism mechanisms (@fig-ecostate-overlap-dag). The run does
+not estimate predation mortality, and the adult-pollock overlap index remains
+partly population-derived.
+
+```{mermaid}
+%%| label: fig-ecostate-overlap-dag
+%%| fig-cap: "Directed graph for the top-down juvenile-predator-overlap Rceattle-DSEM suite. Solid horizontal arrows are fitted AR(1) persistence paths. Dashed arrows are the direct recruitment paths fitted singly and jointly. Predation and cannibalism nodes show conceptual mechanisms that are not estimated in this run."
+%%| fig-alt: "Prior-year arrowtooth overlap and adult-pollock overlap point to their current-year values. Each current overlap index has a dashed fitted path to age-1 recruitment. Conceptual paths connect arrowtooth overlap through predation exposure and adult-pollock overlap through cannibalism exposure to juvenile survival."
+%%| fig-width: 9
+flowchart LR
+  ATFPREV["Arrowtooth overlap<br/>(t-1)"] --> ATF["Arrowtooth overlap<br/>(t)"]
+  PLKPREV["Adult-pollock overlap<br/>(t-1)"] --> PLK["Adult-pollock overlap<br/>(t)"]
+  ATF -. "fitted candidate path" .-> REC["Age-1<br/>recruitment"]
+  PLK -. "fitted candidate path" .-> REC
+  ATF -->|"conceptual"| PRED["Predation<br/>exposure"] --> SURV["Juvenile<br/>survival"]
+  PLK -->|"conceptual"| CANN["Cannibalism<br/>exposure"] --> SURV
+  SURV --> REC
+
+  classDef overlap fill:#fdf2e8,stroke:#c8523f,stroke-width:2px,color:#1f2933;
+  classDef mechanism fill:#fff3df,stroke:#c68519,stroke-width:2px,color:#1f2933;
+  classDef response fill:#e8f6f2,stroke:#13856f,stroke-width:2px,color:#1f2933;
+  class ATFPREV,ATF,PLKPREV,PLK overlap;
+  class PRED,CANN mechanism;
+  class SURV,REC response;
+```
+
+```{r}
+#| label: fig-ecostate-overlap-covariates
+#| fig-cap: "Juvenile-predator range-overlap series and the standardized values supplied to the top-down Rceattle-DSEM suite."
+#| fig-alt: "Two upper panels show annual arrowtooth-juvenile pollock and adult-pollock-juvenile pollock range-overlap indices. A lower panel overlays their standardized values and shows the shared 2020 gap."
+#| out-width: "90%"
+#| fig-align: center
+
+knitr::include_graphics(ecostate_overlap$files$covariate_figure)
+```
+
+```{r}
+#| label: tbl-ecostate-overlap-models
+#| tbl-cap: "Separate Rceattle-DSEM juvenile-predator-overlap model comparison. Delta AIC and the percentage reduction in residual recruitment variance are calculated only within the common overlap observation block."
+#| tbl-pos: "H"
+
+ecostate_overlap$summary |>
+  select(
+    Model,
+    AIC,
+    `Delta AIC`,
+    `Residual variation reduced (%)`
+  ) |>
+  arrange(AIC) |>
+  gt() |>
+  fmt_number(columns = c(AIC, `Delta AIC`), decimals = 2) |>
+  fmt_number(columns = `Residual variation reduced (%)`, decimals = 1) |>
+  cols_label(
+    `Residual variation reduced (%)` = "Residual variation reduced (%)"
+  )
+```
+
+All four overlap fits reached `OK` status with positive-definite Hessians and
+maximum absolute gradients no larger than
+`r format(max(ecostate_overlap$summary$maximum_gradient), scientific = TRUE, digits = 2)`
+(@tbl-ecostate-overlap-models). The adult-pollock-overlap model had the lowest
+AIC and reduced estimated unexplained recruitment variance by
+`r sprintf("%.1f", 100 * ecostate_overlap$variance$variance_reduction_from_iid[ecostate_overlap$variance$model == "candidate2"])`%
+relative to IID. Each overlap coefficient was negative and separated from zero
+when fitted alone. In the combined model, the adult-pollock-overlap coefficient
+remained negative, whereas the arrowtooth-overlap coefficient shifted near zero
+and its interval included zero. Adding arrowtooth overlap to adult-pollock
+overlap increased AIC by
+`r sprintf("%.2f", ecostate_overlap$summary$AIC[ecostate_overlap$summary$model == "combined"] - ecostate_overlap$summary$AIC[ecostate_overlap$summary$model == "candidate2"])`
+units and produced essentially no further reduction in unexplained recruitment
+variance.
+
+```{r}
+#| label: fig-ecostate-overlap-aic
+#| fig-cap: "Akaike information criterion differences for the four models in the top-down juvenile-predator-overlap Rceattle-DSEM suite."
+#| fig-alt: "Horizontal bars compare delta AIC for IID recruitment, arrowtooth overlap, adult-pollock overlap, and both overlap candidates. Adult-pollock overlap has the lowest AIC."
+#| out-width: "78%"
+#| fig-align: center
+
+knitr::include_graphics(ecostate_overlap$files$aic_figure)
+```
+
+```{r}
+#| label: tbl-ecostate-overlap-paths
+#| tbl-cap: "Standardized direct paths to age-1 recruitment in the top-down juvenile-predator-overlap Rceattle-DSEM suite."
+#| tbl-pos: "H"
+
+ecostate_overlap$recruitment_paths |>
+  select(Model, Covariate, estimate, standard_error, lower_95, upper_95) |>
+  gt(groupname_col = "Model") |>
+  fmt_number(
+    columns = c(estimate, standard_error, lower_95, upper_95),
+    decimals = 3
+  ) |>
+  cols_label(
+    estimate = "Estimate",
+    standard_error = "Standard error",
+    lower_95 = "Lower 95%",
+    upper_95 = "Upper 95%"
+  )
+```
+
+```{r}
+#| label: fig-ecostate-overlap-edges
+#| fig-cap: "Standardized directed-edge coefficients for the top-down juvenile-predator-overlap Rceattle-DSEM suite. Points are estimates and horizontal lines are 95% intervals."
+#| fig-alt: "Four panels show AR1 persistence and recruitment coefficients for IID, arrowtooth overlap, adult-pollock overlap, and the combined overlap models. Both single-model overlap effects are negative; only adult-pollock overlap remains negative in the combined model."
+#| out-width: "100%"
+
+knitr::include_graphics(ecostate_overlap$files$edge_figure)
+```
+
+```{r}
+#| label: fig-ecostate-overlap-recruitment
+#| fig-cap: "Estimated age-1 recruitment from the four models in the top-down juvenile-predator-overlap Rceattle-DSEM suite."
+#| fig-alt: "Four largely overlapping recruitment trajectories compare IID recruitment with arrowtooth overlap, adult-pollock overlap, and both overlap candidates."
+#| out-width: "100%"
+
+knitr::include_graphics(ecostate_overlap$files$recruitment_figure)
+```
+
+The overlap randomization control used the same seed and preserved the common
+2020 gap. Its random candidate-2 model improved AIC by only
+`r sprintf("%.2f", ecostate_overlap_random$summary$AIC[ecostate_overlap_random$summary$model == "iid"] - ecostate_overlap_random$summary$AIC[ecostate_overlap_random$summary$model == "candidate2"])`
+units relative to randomized IID, and every randomized recruitment-path
+interval included zero. This small chance improvement is much smaller than the
+observed adult-pollock-overlap AIC improvement, but it reinforces the need for
+blocked prediction and timing sensitivities before interpretation.
+
+### Next-stage pathway tests
+
+The next covariates should fill mechanisms in the causal graph rather than add
+more interchangeable physical proxies. For the bottom-up pathway, sea-ice days
+after February remains the highest-priority physical candidate because it was
+the best-performing sea-ice metric in a regional analysis, although its
+relationship with year-class strength differed between historical periods
+[@hunt2020seaice]. Large lipid-rich copepods provide a more proximal food-web
+measure, but the current cohort table contains only 15 observations
+[@eisner2020copepods]. A consistent fall age-0 total-energy or energy-density
+series would measure the overwinter-survival mediator most directly
+[@heintz2013; @siddon2013]. Wind mixing, stratification, bloom timing, and a
+spatial prey-match index belong upstream of prey and age-0 condition rather
+than as unstructured additions to recruitment [@gann2016].
+
+For the top-down pathway, the priority is to propagate uncertainty in the
+range-overlap indices and develop predator-specific mortality or age-specific
+juvenile-distribution products. For the transport pathway, the missing
+measurements are spawning distribution, wind and circulation, and a
+cohort-specific larval-delivery index. Broad atmospheric indices such as the
+North Pacific Index or Aleutian Low are most useful as switching-control or
+regime descriptors after the shelf-scale mechanisms are represented.
+
+The DSEM script is structured so additional cohort-level covariates can be
+added without altering the assessment configuration. Each expansion should:
+
+- state the recruitment mechanism and cohort timing for each candidate before
+  fitting it;
+- preserve a common observation-year universe and document original units,
+  standardization, gaps, and data sources;
+- screen correlated covariates, then compare IID, single-path, and limited
+  joint-path models rather than searching many combinations;
+- repeat missingness-preserving randomized controls and examine sensitivity to
+  observation error, process assumptions, and priors; and
+- use blocked or terminal-year holdouts to test prediction before interpreting
+  an in-sample AIC improvement.
+
+This approach can accommodate additional ESP covariates, but the candidate
+set should remain biologically prespecified and small relative to the available
+cohort record. DSEM results should remain research products until the paths are
+stable across timing assumptions, retrospective peels, and predictive checks.
+
+## Summary
+
+The Rceattle 5.8.1 configuration uses the supported `MultinomialAFSC`
+composition likelihood, complete ages 1--15, nominal fishery sample sizes, and
+survey sample sizes aligned with the modified ADMB model. When Rceattle
+parameters and fishery selectivity are set to the values used in the ADMB
+model, Rceattle reproduces spawning
+biomass and predicted catch to numerical precision. This establishes
+agreement in the tested population-dynamics calculations and parameter
+mapping. When Rceattle is fit to the data, the trajectories differ more,
+and the residual least-identified direction remains in the shared ATS/AVO
+annual selectivity deviations. The added ATS/AVO coefficient-increment penalty
+reduced the condition number below the convergence-warning threshold.
+
+The diagnostic results identify a focused development path for the September
+2026 Plan Team evaluation. The Rceattle fit reaches a small gradient,
+an `OK` convergence status, and a positive-definite Hessian. Composition OSA
+residuals remain underdispersed.
+Nine terminal-year-consistent peels converge successfully and produce
+positive retrospective bias in spawning biomass, total biomass, and
+recruitment, together with negative bias in fishing mortality. The historical
+2D AR1 sensitivity did not converge and retains its research status. The
+50-jitter diagnostic recovered the best solution 48 times and found a poorer
+mode twice; the age-3+ natural-mortality profile is shallow.
+
+Both pathway-oriented covariate suites also produced `OK` fits with
+positive-definite Hessians. Within the physical suite, the combined sea-ice
+and April--May SST model had the lowest AIC and the largest reduction in
+recruitment-process variance, but the correlated covariates produced a
+suppression pattern that limits interpretation of their individual paths.
+Within the overlap suite, adult-pollock--juvenile-pollock overlap had the
+lowest AIC; adding arrowtooth overlap provided essentially no further variance
+reduction. The overlap results remain contemporaneous associations, and the
+adult-pollock index is partly population-derived, so neither result is treated
+as a causal recruitment effect.
+
+Immediate work should retain the ADMB-to-Rceattle comparison as a repeatable
+numerical check,
+evaluate selectivity and survey influence on the retrospective pattern,
+and continue sensitivity checks for the shared ATS/AVO annual selectivity
+deviations. The next-assessment
+workbook should be populated after complete new-year observations arrive.
+The exploratory DSEM work provides a reproducible approach for adding
+cohort-aligned covariates, while remaining separate from the final assessment
+configuration and projection results.
+
+## References {.unnumbered}
+
+::: {#refs}
+:::
+
+## Appendices {.unnumbered}
+
+### A-1 Reproducibility and analysis sequence {.unnumbered}
+
+The working paper is rendered from saved model and diagnostic products so that
+building the document does not repeat long model fits. The commands below are
+run from the project directory, in the order shown when an earlier product is
+required by a later analysis.
+
+1. The [input-preparation script](<2024 EBS pollock setup data.R>) documents
+   the transformations used to prepare the aligned Rceattle workbook; its
+   precursor workbook is regenerated with
+   `Rscript "2024 EBS pollock setup data.R"`. The frozen workbook used for the
+   reported fit is `Data/EBS_24_pollock_m23_rceattle_full_1964-2024.xlsx`.
+   The same script documents the modified ADMB reference rebuild, run as
+   `cd ADMB/m23_rceattle_full && admb pm && ./pm -nox -iprint 150` after the
+   ADMB executable directory has been added to `PATH`.
+2. The [two-stage fitting script](<2024 EBS pollock.R>) fits the reported
+   Rceattle configuration and the 2D age-by-year AR1 sensitivity with
+   `Rscript "2024 EBS pollock.R"`. The
+   [5.8.1 summary script](R/finalize_rceattle_5_8_1_analysis.R) then
+   generates the fitted-model summaries and standard-multinomial sensitivity
+   using `Rscript R/finalize_rceattle_5_8_1_analysis.R`.
+3. The [ADMB bridge runner](R/run_canonical_pm_forward_bridge.R) sets the
+   Rceattle parameters and realized selectivity to the ADMB values and saves
+   the trajectory, likelihood, and gradient comparisons with
+   `Rscript R/run_canonical_pm_forward_bridge.R`.
+4. The [OSA runner](R/run_canonical_pm_diagnostics.R) generates the saved OSA
+   residuals with `Rscript R/run_canonical_pm_diagnostics.R`. The
+   [retrospective script](<2024 EBS pollock two-stage retrospectives.R>) runs
+   the nine terminal-year-consistent peels with
+   `Rscript "2024 EBS pollock two-stage retrospectives.R"`.
+5. The [5.8.1 self-test runner](R/run_rceattle_5_8_1_self_test.R) generates 50
+   phased simulations with `Rscript R/run_rceattle_5_8_1_self_test.R`. The
+   [restart runner](R/run_rceattle_5_8_1_self_test_restart.R) repeats the same
+   simulations from the estimated solution with
+   `Rscript R/run_rceattle_5_8_1_self_test_restart.R`, and the
+   [validation summarizer](R/summarize_rceattle_5_8_1_validation.R) is run with
+   `Rscript R/summarize_rceattle_5_8_1_validation.R`.
+6. The [projection runner](R/run_spmr_tier3_projection.R), which uses the
+   [Rceattle-to-SPM input writer](R/write_spmr_projection_inputs.R), generates
+   the seven-scenario and fixed-catch projection products with
+   `Rscript R/run_spmr_tier3_projection.R`.
+7. The [DSEM script](<2024 EBS pollock DSEM proof of concept.R>) runs the four
+   observed-covariate models with
+   `Rscript "2024 EBS pollock DSEM proof of concept.R"` and the
+   missingness-preserving randomized controls with
+   `Rscript "2024 EBS pollock DSEM proof of concept.R" --randomized`. The
+   [separate EcoState-candidate runner](<2024 EBS pollock EcoState DSEM candidates.R>)
+   is run with `--suite=physical` and `--suite=overlap`; append `--randomized`
+   to each command to reproduce the corresponding randomized controls.
+8. After these saved products are available, the HTML and PDF are generated
+   together with `quarto render ebswp.qmd`.
+
+```{r}
+#| label: tbl-files
+#| tbl-cap: "Files used or referenced by this working paper."
+
+file_inventory |>
+  gt() |>
+  cols_width(
+    Role ~ px(210),
+    Location ~ px(185),
+    Available ~ px(90),
+    Size ~ px(90)
+  )
+```
+
+```{r}
+#| label: session-info
+#| code-fold: true
+#| code-summary: "Show session information"
+
+session_text <- capture.output(sessionInfo()) |>
+  gsub(
+    pattern = "loaded via a namespace (and not attached):",
+    replacement = "loaded via namespace only:",
+    fixed = TRUE
+  )
+cat(session_text, sep = "\n")
+```
+
+### A-2 Model fitting details {.unnumbered}
+
+The fishery selectivity likelihood has multiple modes, so the reported
+Rceattle configuration used data-based fishery-selectivity starting values and two fitting
+stages. The first stage disabled the annual selectivity deviations to establish
+the selectivity and abundance scale. The second stage restored the deviations
+and used the first-stage solution as its initial values. This sequence produced
+a small maximum gradient and `OK` status. With the direct ATS/AVO
+coefficient-increment penalty, the Hessian condition number was approximately
+489,000; its weakest direction remained in the shared ATS/AVO annual
+selectivity deviations (`sel_coff_dev`) rather than fishery/CPUE.
+
+The complete fitting sequence, including the empirical starting values and
+the two estimation stages, is in the
+[two-stage fitting script](<2024 EBS pollock.R>) and is run with
+`Rscript "2024 EBS pollock.R"`. The nine-peel implementation is in the
+[retrospective script](<2024 EBS pollock two-stage retrospectives.R>) and is
+run with `Rscript "2024 EBS pollock two-stage retrospectives.R"`.
+
+The retrospective peels repeat this sequence after recalculating the data-based
+selectivity starting values for each terminal year. Because `sel_coff_dev`
+contains annual random-walk increments at age, each peel fixes the terminal-year
+fishery and mirrored catch-per-unit-effort increments at zero. This holds their
+terminal selectivity-at-age curves at the preceding-year curves.
+
+```{r}
+#| label: tbl-initial-developments
+#| tbl-cap: "Disposition of the Rceattle development components."
+
+initial_development_status |>
+  gt() |>
+  cols_width(
+    Item ~ px(35),
+    Initial_development ~ px(120),
+    September_review_result ~ px(170),
+    Plan_Team_interpretation ~ px(190)
+  ) |>
+  cols_label(
+    Initial_development = "Development component",
+    September_review_result = "Review result",
+    Plan_Team_interpretation = "Interpretation"
+  ) |>
+  tab_style(
+    style = cell_text(weight = "bold"),
+    locations = cells_body(columns = Item)
+  )
+```
+
+### A-3 Jitter and natural-mortality profile {.unnumbered}
+
+The [extended-diagnostics runner](R/run_rceattle_5_8_1_extended_diagnostics.R)
+generates both the 50 jitter fits and the age-3-and-older natural-mortality
+profile with `Rscript R/run_rceattle_5_8_1_extended_diagnostics.R`.
+
+The 50 phased jitter runs test sensitivity to dispersed starting values.
+Forty-eight returned to the best objective within numerical precision. Two
+received `WARN` status and reached an inferior mode with an objective increase
+of approximately
+`r sprintf("%.1f", max(jitter_summary$Delta_objective, na.rm = TRUE))`.
+This reproduces the pre-existing multimodality and shows why convergence of one
+run is not sufficient evidence that the global mode was found.
+
+```{r}
+#| label: tbl-jitter-summary
+#| tbl-cap: "Rceattle 5.8.1 phased-jitter results for the fitted configuration. Delta objective is measured from the best of 50 runs."
+
+jitter_summary |>
+  group_by(Convergence_status) |>
+  summarise(
+    Runs = n(),
+    Minimum_delta_objective = min(Delta_objective),
+    Maximum_delta_objective = max(Delta_objective),
+    .groups = "drop"
+  ) |>
+  gt() |>
+  fmt_number(
+    columns = c(Minimum_delta_objective, Maximum_delta_objective),
+    decimals = 3
+  ) |>
+  cols_label(
+    Convergence_status = "Status",
+    Minimum_delta_objective = "Minimum delta objective",
+    Maximum_delta_objective = "Maximum delta objective"
+  )
+```
+
+The age-3-and-older natural-mortality profile was evaluated from 0.15 to 0.50.
+The grid minimum occurred at
+`r sprintf("%.2f", mortality_profile[["Age-3+ natural mortality"]][which.min(mortality_profile$Objective)])`,
+but the objective changed by only
+`r sprintf("%.2f", max(mortality_profile$Delta_objective))`
+across the entire grid. The profile is therefore shallow and does not support
+precise estimation of natural mortality from these data alone.
+
+```{r}
+#| label: fig-natural-mortality-profile
+#| fig-cap: "Profile of age-3-and-older natural mortality for the Rceattle 5.8.1 configuration. Points are evaluated grid values and the vertical axis is objective difference from the grid minimum."
+#| fig-alt: "A shallow natural-mortality profile has its grid minimum near 0.20; the objective difference rises to about 3.82 at 0.50."
+#| fig-width: 8
+#| fig-height: 4.5
+
+ggplot(
+  mortality_profile,
+  aes(x = `Age-3+ natural mortality`, y = Delta_objective)
+) +
+  geom_hline(yintercept = 0, color = "gray55", linetype = 2) +
+  geom_line(color = "#1b9e77", linewidth = 0.8) +
+  geom_point(color = "#1b9e77", size = 2) +
+  labs(x = "Age-3+ natural mortality", y = "Delta objective") +
+  ggthemes::theme_few()
+```
+
+### A-4 Composition-likelihood sensitivity {.unnumbered}
+
+The [5.8.1 summary script](R/finalize_rceattle_5_8_1_analysis.R) fits the
+standard-multinomial sensitivity and writes the summaries used here when run
+with `Rscript R/finalize_rceattle_5_8_1_analysis.R`.
+
+The Rceattle configuration uses the supported `MultinomialAFSC` composition
+likelihood with a robustness constant of 0.001 added to observed and expected
+proportions. A standard multinomial fit without this constant was retained as
+an observation-model sensitivity. Both fits reached small gradients and
+received `OK` status. The final configuration's residual least-identified
+direction remained in the shared ATS/AVO annual selectivity deviations.
+
+```{r}
+#| label: tbl-composition-likelihoods
+#| tbl-cap: "Composition-likelihood sensitivity for the Rceattle 5.8.1 configuration. Raw objectives are shown for run provenance but are not compared because likelihood constants and conventions differ."
+
+model_summary |>
+  filter(!grepl("2D AR1", Model)) |>
+  mutate(
+    Model = case_when(
+      grepl("standard multinomial", Model, ignore.case = TRUE) ~
+        "Standard multinomial",
+      TRUE ~ "Final configuration"
+    ),
+    Composition_likelihood = recode(
+      Composition_likelihood,
+      MultinomialAFSC = "AFSC multinomial",
+      Multinomial = "Standard multinomial"
+    )
+  ) |>
+  select(
+    Model,
+    Composition_likelihood,
+    Objective,
+    Maximum_gradient,
+    Convergence_status
+  ) |>
+  gt() |>
+  fmt_number(columns = Objective, decimals = 3) |>
+  fmt_scientific(columns = Maximum_gradient, decimals = 2) |>
+  cols_label(
+    Composition_likelihood = "Composition likelihood",
+    Maximum_gradient = "Maximum gradient",
+    Convergence_status = "Fit status"
+  ) |>
+  cols_width(
+    Model ~ px(115),
+    Composition_likelihood ~ px(130),
+    Objective ~ px(85),
+    Maximum_gradient ~ px(85),
+    Convergence_status ~ px(60)
+  )
+```
+
+Relative to the `MultinomialAFSC` configuration, the standard
+multinomial sensitivity changed spawning biomass by
+`r sprintf("%.2f", comparison_summary$Mean_absolute_percent[comparison_summary$Method == "Standard multinomial sensitivity" & comparison_summary$Quantity == "Spawning biomass"])`%,
+recruitment by
+`r sprintf("%.2f", comparison_summary$Mean_absolute_percent[comparison_summary$Method == "Standard multinomial sensitivity" & comparison_summary$Quantity == "Recruitment"])`%,
+and total biomass by
+`r sprintf("%.2f", comparison_summary$Mean_absolute_percent[comparison_summary$Method == "Standard multinomial sensitivity" & comparison_summary$Quantity == "Total biomass"])`%
+on average in absolute percentage terms.
+
+### A-5 2D age-by-year AR1 selectivity sensitivity {.unnumbered}
+
+The penalized-effects initialization and subsequent Laplace fit are in the
+[two-stage fitting script](<2024 EBS pollock.R>) and are run with
+`Rscript "2024 EBS pollock.R"`. A separate
+[fixed-scale follow-up](<2024 EBS pollock 2D AR1 fixed sd test.R>) can be run
+with `Rscript "2024 EBS pollock 2D AR1 fixed sd test.R"`; it is a development
+check and is not the sensitivity summarized below.
+
+The 2D AR1 sensitivity applied an age-by-year field to the shared fishery and
+catch-per-unit-effort selectivity block over 1964--2024. The age-year deviations
+were first fit as penalized effects to initialize the field and then integrated
+as random effects with a Laplace approximation. The initialized Laplace fit
+failed the gradient, Hessian, and bound checks.
+
+```{r}
+#| label: tbl-ar1-selectivity-parameter-summary
+#| tbl-cap: "Diagnostic 2D AR1 fishery-selectivity correlation and scale estimates."
+
+ar1_selectivity_parameter_summary |>
+  select(-Final_internal_value) |>
+  gt() |>
+  fmt_number(
+    columns = c(
+      Penalized_effects_initialization,
+      Final_random_effects_fit
+    ),
+    decimals = 3
+  ) |>
+  cols_label(
+    Quantity = "Quantity",
+    Internal_parameter = "Rceattle parameter",
+    Penalized_effects_initialization = "Penalized effects",
+    Final_random_effects_fit = "Random-effects fit"
+  ) |>
+  tab_source_note(
+    source_note = paste(
+      "Correlations are on the -1 to 1 scale; the deviation scale is a",
+      "positive standard deviation. The fit failed convergence checks."
+    )
+  )
+```
+
+The failed random-effects fit had a maximum marginal gradient of 19.7 on
+`rec_pars`, a non-invertible Hessian, 61 `log_F` parameters at their configured
+bounds, and `FAIL` convergence status. These estimates remain diagnostic.
+
+```{r}
+#| label: fig-development-selectivity-ridges
+#| fig-cap: "Development comparison of relative fishery selectivity for ADMB, the Rceattle configuration, and the failed 2D age-by-year AR1 sensitivity."
+#| fig-alt: "Three side-by-side ridge plots compare relative fishery selectivity by age and year for ADMB, the Rceattle configuration, and the failed 2D age-by-year AR1 sensitivity."
+#| fig-width: 15
+#| fig-height: 10
+#| out-width: "100%"
+
+ggplot(
+  selectivity_ridges,
+  aes(
+    x = Age,
+    y = Year_factor,
+    height = Relative_selectivity,
+    fill = Model
+  )
+) +
+  ggridges::geom_ridgeline(
+    scale = 3.8,
+    alpha = 0.28,
+    color = "black",
+    linewidth = 0.2,
+    show.legend = FALSE
+  ) +
+  facet_wrap(vars(Model), nrow = 1) +
+  scale_fill_manual(values = c(
+    "ADMB reference" = "#1f78b4",
+    "Rceattle NonParametricPM" = "#1b9e77",
+    "Rceattle 2D AR1 (failed)" = "#d95f02"
+  )) +
+  scale_x_continuous(limits = c(1, 15), breaks = 1:15) +
+  labs(x = "Age", y = "Year") +
+  ggthemes::theme_few() +
+  theme(
+    strip.text = element_text(face = "bold"),
+    panel.spacing.x = grid::unit(1.2, "lines")
+  )
+```
+
+### A-6 Acronyms {.unnumbered}
+
+This appendix follows the glossary convention in the [Alaska Stock Assessment
+Report (`asar`) package](https://github.com/nmfs-ost/asar)
+[@schiano2026asar]. The project glossary uses ASAR's `\newacronym` format and
+adds terms specific to this Rceattle comparison. The quoted label "PM" is a
+model name.
+
+```{r}
+#| label: tbl-acronyms
+#| tbl-cap: "Acronyms used in this working paper."
+
+project_glossary |>
+  select(Acronym, Definition) |>
+  gt::gt() |>
+  gt::cols_width(
+    Acronym ~ gt::px(105),
+    Definition ~ gt::pct(75)
+  )
+```

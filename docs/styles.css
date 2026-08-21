@@ -9,3 +9,7 @@
   width: 100% !important;
   table-layout: auto;
 }
+/* Show the subsection list for the section currently active in the TOC. */
+#TOC > ul > li > ul.collapse.toc-expanded {
+  display: block;
+}
