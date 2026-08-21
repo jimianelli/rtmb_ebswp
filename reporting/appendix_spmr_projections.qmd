@@ -1,0 +1,154 @@
+---
+title: "RTMB EBS pollock: standalone spmR projection attachment"
+subtitle: "Projection inputs, seven Tier-3 alternatives, and reproducibility lineage"
+author: "James Ianelli"
+date: today
+date-format: "MMMM D, YYYY"
+bibliography: ../references/software.bib
+format:
+  html:
+    toc: true
+    number-sections: true
+    embed-resources: true
+    theme:
+      light: cosmo
+      dark: darkly
+execute:
+  echo: false
+  warning: false
+  message: false
+---
+
+```{r}
+#| label: setup
+#| include: false
+suppressPackageStartupMessages({
+  library(dplyr)
+  library(tidyr)
+  library(ggplot2)
+  library(ggthemes)
+  library(gt)
+})
+theme_set(ggthemes::theme_few())
+
+repo_root <- normalizePath("..", mustWork = TRUE)
+projection_dir <- file.path(repo_root, "analysis", "output", "spmR_projection")
+required_files <- file.path(
+  projection_dir,
+  c("base_lineage.csv", "projection_run_metadata.csv",
+    "tier3_seven_scenario_table.csv", "spm_detail.csv")
+)
+if (any(!file.exists(required_files))) {
+  stop("Run R/run_spmr_tier3_projection.R before rendering this attachment.")
+}
+lineage <- read.csv(required_files[1], check.names = FALSE)
+metadata <- read.csv(required_files[2], check.names = FALSE)
+tier3 <- read.csv(required_files[3], check.names = FALSE)
+detail <- read.csv(required_files[4], check.names = FALSE)
+if (metadata$spmR_version[1] != as.character(packageVersion("spmR"))) {
+  stop("Installed spmR version differs from the projection-run metadata.")
+}
+if (normalizePath(metadata$model_file[1], mustWork = TRUE) !=
+      normalizePath(lineage$model_file[1], mustWork = TRUE) ||
+    unname(tools::md5sum(metadata$model_file[1])) != lineage$model_md5[1]) {
+  stop("The saved RTMB fit differs from the fit used for these projections.")
+}
+alt_names <- setNames(paste0("Alt ", tier3$Alt, ": ", tier3$Scenario), tier3$Alt)
+detail <- detail |>
+  mutate(scenario = factor(alt_names[as.character(Alt)], levels = unname(alt_names)))
+```
+
+# Scope and lineage
+
+This standalone attachment applies `spmR` [@ianelli2026spmR] to the saved RTMB
+EBS pollock bridge. It embeds its tables and figures in one HTML file and does
+not depend on the SPoRC or Rceattle applications. The accepted ADMB assessment
+remains the management reference.
+
+```{r}
+#| label: tbl-rtmb-spmr-lineage
+#| tbl-cap: "RTMB and spmR identifiers used for this projection attachment."
+data.frame(
+  Item = c("Model", "RTMB fit", "Fit MD5", "spmR version", "Alternatives",
+           "Simulations", "Comparison years", "Generated"),
+  Value = c("RTMB EBS pollock", metadata$model_file[1], lineage$model_md5[1],
+            metadata$spmR_version[1], metadata$alternatives[1],
+            metadata$simulations[1], metadata$comparison_years[1],
+            metadata$generated[1])
+) |>
+  gt() |>
+  tab_header(title = "RTMB Projection Lineage")
+```
+
+# Seven Tier-3 scenario results
+
+```{r}
+#| label: tbl-rtmb-spmr-seven-scenarios
+#| tbl-cap: "Tier-3 projection results generated specifically from the RTMB EBS pollock bridge. Catch and biomass quantities are thousand t."
+tier3 |>
+  gt() |>
+  fmt_number(columns = matches("^(Catch|ABC|OFL|SSB)_"), decimals = 0) |>
+  fmt_number(columns = matches("^F_"), decimals = 3) |>
+  fmt_number(columns = matches("^B_B35_"), decimals = 2) |>
+  cols_label(
+    Alt = "Alternative",
+    Catch_2027 = "Catch", ABC_2027 = "ABC", OFL_2027 = "OFL",
+    SSB_2027 = md("$B$"), F_2027 = md("$F$"), B_B35_2027 = md("$B/B_{35\\%}$"),
+    Catch_2028 = "Catch", ABC_2028 = "ABC", OFL_2028 = "OFL",
+    SSB_2028 = md("$B$"), F_2028 = md("$F$"), B_B35_2028 = md("$B/B_{35\\%}$")
+  ) |>
+  tab_spanner(label = "2027", columns = ends_with("_2027")) |>
+  tab_spanner(label = "2028", columns = ends_with("_2028")) |>
+  tab_header(title = "Seven Tier-3 Projection Alternatives")
+```
+
+# Projection trajectories
+
+```{r}
+#| label: fig-rtmb-spmr-biomass
+#| fig-cap: "Projected spawning biomass by Tier-3 alternative. Lines show simulation medians and bands span the 5th to 95th percentiles; dashed lines mark B35%."
+#| fig-alt: "Seven-panel projection of spawning biomass, with a median line, uncertainty band, and dashed B35-percent reference in each panel."
+detail |>
+  group_by(scenario, Year) |>
+  summarize(
+    lower = quantile(SSB, 0.05), median = median(SSB), upper = quantile(SSB, 0.95),
+    B35 = first(B35), .groups = "drop"
+  ) |>
+  ggplot(aes(Year, median)) +
+  geom_ribbon(aes(ymin = lower, ymax = upper), fill = "#2b7a9b", alpha = 0.22) +
+  geom_line(color = "#102f3d", linewidth = 0.8) +
+  geom_line(aes(y = B35, linetype = "B35%"), color = "#4d4d4d") +
+  facet_wrap(~scenario, ncol = 2) +
+  scale_y_continuous(labels = scales::label_comma()) +
+  scale_linetype_manual(values = c("B35%" = "dashed")) +
+  labs(x = "Year", y = "Spawning biomass (thousand t)", linetype = "Reference") +
+  ggthemes::theme_few() +
+  theme(legend.position = "bottom")
+```
+
+```{r}
+#| label: fig-rtmb-spmr-removals
+#| fig-cap: "Median projected catch, ABC, and OFL by Tier-3 alternative."
+#| fig-alt: "Seven-panel projection chart with separate line types for median catch, ABC, and OFL."
+detail |>
+  select(scenario, Year, Catch, ABC, OFL) |>
+  pivot_longer(c(Catch, ABC, OFL), names_to = "quantity", values_to = "value") |>
+  group_by(scenario, Year, quantity) |>
+  summarize(value = median(value), .groups = "drop") |>
+  ggplot(aes(Year, value, linetype = quantity)) +
+  geom_line(color = "#102f3d", linewidth = 0.8) +
+  facet_wrap(~scenario, ncol = 2) +
+  scale_y_continuous(labels = scales::label_comma()) +
+  labs(x = "Year", y = "Thousand metric tons", linetype = "Quantity") +
+  ggthemes::theme_few() +
+  theme(legend.position = "bottom")
+```
+
+# Reproduction
+
+From the RTMB repository root:
+
+```text
+Rscript R/run_spmr_tier3_projection.R
+quarto render reporting/appendix_spmr_projections.qmd
+```
