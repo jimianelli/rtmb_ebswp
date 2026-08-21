@@ -1862,30 +1862,27 @@ below were provided by the EcoState case-study work [@goodman2026ecostatedsem].
 EcoState supplied covariate products; the Rceattle fits and their
 interpretation were developed separately for this working paper.
 
-The DSEM work is an exploratory extension rather than part of the final
-Rceattle configuration. All assessment comparisons, diagnostics, and
-projections in this report use the official Rceattle 5.8.1 release. Because
-that release does not include the DSEM interface, these recruitment runs use a
-locally labeled 5.8.1.9000 test build: the official 5.8.1 source
-(`r substr(dsem_design$official_base_commit, 1, 8)`) with the current DSEM
-addition (`r substr(dsem_design$dsem_patch_commit, 1, 8)`). This version record
-keeps the DSEM experiment separate from the released 5.8.1 package.
-
 ### Causal graph and covariate roles
 
-Environmentally informed recruitment models benefit from covariates linked to
-plausible mechanisms, evaluated at relevant temporal and spatial scales, and
-tested for predictive and management value; otherwise added complexity can
-produce unstable or spurious relationships [@haltuch2019recruitment]. DSEM
-provides a computational framework for representing simultaneous and lagged
-ecological pathways in incomplete multivariate time series
-[@thorson2024dsem]. Causal interpretation also requires checking whether the
-proposed graph is consistent with its implied conditional-independence
-relationships [@thorson2025validating]. A recent Gulf of Alaska pollock
-application embedded DSEM within a state-space stock assessment and found that
-an intermediate-complexity causal model reduced unexplained recruitment
-variance and improved one-year-ahead forecasts, illustrating the value of
-parsimonious, hypothesis-driven model comparison [@champagnat2026causal].
+The integration of DSEM within the Rceattle package is an enhancement that we
+think provides greater facility to account for broader ecological aspects
+within a management framework. Environmentally informed recruitment models
+benefit from covariates linked to plausible mechanisms, evaluated at relevant
+temporal and spatial scales, and tested for predictive and management value;
+otherwise added complexity can produce unstable or spurious relationships
+[@haltuch2019recruitment]. DSEM provides a computational framework for
+representing simultaneous and lagged ecological pathways in incomplete
+multivariate time series [@thorson2024dsem]. Here, causal-method testing means
+comparing prespecified graphs rather than searching for the strongest
+individual correlation. The tests ask whether the data are consistent with
+the graph's implied conditional-independence relationships, whether added
+edges improve prediction, and whether conclusions persist across alternative
+cohort timing, proxy, and missing-data assumptions [@thorson2025validating]. A
+recent Gulf of Alaska pollock application embedded DSEM within a state-space
+stock assessment and found that an intermediate-complexity causal model
+reduced unexplained recruitment variance and improved one-year-ahead
+forecasts, illustrating the value of parsimonious, hypothesis-driven model
+comparison [@champagnat2026causal].
 
 The conceptual pathway links spawning and environmental conditions to
 recruitment while identifying the two covariates used here within that broader
