@@ -58,7 +58,12 @@ Optional diagnostics and reports use:
 - cowplot
 - SparseNUTS
 - afscOSA
-- spmR
+- spmR (>= 0.3.0; required for the validated seven-scenario Tier 3 table)
+- generics
+- tibble
+- dplyr
+- yardstick (optional common fit metrics)
+- hardhat (optional weighted fit metrics)
 - reactable
 - htmlwidgets
 - webshot2
@@ -90,6 +95,17 @@ This file is generated and should not be committed.
 
 ## 4. Optional Diagnostics
 
+Build standardized `tidy()`, `glance()`, and `augment()` outputs for the saved
+custom RTMB, Rceattle, and SPoRC pollock fits with:
+
+```bash
+Rscript scripts/build_tidy_pollock_outputs.R
+```
+
+This cross-repository step expects the sibling directories `ebswp_rceattle`
+and `sporc_ebswp` beside this repository. When `yardstick` is installed, the
+script also writes grouped catch and index metrics.
+
 Run the BTS-only comparison:
 
 ```bash
@@ -109,10 +125,13 @@ Run a five-peel retrospective:
 Rscript R/run_retrospective.R
 ```
 
-Run the default SparseNUTS diagnostic:
+Run the hierarchical Form-2 SparseNUTS diagnostic with the sparse metric and
+`adapt_delta = 0.95`:
 
 ```bash
-Rscript R/run_sparsenuts_default.R
+SPARSENUTS_FORMS=2 SPARSENUTS_METRIC=sparse \
+SPARSENUTS_ADAPT_DELTA=0.95 SPARSENUTS_OUTPUT_TAG=sparse_adapt095 \
+Rscript R/run_sparsenuts_fishery_sel_forms.R
 ```
 
 ## 5. Render Report
@@ -120,16 +139,18 @@ Rscript R/run_sparsenuts_default.R
 After creating the required generated outputs:
 
 ```bash
-quarto render reporting/ebs_pollock_rtmb_ebswp_assessment.qmd
+quarto render
 ```
 
 To force the SparseNUTS run during render:
 
 ```bash
-quarto render reporting/ebs_pollock_rtmb_ebswp_assessment.qmd -P run_sparsenuts:true
+quarto render -P run_sparsenuts:true
 ```
 
-Rendered HTML is generated output and should not be committed.
+The project writes publishable HTML directly to `docs/`. Commit those two
+published pages when releasing an update. HTML under `reporting/` is a local
+artifact and remains ignored.
 
 ## 6. Archival Checklist
 

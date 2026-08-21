@@ -63,7 +63,7 @@ Rscript analysis/Run_rpm.R
 To render the diagnostics report after generating required outputs:
 
 ```bash
-quarto render reporting/ebs_pollock_rtmb_ebswp_assessment.qmd
+quarto render
 ```
 
 To rebuild the fixed-parameter September 2025 bridge and every published
@@ -76,6 +76,32 @@ Rscript R/rebuild_bridge_products.R
 
 The rebuild stops if any downstream product records a different `base.rds`
 checksum.
+
+## Common tidy model interface
+
+`R/tidy-pollock-fit.R` provides a table-backed `pollock_fit` class with
+`generics::tidy()`, `generics::glance()`, and `generics::augment()` methods.
+Adapters currently read the saved custom RTMB, Rceattle, and SPoRC pollock
+objects without requiring their live automatic-differentiation objects.
+
+Build the cross-implementation tables with:
+
+```bash
+Rscript scripts/build_tidy_pollock_outputs.R
+```
+
+The ignored `analysis/output/tidy/` directory then contains a serialized list
+of `pollock_fit` objects and CSV tables for model summaries, parameters and
+derived quantities, and observed--predicted pairs. Legacy custom RTMB files do
+not retain the active parameter map, so their full parameter states are marked
+`fixed_input`; newly generated fishery-selectivity runs save an explicit active
+fixed-effect table.
+
+`pollock_fit_metrics()` uses `yardstick` when installed. Its defaults calculate
+RMSE, MAE, and traditional R-squared only for catch and index observations,
+grouped by engine, model, data type, and fleet. Age-composition rows remain
+available from `augment()` for likelihood-specific and OSA diagnostics but are
+excluded from the default yardstick summary.
 
 ## Likelihood profiles
 
@@ -151,7 +177,7 @@ The complete experiment ladder is in
 `R/run_double_logistic_experiments.R`. Its outputs are written to the ignored
 `analysis/output/double_logistic_experiments/` directory. The fitted comparison
 and selectivity surfaces are documented in
-`docs/fishery_selectivity.html#fishery-selectivity-surfaces`.
+`docs/appendix_fishery_selectivity.html#fishery-selectivity-surfaces`.
 
 Run the focused helper tests with:
 

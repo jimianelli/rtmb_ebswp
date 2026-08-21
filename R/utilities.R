@@ -540,7 +540,8 @@ read_model_inputs <- function(fn) {
   return(data)
 }
 
-Get_Data <- function() {
+Get_Data <- function(bts_comp_normalization = c("legacy_age2plus", "full_ages")) {
+  bts_comp_normalization <- match.arg(bts_comp_normalization)
   #--Includes PRELIMINARY Calcs stuff too-------
   data <- build_model_inputs(here::here("runs","rtmb", "pm.dat"), 
                             fn = here::here("runs","data", "pm_24.dat"))
@@ -592,7 +593,12 @@ Get_Data <- function() {
         data$std_ob_bts[i] <- data$ob_bts_std[i]
         data$ot_bts[i] <- sum(data$oac_bts[i, data$mina_bts:data$nages])
         # data$ob_bts[i] <- data$obs_bts_data[i]
-        p <- data$oac_bts[i, ] / data$ot_bts[i]
+        bts_comp_total <- if (bts_comp_normalization == "full_ages") {
+          sum(data$oac_bts[i, ])
+        } else {
+          data$ot_bts[i]
+        }
+        p <- data$oac_bts[i, ] / bts_comp_total
         data$oac_bts[i, ] <- p
         data$age_like_offset[igear] <- data$age_like_offset[igear] -
           floor(data$sam_bts[i]) * sum(p * log(p + MN_const))
@@ -609,6 +615,8 @@ Get_Data <- function() {
       }
     }
   }
+
+  data$bts_comp_normalization <- bts_comp_normalization
 
   # Length likelihood offset
   data$len_like_offset <- data$len_like_offset -

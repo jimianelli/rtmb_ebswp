@@ -1,0 +1,8 @@
+project:
+  type: default
+  output-dir: docs
+  post-render: scripts/publish_quarto_outputs.sh
+  render:
+    - reporting/ebs_pollock_rtmb_ebswp_assessment.qmd
+    - reporting/appendix_spmr_projections.qmd
+    - reporting/appendix_fishery_selectivity.qmd

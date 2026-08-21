@@ -22,6 +22,15 @@ rpm <- function(parms) {
   if (!exists("fishery_sel_old_age_cap", inherits = FALSE)) {
     fishery_sel_old_age_cap <- 0L
   }
+  if (!exists("include_ats_index", inherits = FALSE)) {
+    include_ats_index <- 1
+  }
+  if (!exists("include_ats_age1_index", inherits = FALSE)) {
+    include_ats_age1_index <- 1
+  }
+  if (!exists("include_avo_index", inherits = FALSE)) {
+    include_avo_index <- 1
+  }
   if (!exists("sel_tv_ar1_fsh", inherits = FALSE)) {
     sel_tv_ar1_fsh <- matrix(0, endyr - styr + 1L, nages)
   }
@@ -111,6 +120,14 @@ rpm <- function(parms) {
   )
   log_sel_ats <- tmp$log_sel
   avgsel_ats <- tmp$avgsel
+  if (exists("retro_terminal_selectivity_copy", inherits = FALSE) &&
+      as.integer(retro_terminal_selectivity_copy)[1] == 1L) {
+    log_sel_fsh[nrow(log_sel_fsh), ] <- log_sel_fsh[nrow(log_sel_fsh) - 1L, ]
+    log_sel_bts[nrow(log_sel_bts), ] <- log_sel_bts[nrow(log_sel_bts) - 1L, ]
+    log_sel_ats[nrow(log_sel_ats), ] <- log_sel_ats[nrow(log_sel_ats) - 1L, ]
+    sel_fsh <- exp(log_sel_fsh)
+    sel_bts <- exp(log_sel_bts)
+  }
   #--get mortality rates--------------
   # OjO move to data
   nyrs <- endyr - styr + 1
@@ -533,10 +550,10 @@ rpm <- function(parms) {
   NLL <- numeric(20) # Initialize NLL vector
   NLL[1] <- cat_like
   NLL[2] <- bts_like
-  NLL[3] <- ats_like
-  NLL[4] <- ats_age1_like
+  NLL[3] <- include_ats_index * ats_like
+  NLL[4] <- include_ats_age1_index * ats_age1_like
   NLL[5] <- cpue_like
-  NLL[6] <- avo_like
+  NLL[6] <- include_avo_index * avo_like
   NLL[7] <- sum(rec_like$rec_like)
   NLL[9] <- Fpen_like
   NLL[10] <- age_like[1] #- age_like_offset[1]

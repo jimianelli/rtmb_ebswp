@@ -46,13 +46,14 @@ resolve_pollock_root <- function(rtmb_dir) {
 pollock_root <- resolve_pollock_root(rtmb_dir)
 
 forms <- as.integer(strsplit(Sys.getenv("SPARSENUTS_FORMS", "2"), ",", fixed = TRUE)[[1]])
-chains <- as.integer(Sys.getenv("SPARSENUTS_CHAINS", "8"))
+chains <- as.integer(Sys.getenv("SPARSENUTS_CHAINS", "4"))
 cores <- as.integer(Sys.getenv("SPARSENUTS_CORES", as.character(min(chains, 8L))))
-iter <- as.integer(Sys.getenv("SPARSENUTS_ITER", "2000"))
-warmup <- as.integer(Sys.getenv("SPARSENUTS_WARMUP", as.character(floor(iter / 2))))
+iter <- as.integer(Sys.getenv("SPARSENUTS_ITER", "1150"))
+warmup <- as.integer(Sys.getenv("SPARSENUTS_WARMUP", "150"))
 seed <- as.integer(Sys.getenv("SPARSENUTS_SEED", "123"))
-metric <- Sys.getenv("SPARSENUTS_METRIC", "diag")
-output_tag <- Sys.getenv("SPARSENUTS_OUTPUT_TAG", "")
+metric <- Sys.getenv("SPARSENUTS_METRIC", "sparse")
+adapt_delta <- as.numeric(Sys.getenv("SPARSENUTS_ADAPT_DELTA", "0.95"))
+output_tag <- Sys.getenv("SPARSENUTS_OUTPUT_TAG", "sparse_adapt095")
 reuse_q_file <- Sys.getenv("SPARSENUTS_REUSE_Q_FILE", "")
 skip_plots <- tolower(Sys.getenv("SPARSENUTS_SKIP_PLOTS", "false")) %in%
   c("1", "true", "yes")
@@ -172,7 +173,9 @@ run_one <- function(form) {
 
   # Run MCMC
   cat("Configuration:", chains, "chains;", iter, "iterations;", warmup,
-      "warmup;", cores, "cores; metric", metric, ".\n")
+      "warmup;", cores, "cores; metric", metric,
+      "; adapt_delta", adapt_delta, ".\n")
+  started <- Sys.time()
   fit <- SparseNUTS::sample_snuts(
     obj,
     chains = chains,
@@ -182,11 +185,17 @@ run_one <- function(form) {
     seed = seed,
     init = "last.par.best",
     metric = metric,
+    control = list(adapt_delta = adapt_delta),
     Q = reused_q,
     skip_cor = skip_cor,
     globals = list(data = data)
   )
+  finished <- Sys.time()
+  base_file <- file.path(rtmb_dir, "analysis", "output", "base.rds")
+  base_saved <- if (file.exists(base_file)) readRDS(base_file) else NULL
   attr(fit, "rtmb_ebswp_sparsenuts") <- list(
+    runner = "R/run_sparsenuts_fishery_sel_forms.R",
+    model = "hierarchical Form-2 double-logistic RTMB model",
     fishery_sel_form = form,
     hierarchical_form2 = form == 2L,
     form2_cv = if (form == 2L) form2_cv else NA_real_,
@@ -196,8 +205,17 @@ run_one <- function(form) {
     warmup = warmup,
     seed = seed,
     metric = metric,
+    adapt_delta = adapt_delta,
+    base_lineage = list(
+      file = if (file.exists(base_file)) normalizePath(base_file) else NA_character_,
+      md5 = if (file.exists(base_file)) unname(tools::md5sum(base_file)) else NA_character_,
+      created = base_saved$metadata$created %||% NA
+    ),
     reused_q_file = if (nzchar(reuse_q_file)) reuse_q_file else NA_character_,
     created = Sys.time(),
+    started = started,
+    finished = finished,
+    elapsed_seconds = as.numeric(difftime(finished, started, units = "secs")),
     execution = paste0("parallel sampling requested with cores=", cores)
   )
   saveRDS(fit, fit_file)

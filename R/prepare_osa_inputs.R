@@ -11,8 +11,16 @@ setwd(rtmb_dir)
 source(file.path(rtmb_dir, "R", "config.R"))
 rtmb_dir <- normalizePath(here::here(), mustWork = TRUE)
 
-model_file <- file.path(rtmb_dir, "analysis", "output", "base.rds")
-output_file <- file.path(rtmb_dir, "analysis", "output", "osa_inputs.rds")
+default_model_file <- if (identical(bridge_case, "corrected_full_age_bts")) {
+  file.path(rtmb_dir, "analysis", "output", "corrected_full_age_bts", "rtmb_base.rds")
+} else {
+  file.path(rtmb_dir, "analysis", "output", "base.rds")
+}
+model_file <- Sys.getenv("RTMB_OSA_MODEL_FILE", unset = default_model_file)
+output_file <- Sys.getenv(
+  "RTMB_OSA_INPUT_FILE",
+  unset = file.path(rtmb_dir, "analysis", "output", "osa_inputs.rds")
+)
 
 if (!file.exists(model_file)) {
   stop("Missing saved RTMB output at: ", model_file)
@@ -66,6 +74,8 @@ osa_inputs <- lapply(osa_inputs, function(x) {
 attr(osa_inputs, "lineage") <- list(
   base_file = normalizePath(model_file, mustWork = TRUE),
   base_md5 = unname(tools::md5sum(model_file)),
+  configuration = saved$metadata$configuration,
+  bts_comp_normalization = saved$metadata$bts_comp_normalization,
   prepared = Sys.time(),
   r_version = R.version.string,
   excluded_zero_information_years = dropped_rows

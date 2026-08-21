@@ -17,14 +17,8 @@ source(config_path)
 # config.R intentionally clears its sourcing environment to reproduce the
 # historical bridge setup, so resolve the repository root again afterward.
 rtmb_dir <- normalizePath(getwd(), mustWork = TRUE)
-admb_rep_path <- normalizePath(
-  file.path(rtmb_dir, "admb", "runs", "for_rtmb", "pm.rep"),
-  mustWork = TRUE
-)
-admb_par_path <- normalizePath(
-  file.path(rtmb_dir, "admb", "runs", "for_rtmb", "pm.par"),
-  mustWork = TRUE
-)
+admb_rep_path <- normalizePath(file.path(admb_run_dir, "pm.rep"), mustWork = TRUE)
+admb_par_path <- normalizePath(file.path(admb_run_dir, "pm.par"), mustWork = TRUE)
 
 return_nll_only <- FALSE
 data$return_nll_only <- 0
@@ -50,7 +44,16 @@ if (is.null(rtmb_report)) {
 output_dir <- file.path(rtmb_dir, "analysis", "output")
 dir.create(output_dir, showWarnings = FALSE, recursive = TRUE)
 
-output_path <- file.path(output_dir, "base.rds")
+output_name <- Sys.getenv(
+  "EBSWP_OUTPUT_FILE",
+  unset = if (bridge_case == "legacy_pm_bridge") {
+    "base.rds"
+  } else {
+    file.path(bridge_case, "rtmb_base.rds")
+  }
+)
+output_path <- file.path(output_dir, output_name)
+dir.create(dirname(output_path), showWarnings = FALSE, recursive = TRUE)
 bridge_comparison <- compare_max_pct(rtmb_report, pm, tolerance = 1e-5)
 key_variables <- c(
   "N", "Z", "F", "M", "S", "pred_catch", "SSB", "pred_cpue",
@@ -71,7 +74,13 @@ bridge_metrics <- list(
   maximum_key_percent_difference = max(
     key_comparison$max_abs_pct_diff, na.rm = TRUE
   ),
-  maximum_absolute_gradient = max(abs(obj$gr()), na.rm = TRUE)
+  maximum_absolute_gradient = max(abs(obj$gr()), na.rm = TRUE),
+  maximum_bts_observed_sum_error = max(
+    abs(rowSums(data$oac_bts) - 1), na.rm = TRUE
+  ),
+  maximum_bts_predicted_sum_error = max(
+    abs(rowSums(rtmb_report$phat_bts) - 1), na.rm = TRUE
+  )
 )
 saveRDS(
   list(
@@ -79,7 +88,8 @@ saveRDS(
     bridge_comparison = bridge_comparison,
     metadata = list(
       model = "rtmb_ebswp",
-      configuration = "September 2025 fixed-parameter ADMB-to-RTMB bridge",
+      configuration = bridge_case,
+      bts_comp_normalization = bts_comp_normalization,
       created = Sys.time(),
       admb_rep = admb_rep_path,
       admb_par = admb_par_path,
