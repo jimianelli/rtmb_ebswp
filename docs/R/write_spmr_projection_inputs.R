@@ -40,7 +40,8 @@ write_spm_dat <- function(output_file, begin_year, alt_list = 1:7,
   writeLines(lines, output_file)
 }
 
-write_rceattle_pm_prj <- function(fit, output_file) {
+write_rceattle_pm_prj <- function(fit, output_file,
+                                  n_selectivity_years = 5L) {
   d <- fit$data_list
   q <- fit$quantities
   terminal_year <- as.integer(d$endyr)
@@ -48,13 +49,26 @@ write_rceattle_pm_prj <- function(fit, output_file) {
   iy <- match(terminal_year, years)
   if (is.na(iy)) stop("Rceattle terminal year is absent from N_at_age.")
 
-  terminal_rows <- max(1L, iy - 4L):iy
-  avg_f <- mean(as.numeric(q$F_spp[1, terminal_rows]), na.rm = TRUE)
+  n_selectivity_years <- as.integer(n_selectivity_years)
+  if (length(n_selectivity_years) != 1L || is.na(n_selectivity_years) ||
+      n_selectivity_years < 1L || n_selectivity_years > iy) {
+    stop("n_selectivity_years must identify available terminal assessment years.")
+  }
+
+  recent_rows <- seq.int(iy - n_selectivity_years + 1L, iy)
+  recent_years <- years[recent_rows]
+  avg_f <- mean(as.numeric(q$F_spp[1, recent_rows]), na.rm = TRUE)
   wt_spawn <- age_values(d$weight[d$weight$Wt_index == d$ssb_wt_index & d$weight$Year == terminal_year, ][1, ])
   wt_fishery <- age_values(d$weight[d$weight$Wt_index == 1 & d$weight$Year == terminal_year, ][1, ])
   maturity <- age_values(d$maturity[1, ])
   natmort <- as.numeric(q$M_at_age[1, 1, , iy])
-  selectivity <- as.numeric(q$sel_at_age[1, 1, , iy])
+  selectivity_by_year <- matrix(
+    as.numeric(q$sel_at_age[1, 1, , recent_rows, drop = FALSE]),
+    nrow = d$nages,
+    ncol = length(recent_rows),
+    dimnames = list(Age = seq_len(d$nages), Year = recent_years)
+  )
+  selectivity <- rowMeans(selectivity_by_year)
   natage <- as.numeric(q$N_at_age[1, 1, , iy])
   recruitment <- as.numeric(q$R[1, match(1978:terminal_year, years)])
   ssb <- as.numeric(q$ssb[1, match(1977:(terminal_year - 1L), years)])
@@ -82,10 +96,19 @@ write_rceattle_pm_prj <- function(fit, output_file) {
   )
   writeLines(lines, output_file)
 
-  data.frame(
-    Age = seq_len(d$nages), Spawning_weight = wt_spawn,
-    Fishery_weight = wt_fishery, Maturity = maturity / max(maturity),
-    Natural_mortality = natmort, Selectivity = selectivity
+  list(
+    schedules = data.frame(
+      Age = seq_len(d$nages), Spawning_weight = wt_spawn,
+      Fishery_weight = wt_fishery, Maturity = maturity / max(maturity),
+      Natural_mortality = natmort, Selectivity = selectivity
+    ),
+    selectivity_history = data.frame(
+      Year = rep(recent_years, each = d$nages),
+      Age = rep(seq_len(d$nages), times = length(recent_years)),
+      Selectivity = as.numeric(selectivity_by_year)
+    ),
+    selectivity_years = recent_years,
+    average_f = avg_f
   )
 }
 
@@ -93,7 +116,7 @@ write_spmr_projection_inputs <- function(
     method_file = "results/canonical_pm/ebs_pollock_method_fits.rds",
     output_dir = "results/canonical_pm/spmR_projection", alt_list = 1:7,
     fixed_catches = c(1350, 1350), nproj_years = 14, nsims = 1000,
-    run_name = "rceattle_ebswp",
+    run_name = "rceattle_ebswp", n_selectivity_years = 5L,
     template_dir = "/Users/jim/_mymods/pollock/rtmb_ebswp/analysis/output/spmR_projection") {
   method_file <- normalizePath(method_file, mustWork = TRUE)
   output_dir <- normalizePath(output_dir, mustWork = FALSE)
@@ -101,7 +124,11 @@ write_spmr_projection_inputs <- function(
   fits <- readRDS(method_file)
   fit <- fits$nonparametric_pm
 
-  schedules <- write_rceattle_pm_prj(fit, file.path(output_dir, "pm.prj"))
+  projection_inputs <- write_rceattle_pm_prj(
+    fit,
+    file.path(output_dir, "pm.prj"),
+    n_selectivity_years = n_selectivity_years
+  )
   write_spm_dat(file.path(output_dir, "spm.dat"), fit$data_list$endyr + 1L,
                 alt_list, fixed_catches, nproj_years, nsims, run_name)
   for (item in c("tacpar.dat", "spm")) {
@@ -110,19 +137,37 @@ write_spmr_projection_inputs <- function(
     file.copy(source, file.path(output_dir, item), overwrite = TRUE)
   }
   Sys.chmod(file.path(output_dir, "spm"), "0755")
-  utils::write.csv(schedules, file.path(output_dir, "age_schedules.csv"), row.names = FALSE)
+  utils::write.csv(
+    projection_inputs$schedules,
+    file.path(output_dir, "age_schedules.csv"),
+    row.names = FALSE
+  )
+  utils::write.csv(
+    projection_inputs$selectivity_history,
+    file.path(output_dir, "fishery_selectivity_recent_years.csv"),
+    row.names = FALSE
+  )
 
-  files <- file.path(output_dir, c("spm.dat", "pm.prj", "tacpar.dat", "spm", "age_schedules.csv"))
+  files <- file.path(output_dir, c(
+    "spm.dat", "pm.prj", "tacpar.dat", "spm", "age_schedules.csv",
+    "fishery_selectivity_recent_years.csv"
+  ))
   manifest <- data.frame(
     file = basename(files),
     role = c("SPM setup", "Rceattle-derived species input", "TAC parameters",
-             "SPM executable", "Rceattle-derived age schedules"),
+             "SPM executable", "Rceattle-derived age schedules",
+             "Annual fishery selectivity used in the recent-year average"),
     exists = file.exists(files), md5 = unname(tools::md5sum(files))
   )
   utils::write.csv(manifest, file.path(output_dir, "manifest.csv"), row.names = FALSE)
   utils::write.csv(data.frame(
     source_file = method_file, source_md5 = unname(tools::md5sum(method_file)),
     fit = "nonparametric_pm", terminal_year = fit$data_list$endyr,
+    fishery_selectivity_rule = "arithmetic mean of annual selectivity-at-age",
+    fishery_selectivity_years = paste(projection_inputs$selectivity_years, collapse = ";"),
+    fishery_selectivity_year_count = length(projection_inputs$selectivity_years),
+    fishing_mortality_years = paste(projection_inputs$selectivity_years, collapse = ";"),
+    recent_average_f = projection_inputs$average_f,
     generated = as.character(Sys.time()), Rceattle = as.character(utils::packageVersion("Rceattle")),
     spmR = as.character(utils::packageVersion("spmR")),
     spmR_commit = "e86fc6aa6f48a4de29d1deba0e8bd1df93b8717f",

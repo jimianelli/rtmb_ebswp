@@ -923,6 +923,9 @@ file_inventory <- tibble::tribble(
   "Diagnostics script", "Local R script", params$diagnostics_script,
   "Next-assessment update script", "Local R script", params$update_script,
   "ADMB comparison script", "Local R script", params$admb_comparison_script,
+  "Rceattle-to-SPM input writer", "Local R script", "R/write_spmr_projection_inputs.R",
+  "spmR Tier 3 projection runner", "Local R script", "R/run_spmr_tier3_projection.R",
+  "SPM projection manifest", "Local CSV file", file.path(params$projection_dir, "manifest.csv"),
   "Exploratory DSEM script", "Local R script", params$dsem_script,
   "DSEM model comparison", "Local CSV file", params$dsem_summary_file,
   "DSEM recruitment-path estimates", "Local CSV file", params$dsem_paths_file,
@@ -1592,12 +1595,14 @@ fishery input for the Standard Projection Model calculations implemented in
 `spmR` [@ianelli2026spmR]. The run uses `spmR` version 0.3.0 from pinned
 main-branch commit `e86fc6aa`. The adapter in
 `R/write_spmr_projection_inputs.R` writes terminal abundance, natural
-mortality, maturity, spawning and fishery weights, terminal fishery
-selectivity, recruitment, and spawning-biomass histories to `pm.prj`. The
-reproducible runner `R/run_spmr_tier3_projection.R` then applies those inputs
-to all seven Tier 3 alternatives. The report reads the saved projection
-products, so every table and figure in this section comes from the same saved
-Rceattle fit.
+mortality, maturity, spawning and fishery weights, the arithmetic mean of
+fishery selectivity-at-age over the most recent five assessment years
+(2020--2024), recruitment, and spawning-biomass histories to `pm.prj`. The
+same five years define the recent average fishing mortality. The reproducible
+runner `R/run_spmr_tier3_projection.R` then applies those inputs to all seven
+Tier 3 alternatives. The report reads the saved projection products, so every
+table and figure in this section comes from the same saved Rceattle fit. The
+complete field mapping and validation sequence are documented in Appendix A-2.
 
 ```{r}
 #| label: spmr-projection-products
@@ -1612,6 +1617,10 @@ spmr_lineage <- readr::read_csv(
 )
 spmr_age_schedules <- readr::read_csv(
   file.path(projection_dir, "age_schedules.csv"), show_col_types = FALSE
+)
+spmr_selectivity_history <- readr::read_csv(
+  file.path(projection_dir, "fishery_selectivity_recent_years.csv"),
+  show_col_types = FALSE
 )
 spmr_detail <- readr::read_csv(
   file.path(projection_dir, "spm_detail.csv"), show_col_types = FALSE
@@ -1640,21 +1649,37 @@ spmr_alt_desc <- tibble(
 
 ```{r}
 #| label: tbl-spmr-projection-files
-#| tbl-cap: "Projection files generated from the saved Rceattle fit for the spmR/SPM calculations."
+#| tbl-cap: "Projection files generated from the saved Rceattle fit for the spmR/SPM calculations. Checksums show the first eight MD5 characters; the complete values are retained in manifest.csv."
+#| tbl-pos: "H"
 spmr_manifest |>
-  select(file, role, exists, md5) |>
+  transmute(
+    file,
+    role,
+    exists,
+    checksum = substr(md5, 1, 8)
+  ) |>
   gt() |>
+  cols_width(
+    file ~ px(200),
+    role ~ px(300),
+    exists ~ px(50),
+    checksum ~ px(70)
+  ) |>
+  tab_options(table.font.size = px(8)) |>
   tab_header(title = "spmR Projection Files")
 ```
 
 ```{r}
 #| label: tbl-spmr-projection-settings
 #| tbl-cap: "Key settings and source information for the Rceattle-derived SPM projection."
+#| tbl-pos: "H"
 tibble(
   Item = c(
     "Rceattle source fit", "Source checksum", "Composition likelihood",
     "Composition sample sizes", "spmR version", "spmR commit",
     "Terminal assessment year",
+    "Fishery selectivity rule", "Fishery selectivity years",
+    "Recent average-F years",
     "Spawning timing", "Rceattle encoding", "SPM encoding",
     "Timing compatibility check", "Spawning-biomass timing convention", "Projection begin year",
     "Projection years", "Simulations", "Alternatives"
@@ -1665,6 +1690,9 @@ tibble(
     spmr_lineage$composition_sample_sizes,
     spmr_lineage$spmR, substr(spmr_lineage$spmR_commit, 1, 8),
     spmr_lineage$terminal_year,
+    spmr_lineage$fishery_selectivity_rule,
+    gsub(";", ", ", spmr_lineage$fishery_selectivity_years),
+    gsub(";", ", ", spmr_lineage$fishing_mortality_years),
     "0.25 year from January 1 (start of April)",
     "spawn_month = 3 elapsed months; 3/12 = 0.25",
     "Spawnmo = 4 as a one-based calendar-month code; (4 - 1)/12 = 0.25",
@@ -1674,14 +1702,26 @@ tibble(
   )
 ) |>
   gt() |>
+  cols_width(
+    Item ~ px(185),
+    Value ~ px(420)
+  ) |>
+  tab_options(table.font.size = px(9)) |>
   tab_header(title = "Generated SPM Setup and Source Information")
 ```
 
 ```{r}
 #| label: tbl-spmr-alternative-descriptions
 #| tbl-cap: "SPM projection alternatives included in the generated setup file."
+#| tbl-pos: "H"
 spmr_alt_desc |>
   gt() |>
+  cols_width(
+    Alternative ~ px(65),
+    Name ~ px(170),
+    Description ~ px(370)
+  ) |>
+  tab_options(table.font.size = px(9)) |>
   tab_header(title = "SPM Projection Alternatives")
 ```
 
@@ -1695,22 +1735,39 @@ from 1,000 SPM simulations.
 ```{r}
 #| label: tbl-spmr-tier3-seven-scenarios
 #| tbl-cap: 'Tier 3 projection results for all seven FMP alternatives using inputs generated from the Rceattle EBS pollock model. Catch and biomass quantities are in thousand t; B/B~35%~ is spawning biomass relative to the Tier 3 B~35%~ proxy.'
+#| tbl-pos: "H"
 readr::read_csv(
   file.path(projection_dir, "tier3_seven_scenario_table.csv"),
   show_col_types = FALSE
 ) |>
+  pivot_longer(
+    cols = -c(Alt, Scenario),
+    names_to = c(".value", "Year"),
+    names_pattern = "(.+)_(\\d{4})"
+  ) |>
+  mutate(Year = as.integer(Year)) |>
+  rename(`B/B35` = B_B35) |>
+  arrange(Alt, Year) |>
   gt() |>
-  fmt_number(columns = matches("^(Catch|ABC|OFL|SSB)_"), decimals = 0) |>
-  fmt_number(columns = matches("^F_"), decimals = 3) |>
-  fmt_number(columns = matches("^B_B35_"), decimals = 2) |>
-  tab_spanner(label = "2027", columns = ends_with("_2027")) |>
-  tab_spanner(label = "2028", columns = ends_with("_2028")) |>
+  fmt_number(columns = c(Catch, ABC, OFL, SSB), decimals = 0) |>
+  fmt_number(columns = F, decimals = 3) |>
+  fmt_number(columns = `B/B35`, decimals = 2) |>
+  cols_width(
+    Alt ~ px(35),
+    Scenario ~ px(175),
+    Year ~ px(45),
+    c(Catch, ABC, OFL, SSB) ~ px(58),
+    F ~ px(45),
+    `B/B35` ~ px(55)
+  ) |>
+  tab_options(table.font.size = px(8)) |>
   tab_header(title = "Seven Tier 3 Projection Alternatives")
 ```
 
 ```{r}
 #| label: tbl-spmr-projection-age-schedules
-#| tbl-cap: "Age-specific schedules generated from the terminal-year Rceattle fit and applied in SPM."
+#| tbl-cap: "Age-specific schedules applied in SPM. Natural mortality, maturity, and weights come from the terminal Rceattle configuration; fishery selectivity is the arithmetic mean at age over 2020--2024."
+#| tbl-pos: "H"
 spmr_age_schedules |>
   gt() |>
   fmt_number(columns = -Age, decimals = 3) |>
@@ -2609,7 +2666,150 @@ session_text <- capture.output(sessionInfo()) |>
 cat(session_text, sep = "\n")
 ```
 
-### A-2 Model fitting details {.unnumbered}
+### A-2 Rceattle-to-spmR projection bridge {.unnumbered}
+
+The projection bridge is a deterministic file adapter rather than a second
+assessment fit. The [input writer](R/write_spmr_projection_inputs.R) reads the
+saved `nonparametric_pm` Rceattle object, extracts the population state,
+biological schedules, fishery schedule, and historical series needed by the
+Standard Projection Model (SPM), and writes them in the SPM `pm.prj` format.
+It also writes the projection controls in `spm.dat`. The
+[projection runner](R/run_spmr_tier3_projection.R) passes those files to
+`spmR::runSPM(..., engine = "admb")`, which executes the validated SPM binary
+and returns the simulation-level output used by the report.
+
+The adapter preserves the terminal assessment state and makes each conversion
+explicit (@tbl-spmr-bridge-fields). Numbers at age, natural mortality, and the
+weight schedules are passed on their Rceattle scales. With abundance in
+millions of fish and weight in kilograms, their product has units of thousand
+metric tons. Maturity is divided by its maximum, matching the SPM input
+convention used for this stock. The spawning-month encodings differ by one
+because Rceattle records elapsed months and SPM uses a one-based calendar
+month; both represent survival through 0.25 of the year.
+
+```{r}
+#| label: tbl-spmr-bridge-fields
+#| tbl-cap: "Mapping from the saved Rceattle fit to the SPM species input file."
+#| tbl-pos: "H"
+
+tibble::tribble(
+  ~SPM_field, ~Rceattle_source, ~Transformation_and_years,
+  "Average recent F", "quantities: F_spp", "Arithmetic mean for 2020--2024; used by Alternative 3",
+  "Natural mortality at age", "quantities: M_at_age", "Terminal-year schedule (2024)",
+  "Maturity at age", "data_list: maturity", "Divided by its maximum to match the SPM convention",
+  "Spawning weight at age", "data_list: weight and ssb_wt_index", "Terminal-year spawning-weight schedule",
+  "Fishery weight at age", "data_list: weight, fishery index", "Terminal-year fishery-weight schedule",
+  "Fishery selectivity at age", "quantities: sel_at_age for Fishery", "Arithmetic mean at each age for 2020--2024",
+  "Terminal numbers at age", "quantities: N_at_age", "Terminal assessment state (2024)",
+  "Recruitment history", "quantities: R", "Annual age-1 recruitment for 1978--2024",
+  "Spawning-biomass history", "quantities: ssb", "Annual spawning biomass for 1977--2023",
+  "Spawning month", "data_list: spawn_month = 3", "Written as SPM Spawnmo = 4; both equal 0.25 year"
+) |>
+  gt() |>
+  cols_label(
+    SPM_field = "SPM field",
+    Rceattle_source = "Rceattle source",
+    Transformation_and_years = "Transformation and years"
+  ) |>
+  cols_width(
+    SPM_field ~ px(145),
+    Rceattle_source ~ px(185),
+    Transformation_and_years ~ px(280)
+  )
+```
+
+Annual Rceattle fishery selectivity is already normalized to a mean of one
+across ages. The projection schedule is calculated as the arithmetic mean at
+each age across 2020--2024; averaging these normalized annual curves retains a
+mean of one. This five-year schedule replaces the former terminal-year-only
+curve. The writer saves the five contributing curves in
+`fishery_selectivity_recent_years.csv`, the applied average in
+`age_schedules.csv`, and the rule and exact years in `lineage.csv`. Thus the
+projection input can be reconstructed without reading values back from the
+formatted `pm.prj` file.
+
+The `spm.dat` file starts projections in 2025, runs 14 projection years and
+1,000 simulations, and requests all seven Tier 3 alternatives. Catch is fixed
+at 1,350 thousand t in 2025 and 2026 before the alternatives diverge. A
+separate call uses Alternative 2 with catch fixed at 1,300 thousand t for
+2025--2032. The writer copies the validated SPM executable and `tacpar.dat`
+control file into each run directory. `manifest.csv` records the role,
+presence, and MD5 checksum of every required input, while `lineage.csv`
+records the Rceattle source checksum, terminal year, Rceattle and spmR
+versions, selectivity rule, and averaging years.
+
+The saved products passed the bridge checks in @tbl-spmr-bridge-checks. These
+checks establish file and field consistency; they do not replace review of the
+harvest assumptions or the biological appropriateness of a five-year
+selectivity average.
+
+```{r}
+#| label: tbl-spmr-bridge-checks
+#| tbl-cap: "Automated consistency checks for the Rceattle-to-spmR projection bridge."
+#| tbl-pos: "H"
+
+selectivity_average_check <- spmr_selectivity_history |>
+  group_by(Age) |>
+  summarize(Selectivity = mean(Selectivity), .groups = "drop") |>
+  left_join(
+    spmr_age_schedules |> select(Age, Applied = Selectivity),
+    by = "Age"
+  )
+
+expected_selectivity_years <- seq.int(
+  spmr_lineage$terminal_year - spmr_lineage$fishery_selectivity_year_count + 1L,
+  spmr_lineage$terminal_year
+)
+
+tibble(
+  Check = c(
+    "Required projection files",
+    "Recent selectivity years",
+    "Applied five-year selectivity mean",
+    "Projection alternatives",
+    "Projection start year"
+  ),
+  Result = c(
+    if_else(all(spmr_manifest$exists), "Pass", "Fail"),
+    if_else(
+      identical(
+        as.integer(sort(unique(spmr_selectivity_history$Year))),
+        expected_selectivity_years
+      ),
+      "Pass", "Fail"
+    ),
+    if_else(
+      max(abs(selectivity_average_check$Selectivity - selectivity_average_check$Applied)) < 1e-10,
+      "Pass", "Fail"
+    ),
+    if_else(
+      identical(as.integer(sort(unique(spmr_detail$Alt))), 1:7),
+      "Pass", "Fail"
+    ),
+    if_else(
+      min(spmr_detail$Year) == spmr_lineage$terminal_year + 1L,
+      "Pass", "Fail"
+    )
+  ),
+  Evidence = c(
+    paste(sum(spmr_manifest$exists), "of", nrow(spmr_manifest), "manifest targets present"),
+    paste(sort(unique(spmr_selectivity_history$Year)), collapse = ", "),
+    paste0(
+      "maximum absolute difference = ",
+      format(max(abs(selectivity_average_check$Selectivity - selectivity_average_check$Applied)), scientific = TRUE)
+    ),
+    paste(sort(unique(spmr_detail$Alt)), collapse = ", "),
+    as.character(min(spmr_detail$Year))
+  )
+) |>
+  gt() |>
+  tab_style(
+    style = cell_text(weight = "bold"),
+    locations = cells_body(columns = Result)
+  )
+```
+
+### A-3 Model fitting details {.unnumbered}
 
 The fishery selectivity likelihood has multiple modes, so the reported
 Rceattle configuration used data-based fishery-selectivity starting values and two fitting
@@ -2657,7 +2857,7 @@ initial_development_status |>
   )
 ```
 
-### A-3 Jitter and natural-mortality profile {.unnumbered}
+### A-4 Jitter and natural-mortality profile {.unnumbered}
 
 The [extended-diagnostics runner](R/run_rceattle_5_8_1_extended_diagnostics.R)
 generates both the 50 jitter fits and the age-3-and-older natural-mortality
@@ -2721,7 +2921,7 @@ ggplot(
   ggthemes::theme_few()
 ```
 
-### A-4 Composition-likelihood sensitivity {.unnumbered}
+### A-5 Composition-likelihood sensitivity {.unnumbered}
 
 The [5.8.1 summary script](R/finalize_rceattle_5_8_1_analysis.R) fits the
 standard-multinomial sensitivity and writes the summaries used here when run
@@ -2785,7 +2985,7 @@ and total biomass by
 `r sprintf("%.2f", comparison_summary$Mean_absolute_percent[comparison_summary$Method == "Standard multinomial sensitivity" & comparison_summary$Quantity == "Total biomass"])`%
 on average in absolute percentage terms.
 
-### A-5 2D age-by-year AR1 selectivity sensitivity {.unnumbered}
+### A-6 2D age-by-year AR1 selectivity sensitivity {.unnumbered}
 
 The penalized-effects initialization and subsequent Laplace fit are in the
 [two-stage fitting script](<2024 EBS pollock.R>) and are run with
@@ -2871,7 +3071,7 @@ ggplot(
   )
 ```
 
-### A-6 Acronyms {.unnumbered}
+### A-7 Acronyms {.unnumbered}
 
 This appendix follows the glossary convention in the [Alaska Stock Assessment
 Report (`asar`) package](https://github.com/nmfs-ost/asar)
