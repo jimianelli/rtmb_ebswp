@@ -45,3 +45,6 @@ admb/runs/for_rtmb/*
 !admb/runs/for_rtmb/proj/
 admb/runs/for_rtmb/proj/*
 !admb/runs/for_rtmb/proj/tacpar.dat
+
+/.quarto/
+**/*.quarto_ipynb

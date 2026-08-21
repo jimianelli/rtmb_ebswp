@@ -49,18 +49,14 @@ if (!all(lineage == base_md5)) {
   stop("Downstream base-file lineage mismatch:\n", paste(names(lineage), lineage, collapse = "\n"))
 }
 
-message("\n==> quarto render reporting/ebs_pollock_rtmb_ebswp_assessment.qmd")
+message("\n==> quarto render")
 quarto_status <- system2(
   "quarto",
-  c("render", file.path("reporting", "ebs_pollock_rtmb_ebswp_assessment.qmd"))
+  "render"
 )
 if (!identical(quarto_status, 0L)) stop("Quarto render failed.")
 
-rendered <- file.path("reporting", "ebs_pollock_rtmb_ebswp_assessment.html")
 published <- file.path("docs", "ebs_pollock_rtmb_ebswp_assessment.html")
-if (!file.copy(rendered, published, overwrite = TRUE)) {
-  stop("Could not copy rendered assessment to docs/.")
-}
+if (!file.exists(published)) stop("Published assessment was not created in docs/.")
 
 message("\nRebuild complete. Common base checksum: ", base_md5)
-
