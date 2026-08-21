@@ -3,19 +3,71 @@
 
 source(file.path("R", "config.R"))
 
+`%||%` <- function(x, y) {
+  if (is.null(x) || length(x) == 0L) y else x
+}
+
 rtmb_dir <- normalizePath(getwd(), mustWork = TRUE)
-base_file <- file.path(rtmb_dir, "analysis", "output", "base.rds")
+default_base_file <- if (identical(bridge_case, "corrected_full_age_bts")) {
+  file.path(
+    rtmb_dir, "analysis", "output", "corrected_full_age_bts", "rtmb_base.rds"
+  )
+} else {
+  file.path(rtmb_dir, "analysis", "output", "base.rds")
+}
+base_file <- Sys.getenv("RTMB_RETRO_BASE_FILE", unset = default_base_file)
+if (!grepl("^/", base_file)) {
+  base_file <- file.path(rtmb_dir, base_file)
+}
 if (!file.exists(base_file)) {
   stop("Run R/write_output.R before the retrospective analysis.")
 }
 base_saved <- readRDS(base_file)
-if (!identical(
-  base_saved$metadata$configuration,
+expected_configuration <- if (identical(bridge_case, "legacy_pm_bridge")) {
   "September 2025 fixed-parameter ADMB-to-RTMB bridge"
-)) {
-  stop("base.rds is not identified as the September 2025 bridge configuration.")
+} else {
+  bridge_case
+}
+if (!identical(base_saved$metadata$configuration, expected_configuration)) {
+  stop(
+    "Retrospective base configuration mismatch: expected ",
+    expected_configuration, ", found ",
+    base_saved$metadata$configuration %||% "<missing>"
+  )
 }
 base_md5 <- unname(tools::md5sum(base_file))
+bts_props_file <- Sys.getenv("RTMB_RETRO_BTS_PROPS", unset = "")
+bts_props_lineage <- NULL
+if (nzchar(bts_props_file)) {
+  bts_props_file <- normalizePath(bts_props_file, mustWork = TRUE)
+  bts_props <- read.csv(bts_props_file, check.names = FALSE)
+  bts_props <- bts_props[!is.na(bts_props$region) & bts_props$region == "both", ]
+  age_names <- paste0("age_", seq_len(data$nages))
+  missing_columns <- setdiff(c("year", age_names), names(bts_props))
+  if (length(missing_columns) > 0L) {
+    stop("Missing BTS proportion columns: ", paste(missing_columns, collapse = ", "))
+  }
+  matched_rows <- match(data$yrs_bts_data, bts_props$year)
+  if (anyNA(matched_rows)) {
+    stop(
+      "BTS proportion file lacks model years: ",
+      paste(data$yrs_bts_data[is.na(matched_rows)], collapse = ", ")
+    )
+  }
+  replacement <- as.matrix(bts_props[matched_rows, age_names, drop = FALSE])
+  if (any(!is.finite(replacement)) ||
+      max(abs(rowSums(replacement) - 1)) > 1e-6) {
+    stop("BTS replacement proportions are invalid or do not sum to one")
+  }
+  data$oac_bts <- replacement
+  bts_props_lineage <- list(
+    file = bts_props_file,
+    md5 = unname(tools::md5sum(bts_props_file)),
+    years = range(data$yrs_bts_data),
+    rows = nrow(replacement),
+    ages = ncol(replacement)
+  )
+}
 fixed_params <- names(map_obj)[vapply(
   map_obj, function(x) all(is.na(x)), logical(1)
 )]
@@ -50,6 +102,7 @@ trim_rtmb_data <- function(data, peel) {
   out[names(out) == "endyr_est"] <- rep(list(new_endyr - out$omitSR), sum(names(out) == "endyr_est"))
   out$nyrs <- length(year_keep)
   out$endyr_wt <- min(out$endyr_wt, new_endyr)
+  out$retro_terminal_selectivity_copy <- as.integer(peel > 0L)
 
   annual_names <- c(
     "wt_fsh", "wt_ssb", "obs_catch", "obs_effort", "ew_ind"
@@ -64,14 +117,19 @@ trim_rtmb_data <- function(data, peel) {
     }
   }
 
-  keep_cpue <- out$yrs_cpue <= new_endyr
+  availability_limit <- function(observation_years) {
+    lag <- full_endyr - max(observation_years, na.rm = TRUE)
+    new_endyr - lag
+  }
+
+  keep_cpue <- out$yrs_cpue <= availability_limit(data$yrs_cpue)
   out$yrs_cpue <- out$yrs_cpue[keep_cpue]
   out$obs_cpue <- out$obs_cpue[keep_cpue]
   out$obs_cpue_std <- out$obs_cpue_std[keep_cpue]
   out$obs_cpue_var <- out$obs_cpue_std^2
   out$n_cpue <- length(out$yrs_cpue)
 
-  keep_avo <- out$yrs_avo <= new_endyr
+  keep_avo <- out$yrs_avo <= availability_limit(data$yrs_avo)
   out$yrs_avo <- out$yrs_avo[keep_avo]
   out$ob_avo <- out$ob_avo[keep_avo]
   out$ob_avo_std <- out$ob_avo_std[keep_avo]
@@ -79,7 +137,7 @@ trim_rtmb_data <- function(data, peel) {
   out$wt_avo <- trim_rows(out$wt_avo, keep_avo)
   out$n_avo <- length(out$yrs_avo)
 
-  keep_fsh <- out$yrs_fsh_data <= new_endyr
+  keep_fsh <- out$yrs_fsh_data <= availability_limit(data$yrs_fsh_data)
   out$yrs_fsh_data <- out$yrs_fsh_data[keep_fsh]
   out$sam_fsh <- out$sam_fsh[keep_fsh]
   out$err_fsh <- out$err_fsh[keep_fsh]
@@ -87,7 +145,7 @@ trim_rtmb_data <- function(data, peel) {
   out$oac_fsh <- trim_rows(out$oac_fsh, keep_fsh)
   out$n_fsh <- length(out$yrs_fsh_data)
 
-  keep_bts <- out$yrs_bts_data <= new_endyr
+  keep_bts <- out$yrs_bts_data <= availability_limit(data$yrs_bts_data)
   out$yrs_bts_data <- out$yrs_bts_data[keep_bts]
   out$sam_bts <- out$sam_bts[keep_bts]
   out$err_bts <- out$err_bts[keep_bts]
@@ -101,7 +159,7 @@ trim_rtmb_data <- function(data, peel) {
   out$inv_bts_cov <- solve(out$cov_matrix)
   out$n_bts <- length(out$yrs_bts_data)
 
-  keep_ats <- out$yrs_ats_data <= new_endyr
+  keep_ats <- out$yrs_ats_data <= availability_limit(data$yrs_ats_data)
   out$yrs_ats_data <- out$yrs_ats_data[keep_ats]
   out$sam_ats <- out$sam_ats[keep_ats]
   out$err_ats <- out$err_ats[keep_ats]
@@ -130,6 +188,62 @@ trim_rtmb_data <- function(data, peel) {
   }
 
   out
+}
+
+copy_terminal_parameter_row <- function(x) {
+  dims <- dim(x)
+  if (is.null(dims)) {
+    if (length(x) >= 2L) x[length(x)] <- x[length(x) - 1L]
+    return(x)
+  }
+  if (dims[1] < 2L) return(x)
+  values <- matrix(x, nrow = dims[1])
+  values[nrow(values), ] <- values[nrow(values) - 1L, ]
+  array(values, dim = dims)
+}
+
+terminal_shared_map <- function(x) {
+  dims <- dim(x)
+  if (is.null(dims)) {
+    values <- seq_along(x)
+    if (length(values) >= 2L) values[length(values)] <- values[length(values) - 1L]
+    return(factor(values, levels = unique(values)))
+  }
+  values <- matrix(seq_along(x), nrow = dims[1])
+  if (nrow(values) >= 2L) {
+    values[nrow(values), ] <- values[nrow(values) - 1L, ]
+  }
+  mapped <- factor(as.vector(values), levels = unique(as.vector(values)))
+  dim(mapped) <- dims
+  mapped
+}
+
+terminal_selectivity_level_parameters <- c(
+  "sel_slp_bts_dev", "sel_a50_bts_dev", "sel_age_one_bts_dev"
+)
+
+zero_parameter_row <- function(x, row) {
+  if (is.null(dim(x))) {
+    x[row] <- 0
+    return(x)
+  }
+  values <- matrix(x, nrow = dim(x)[1])
+  values[row, ] <- 0
+  array(values, dim = dim(x))
+}
+
+fixed_row_map <- function(x, row) {
+  dims <- dim(x)
+  if (is.null(dims)) {
+    values <- seq_along(x)
+    values[row] <- NA_integer_
+    return(factor(values))
+  }
+  values <- matrix(seq_along(x), nrow = dims[1])
+  values[row, ] <- NA_integer_
+  mapped <- factor(as.vector(values))
+  dim(mapped) <- dims
+  mapped
 }
 
 trim_rows_n <- function(x, n) {
@@ -179,11 +293,39 @@ fit_one_peel <- function(peel) {
   message("Running RTMB retrospective peel ", peel)
   data <<- trim_rtmb_data(full_data, peel)
   parms_peel <- trim_rtmb_parms(start_parms, data)
+  if (peel > 0L) {
+    for (nm in intersect(terminal_selectivity_level_parameters, names(parms_peel))) {
+      parms_peel[[nm]] <- copy_terminal_parameter_row(parms_peel[[nm]])
+    }
+    # Fishery and ATS selectivity deviations are annual increments. The
+    # fishery function applies the increment labelled T-1 to selectivity in T;
+    # the ATS function applies the increment labelled T directly. Fixing the
+    # relevant increment at zero makes terminal selectivity equal T-1.
+    fishery_terminal_increment <- max(1L, nrow(parms_peel$sel_devs_fsh) - 1L)
+    ats_terminal_increment <- nrow(parms_peel$sel_devs_ats)
+    parms_peel$sel_devs_fsh <- zero_parameter_row(
+      parms_peel$sel_devs_fsh, fishery_terminal_increment
+    )
+    parms_peel$sel_devs_ats <- zero_parameter_row(
+      parms_peel$sel_devs_ats, ats_terminal_increment
+    )
+  }
   map_peel <- create_map_from_par(
     parms_peel, parms_peel,
     exact_names = fixed_params,
     exclude_patterns = "xxx"
   )
+  if (peel > 0L) {
+    for (nm in intersect(terminal_selectivity_level_parameters, names(parms_peel))) {
+      map_peel[[nm]] <- terminal_shared_map(parms_peel[[nm]])
+    }
+    map_peel$sel_devs_fsh <- fixed_row_map(
+      parms_peel$sel_devs_fsh, fishery_terminal_increment
+    )
+    map_peel$sel_devs_ats <- fixed_row_map(
+      parms_peel$sel_devs_ats, ats_terminal_increment
+    )
+  }
   obj_peel <- RTMB::MakeADFun(rpm, parms_peel, map = map_peel, silent = TRUE)
   fit <- nlminb(
     obj_peel$par,
@@ -214,6 +356,14 @@ fit_one_peel <- function(peel) {
   obj_peel$fn(fit$par)
   report <- obj_peel$report()
   fitted_parms <- obj_peel$env$parList(fit$par)
+  terminal_increment_values <- if (peel > 0L) {
+    list(
+      fishery = fitted_parms$sel_devs_fsh[fishery_terminal_increment, ],
+      ats = fitted_parms$sel_devs_ats[ats_terminal_increment, ]
+    )
+  } else {
+    NULL
+  }
   start_parms <<- fitted_parms
   if (!is.list(report) || is.null(report$SSB) || is.null(report$N)) {
     data_report <- data
@@ -231,6 +381,39 @@ fit_one_peel <- function(peel) {
     report <- report$rtmb
   }
 
+  terminal_selectivity <- if (peel > 0L) {
+    data.frame(
+      fleet = c("Fishery", "BTS", "ATS"),
+      maximum_absolute_difference = c(
+        max(abs(report$sel_fsh[nrow(report$sel_fsh), ] -
+                  report$sel_fsh[nrow(report$sel_fsh) - 1L, ]),
+            na.rm = TRUE),
+        max(abs(report$sel_bts[nrow(report$sel_bts), ] -
+                  report$sel_bts[nrow(report$sel_bts) - 1L, ]),
+            na.rm = TRUE),
+        max(abs(report$sel_ats[nrow(report$sel_ats), ] -
+                  report$sel_ats[nrow(report$sel_ats) - 1L, ]),
+            na.rm = TRUE)
+      ),
+      stringsAsFactors = FALSE
+    )
+  } else {
+    data.frame(
+      fleet = c("Fishery", "BTS", "ATS"),
+      maximum_absolute_difference = NA_real_,
+      stringsAsFactors = FALSE
+    )
+  }
+
+  availability <- data.frame(
+    data_stream = c("Fishery age composition", "BTS", "ATS", "CPUE", "AVO"),
+    maximum_year = c(
+      max(data$yrs_fsh_data), max(data$yrs_bts_data), max(data$yrs_ats_data),
+      max(data$yrs_cpue), max(data$yrs_avo)
+    ),
+    stringsAsFactors = FALSE
+  )
+
   list(
     peel = peel,
     terminal_year = data$endyr,
@@ -238,6 +421,9 @@ fit_one_peel <- function(peel) {
     objective = fit$objective,
     max_gradient = max(abs(obj_peel$gr(fit$par)), na.rm = TRUE),
     optimization_passes = optimization_passes,
+    terminal_increment_values = terminal_increment_values,
+    availability = availability,
+    terminal_selectivity = terminal_selectivity,
     report = report
   )
 }
@@ -304,6 +490,24 @@ diagnostics <- do.call(rbind, lapply(retro, function(x) {
   )
 }))
 
+availability <- do.call(rbind, lapply(retro, function(x) {
+  if (is.null(x$availability)) return(NULL)
+  transform(
+    x$availability,
+    peel = x$peel,
+    terminal_year = x$terminal_year
+  )
+}))
+
+terminal_selectivity <- do.call(rbind, lapply(retro, function(x) {
+  if (is.null(x$terminal_selectivity)) return(NULL)
+  transform(
+    x$terminal_selectivity,
+    peel = x$peel,
+    terminal_year = x$terminal_year
+  )
+}))
+
 mohn <- NULL
 if (!is.null(series) && nrow(series) > 0 && any(series$peel == 0)) {
   full_series <- series[series$peel == 0, c("year", "SSB", "Recruitment")]
@@ -342,17 +546,25 @@ out <- list(
     configuration = base_saved$metadata$configuration,
     bridge_metrics = base_saved$metadata$bridge_metrics
   ),
+  bts_props_lineage = bts_props_lineage,
   peels = peels,
   series = series,
   diagnostics = diagnostics,
+  availability = availability,
+  terminal_selectivity = terminal_selectivity,
   mohn = mohn,
   fits = retro
 )
 
 max_peel <- max(peels)
-output_path <- file.path(
-  rtmb_dir, "analysis", "output", sprintf("retro_%d_peel.rds", max_peel)
-)
+output_path <- Sys.getenv("RTMB_RETRO_OUTPUT", unset = "")
+if (!nzchar(output_path)) {
+  output_path <- file.path(
+    rtmb_dir, "analysis", "output", sprintf("retro_%d_peel.rds", max_peel)
+  )
+} else if (!grepl("^/", output_path)) {
+  output_path <- file.path(rtmb_dir, output_path)
+}
 dir.create(dirname(output_path), showWarnings = FALSE, recursive = TRUE)
 saveRDS(out, output_path)
 cat("Wrote RTMB retrospective output:", output_path, "\n")

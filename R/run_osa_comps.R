@@ -6,9 +6,18 @@ rtmb_root <- if (length(file_arg) > 0) {
 } else {
   normalizePath(getwd(), mustWork = TRUE)
 }
-osa_input_file <- file.path(rtmb_root, "analysis", "output", "osa_inputs.rds")
-osa_output_dir <- file.path(rtmb_root, "analysis", "output", "osa")
-osa_output_file <- file.path(osa_output_dir, "rtmb_ebswp_osa_residuals.rds")
+osa_input_file <- Sys.getenv(
+  "RTMB_OSA_INPUT_FILE",
+  unset = file.path(rtmb_root, "analysis", "output", "osa_inputs.rds")
+)
+osa_output_dir <- Sys.getenv(
+  "RTMB_OSA_OUTPUT_DIR",
+  unset = file.path(rtmb_root, "analysis", "output", "osa")
+)
+osa_output_file <- Sys.getenv(
+  "RTMB_OSA_OUTPUT_FILE",
+  unset = file.path(osa_output_dir, "rtmb_ebswp_osa_residuals.rds")
+)
 
 if (!file.exists(osa_input_file)) {
   stop("Missing OSA input file at: ", osa_input_file)
@@ -39,11 +48,36 @@ osa_runs <- lapply(names(osa_inputs), function(fleet_name) {
 })
 names(osa_runs) <- names(osa_inputs)
 
-osa_plots <- afscOSA::plot_osa(
+osa_plot_components <- afscOSA::plot_osa(
   osa_runs,
-  outpath = osa_output_dir,
+  plot = FALSE,
+  outpath = NULL,
   figheight = 9,
   figwidth = 12
+)
+
+osa_plot_components <- lapply(
+  osa_plot_components,
+  function(plot) plot + ggthemes::theme_few()
+)
+
+osa_plots <- cowplot::plot_grid(
+  osa_plot_components$aggcomp,
+  osa_plot_components$qq,
+  osa_plot_components$bubble + ggplot2::theme(legend.position = "top"),
+  osa_plot_components$bubble_pearson + ggplot2::theme(legend.position = "none"),
+  nrow = 4,
+  rel_heights = c(5, 5, 4.5, 4)
+)
+
+ggplot2::ggsave(
+  filename = file.path(osa_output_dir, "osa_age_diagnostics.png"),
+  plot = osa_plots,
+  units = "in",
+  bg = "white",
+  height = 9,
+  width = 12,
+  dpi = 300
 )
 
 osa_summary <- dplyr::bind_rows(lapply(osa_runs, function(x) x$res)) |>
