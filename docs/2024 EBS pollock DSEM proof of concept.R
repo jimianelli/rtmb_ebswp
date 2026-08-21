@@ -23,9 +23,9 @@ randomization_check <- "--randomized" %in% arguments
 arguments <- setdiff(arguments, "--randomized")
 randomization_seed <- 20260812L
 
-baseline_directory <- "results/dsem_5.8.1"
+baseline_directory <- "results/dsem_5.8.1_sst"
 output_directory <- if (randomization_check) {
-  "results/dsem_5.8.1_randomized"
+  "results/dsem_5.8.1_sst_randomized"
 } else {
   baseline_directory
 }
@@ -39,10 +39,11 @@ est <- Rceattle::read_data(
 )
 est$diet_data <- NULL
 
-# The ESP table is indexed by birth year. Both selected covariates carry the
-# suffix t1 and therefore describe the following calendar year, when the cohort
-# and the assessment recruitment are age 1. A zero-lag DSEM path is appropriate
-# after assigning Year = cohort birth year + 1.
+# The ESP table is indexed by birth year. Late-summer SST describes the cohort's
+# age-0 year, whereas cold_pool_t1 describes the following calendar year. DSEM
+# rows are indexed by the year in which the cohort enters Rceattle at age 1, so
+# the zero-lag SST path is biologically a cohort-aligned age-0 effect and the
+# zero-lag cold-pool path is an age-1-year effect.
 cohort <- read.csv(
   "/Users/jim/_mymods/pollock/ebswp_esp/data/cohort_table.csv",
   check.names = FALSE
@@ -58,12 +59,12 @@ standardize_observed <- function(x) {
 covariates <- data.frame(
   Year = cohort$year + 1L,
   ColdPool = standardize_observed(cohort$cold_pool_t1),
-  AdultBiomass = standardize_observed(cohort$adult_pollock_biomass_t1)
+  LateSummerSST = standardize_observed(cohort$late_summer_SST_t)
 )
 
 if (randomization_check) {
   set.seed(randomization_seed)
-  for (variable in c("ColdPool", "AdultBiomass")) {
+  for (variable in c("ColdPool", "LateSummerSST")) {
     observed <- is.finite(covariates[[variable]])
     covariates[[variable]][observed] <- stats::rnorm(sum(observed))
   }
@@ -99,7 +100,7 @@ write.csv(
 # paths rather than changing data sets.
 sem_common <- c(
   "ColdPool -> ColdPool, 1, AR_ColdPool, 0",
-  "AdultBiomass -> AdultBiomass, 1, AR_AdultBiomass, 0",
+  "LateSummerSST -> LateSummerSST, 1, AR_LateSummerSST, 0",
   "recdevs1 <-> recdevs1, 0, sigmaR1, 0.6"
 )
 
@@ -109,14 +110,14 @@ specifications <- list(
     sem_common,
     "ColdPool -> recdevs1, 0, ColdPool_to_R, 0"
   ),
-  adult_biomass = c(
+  late_summer_sst = c(
     sem_common,
-    "AdultBiomass -> recdevs1, 0, AdultBiomass_to_R, 0"
+    "LateSummerSST -> recdevs1, 0, LateSummerSST_to_R, 0"
   ),
   combined = c(
     sem_common,
     "ColdPool -> recdevs1, 0, ColdPool_to_R, 0",
-    "AdultBiomass -> recdevs1, 0, AdultBiomass_to_R, 0"
+    "LateSummerSST -> recdevs1, 0, LateSummerSST_to_R, 0"
   )
 )
 
@@ -124,15 +125,15 @@ model_display_labels <- if (randomization_check) {
   c(
     iid = "IID",
     cold_pool = "Random cold-pool substitute",
-    adult_biomass = "Random SSB-proxy substitute",
+    late_summer_sst = "Random SST substitute",
     combined = "Both random substitutes"
   )
 } else {
   c(
     iid = "IID",
     cold_pool = "Cold pool",
-    adult_biomass = "Next-year SSB proxy",
-    combined = "Cold pool + next-year SSB proxy"
+    late_summer_sst = "Age-0 late-summer SST",
+    combined = "Cold pool + age-0 late-summer SST"
   )
 }
 
@@ -295,14 +296,14 @@ covariate_raw <- if (randomization_check) {
   data.frame(
     Year = covariates$Year,
     `Standard-normal cold-pool substitute` = covariates$ColdPool,
-    `Standard-normal SSB-proxy substitute` = covariates$AdultBiomass,
+    `Standard-normal SST substitute` = covariates$LateSummerSST,
     check.names = FALSE
   )
 } else {
   data.frame(
     Year = cohort$year + 1L,
     `Cold-pool extent (km2)` = cohort$cold_pool_t1,
-    `Next-year SSB proxy (kt)` = cohort$adult_pollock_biomass_t1,
+    `Age-0 late-summer SST (degrees C)` = cohort$late_summer_SST_t,
     check.names = FALSE
   )
 }
@@ -315,7 +316,7 @@ covariate_raw <- covariate_raw |>
 
 covariate_standardized <- est$env_data |>
   tidyr::pivot_longer(
-    cols = c(ColdPool, AdultBiomass),
+    cols = c(ColdPool, LateSummerSST),
     names_to = "Covariate",
     values_to = "Standardized_value"
   ) |>
@@ -327,10 +328,10 @@ covariate_standardized <- est$env_data |>
       } else {
         "Cold-pool extent"
       },
-      AdultBiomass = if (randomization_check) {
-        "Standard-normal SSB-proxy substitute"
+      LateSummerSST = if (randomization_check) {
+        "Standard-normal SST substitute"
       } else {
-        "Next-year SSB proxy"
+        "Age-0 late-summer SST"
       }
     )
   )
@@ -399,8 +400,8 @@ covariate_figure <- patchwork::wrap_plots(
     } else {
       paste0(
         "Cold-pool observations: ", sum(is.finite(est$env_data$ColdPool)),
-        "; next-year SSB-proxy observations: ",
-        sum(is.finite(est$env_data$AdultBiomass)), "."
+        "; age-0 late-summer SST observations: ",
+        sum(is.finite(est$env_data$LateSummerSST)), "."
       )
     }
   )
@@ -491,20 +492,20 @@ edge_coefficients <- path_table |>
       } else {
         "Cold pool(t-1) -> cold pool(t)"
       },
-      AR_AdultBiomass = if (randomization_check) {
-        "Random SSB-proxy substitute(t-1) -> value(t)"
+      AR_LateSummerSST = if (randomization_check) {
+        "Random SST substitute(t-1) -> value(t)"
       } else {
-        "Next-year SSB proxy(t-1) -> proxy(t)"
+        "Age-0 late-summer SST(t-1) -> SST(t)"
       },
       ColdPool_to_R = if (randomization_check) {
         "Random cold-pool substitute -> age-1 recruitment"
       } else {
         "Cold pool -> age-1 recruitment"
       },
-      AdultBiomass_to_R = if (randomization_check) {
-        "Random SSB-proxy substitute -> age-1 recruitment"
+      LateSummerSST_to_R = if (randomization_check) {
+        "Random SST substitute -> age-1 recruitment"
       } else {
-        "Next-year SSB proxy -> age-1 recruitment"
+        "Age-0 late-summer SST -> age-1 recruitment"
       }
     ),
     edge_type = ifelse(

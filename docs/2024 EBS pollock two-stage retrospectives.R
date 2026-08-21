@@ -1,8 +1,8 @@
 #!/usr/bin/env Rscript
 
 # Nine-peel retrospective analysis that preserves the observed data lags in
-# the 2024 input, fixes terminal-year fishery selectivity to the preceding
-# year, and repeats the empirical-start/two-stage NonParametricPM sequence.
+# the 2024 input, fixes the terminal-year fishery/CPUE selectivity increment
+# at zero, and repeats the empirical-start/two-stage NonParametricPM sequence.
 
 suppressPackageStartupMessages({
   .libPaths(c(file.path(getwd(), ".r-lib-rceattle-5.8.1"), .libPaths()))
@@ -130,19 +130,17 @@ make_stage_2_map <- function(data_list, inits, endyr_peel) {
     map$mapList[[nm]] <- x
   }
 
-  # The terminal fishery selectivity deviations share parameter labels with
-  # the preceding year. CPUE mirrors the fishery and therefore receives the
-  # same mapping. Starting values are also matched before optimization.
+  # NonParametricPM sel_coff_dev values are annual random-walk increments at
+  # age. A zero terminal increment therefore holds the realized terminal
+  # selectivity-at-age curve at the preceding-year curve. CPUE mirrors the
+  # fishery and receives the same fixed-zero terminal increment.
   terminal_i <- nyrs_peel
-  previous_i <- terminal_i - 1L
   mirrored_fleets <- which(
     data_list$fleet_control$Fleet_name %in% c("Fishery", "CPUE")
   )
   for (fleet_i in mirrored_fleets) {
-    map$mapList$sel_coff_dev[fleet_i, 1, , terminal_i] <-
-      map$mapList$sel_coff_dev[fleet_i, 1, , previous_i]
-    inits$sel_coff_dev[fleet_i, 1, , terminal_i] <-
-      inits$sel_coff_dev[fleet_i, 1, , previous_i]
+    map$mapList$sel_coff_dev[fleet_i, 1, , terminal_i] <- NA
+    inits$sel_coff_dev[fleet_i, 1, , terminal_i] <- 0
   }
 
   zero_catch <- as.matrix(
@@ -170,6 +168,25 @@ run_peel <- function(endyr_peel) {
     base_fit$data_list,
     endyr_peel
   )
+
+  # The retrospective scaffold preserves the peeled observations, but its
+  # fleet-control table may predate the active model-input configuration.
+  # Copy the selectivity penalty controls from the accepted full-data fit so
+  # every peel evaluates the same configuration as the reported model.
+  selectivity_controls <- intersect(
+    c(
+      "Sel_curve_pen1",
+      "Sel_curve_pen2",
+      "Sel_curve_pen3",
+      "Time_varying_sel_sd"
+    ),
+    names(base_fit$data_list$fleet_control)
+  )
+  active_controls <- base_fit$data_list$fleet_control |>
+    select(.data$Fleet_code, all_of(selectivity_controls))
+  peeled_data$fleet_control <- peeled_data$fleet_control |>
+    select(-any_of(selectivity_controls)) |>
+    left_join(active_controls, by = "Fleet_code")
   peeled_data$fleet_control$Comp_distribution <- "MultinomialAFSC"
 
   inits <- empirical_start(peeled_data)
@@ -214,10 +231,37 @@ run_peel <- function(endyr_peel) {
     fit_control = ctl
   )
 
+  terminal_i <- endyr_peel - styr + 1L
+  constrained_fleets <- which(
+    peeled_data$fleet_control$Fleet_name %in% c("Fishery", "CPUE")
+  )
+  terminal_selectivity_max_difference <- vapply(
+    constrained_fleets,
+    function(fleet_i) {
+      max(abs(
+        stage_2$quantities$sel_at_age[fleet_i, 1, , terminal_i] -
+          stage_2$quantities$sel_at_age[fleet_i, 1, , terminal_i - 1L]
+      ))
+    },
+    numeric(1)
+  )
+  names(terminal_selectivity_max_difference) <-
+    peeled_data$fleet_control$Fleet_name[constrained_fleets]
+  if (any(!is.finite(terminal_selectivity_max_difference)) ||
+      any(terminal_selectivity_max_difference > 1e-10)) {
+    stop(
+      "Terminal fishery/CPUE selectivity-at-age constraint failed for peel ",
+      endyr_peel,
+      "."
+    )
+  }
+
   list(
     terminal_year = endyr_peel,
     stage_1 = stage_1,
     stage_2 = stage_2,
+    terminal_selectivity_max_difference =
+      terminal_selectivity_max_difference,
     data_max_years = list(
       index = aggregate(Year ~ Fleet_code, peeled_data$index_data, max),
       composition = aggregate(Year ~ Fleet_code, peeled_data$comp_data, max)
@@ -258,12 +302,17 @@ output <- list(
   specification = list(
     peels = peels,
     data_lags_preserved = TRUE,
+    selectivity_dimension = "Age",
+    terminal_fishery_cpue_increment = "fixed at zero",
     terminal_fishery_selectivity_equal_previous_year = TRUE,
     empirical_start_recalculated_by_peel = TRUE,
-    two_stage_fit_by_peel = TRUE
-    ,composition_likelihood = "MultinomialAFSC"
-    ,composition_sample_sizes = "nominal, unadjusted"
-    ,scaffold_role = "year-trimming scaffold only; canonical likelihood restored before every fit"
+    two_stage_fit_by_peel = TRUE,
+    composition_likelihood = "MultinomialAFSC",
+    composition_sample_sizes = "nominal, unadjusted",
+    scaffold_role = paste(
+      "year-trimming scaffold only; canonical likelihood and selectivity",
+      "controls restored before every fit"
+    )
   )
 )
 
