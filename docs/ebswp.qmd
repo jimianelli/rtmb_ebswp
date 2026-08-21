@@ -417,6 +417,14 @@ dsem_summary <- dsem_summary |>
   mutate(
     Model = unname(dsem_model_labels[model]),
     `Delta AIC` = AIC - min(AIC)
+  ) |>
+  left_join(
+    dsem_variance |>
+      select(model, variance_reduction_from_iid),
+    by = "model"
+  ) |>
+  mutate(
+    `Residual variation reduced (%)` = 100 * variance_reduction_from_iid
   )
 dsem_recruitment_paths <- dsem_paths |>
   filter(grepl("_to_R$", parameter)) |>
@@ -434,10 +442,19 @@ dsem_random_recruitment_paths <- dsem_random_paths |>
   filter(grepl("_to_R$", parameter))
 
 read_ecostate_suite <- function(files, model_labels, candidate_labels) {
+  variance <- readr::read_csv(files$variance, show_col_types = FALSE)
   summary <- readr::read_csv(files$summary, show_col_types = FALSE) |>
     mutate(
       Model = unname(model_labels[model]),
       `Delta AIC` = AIC - min(AIC)
+    ) |>
+    left_join(
+      variance |>
+        select(model, variance_reduction_from_iid),
+      by = "model"
+    ) |>
+    mutate(
+      `Residual variation reduced (%)` = 100 * variance_reduction_from_iid
     )
   paths <- readr::read_csv(files$paths, show_col_types = FALSE)
   recruitment_paths <- paths |>
@@ -450,7 +467,7 @@ read_ecostate_suite <- function(files, model_labels, candidate_labels) {
     summary = summary,
     paths = paths,
     recruitment_paths = recruitment_paths,
-    variance = readr::read_csv(files$variance, show_col_types = FALSE),
+    variance = variance,
     covariates = readr::read_csv(files$covariates, show_col_types = FALSE),
     design = readr::read_csv(files$design, show_col_types = FALSE),
     files = files
@@ -1967,19 +1984,48 @@ value is carried forward to the DSEM row for that cohort's age-1 recruitment;
 the zero-lag path is therefore cohort-aligned rather than a claim that SST was
 measured in the age-1 year.
 
-Each covariate suite compares IID recruitment deviations, each single direct
-path, and the two-path model. Models within a suite use the same observation
-years, missingness pattern, standardization, and AR1 covariate processes. AIC
-is therefore interpreted only within a suite. The comparison also examines
-path intervals, residual recruitment variance, convergence diagnostics, and a
-missingness-preserving randomized control. Blocked or terminal-year prediction
-remains necessary before a pathway is considered predictively supported.
+IID means **independent and identically distributed**. In this section it is
+the no-recruitment-edge reference model. After the assessment model accounts
+for the population dynamics and average recruitment level, each year's
+remaining recruitment deviation is treated as an unrelated draw from the same
+zero-centered distribution with one estimated variance. "Independent" means
+that one year's remaining recruitment deviation does not directly predict the
+next; "identically distributed" means that the same residual-variation scale
+is used in every year. The environmental series still have their own fitted
+AR(1) persistence, but the IID reference has no arrow from an environmental
+series to recruitment.
+
+The comparisons can therefore be read as three increasingly specific
+questions:
+
+- **IID reference:** how much recruitment variation remains when neither
+  candidate is connected directly to recruitment?
+- **One-edge model:** does adding one specified arrow explain enough of the
+  between-year recruitment pattern to improve the model?
+- **Two-edge model:** does the second arrow add information after accounting
+  for the first, or are the two covariates largely describing the same years?
+
+Each arrow is a statistical test of the biological hypothesis represented by
+that covariate, not proof of the full mechanism in the causal graph. Models
+within a suite use the same observation years, missingness pattern,
+standardization, and AR1 covariate processes. AIC is therefore interpreted
+only within a suite. The tables also report the percentage by which each
+model's estimated residual recruitment variance is lower than its suite's IID
+reference. A positive value means less recruitment variation remains
+unexplained; zero identifies the IID baseline. This is an in-sample variance
+comparison, not a causal R-squared or a predictive-skill score. Path intervals,
+convergence diagnostics, randomized controls, and blocked or terminal-year
+prediction remain necessary before a pathway is considered supported.
 
 ### Initial environmental proof of concept
 
+In plain language, these four models ask whether recruitment is better
+described with no environmental edge, a cold-pool edge, an age-0 late-summer
+SST edge, or both edges estimated together.
+
 ```{r}
 #| label: tbl-dsem-model-comparison
-#| tbl-cap: "Exploratory DSEM recruitment-covariate models based on Rceattle 5.8.1. Delta AIC is calculated among models using the same years and covariate observations."
+#| tbl-cap: "Exploratory DSEM recruitment-covariate models based on Rceattle 5.8.1. Delta AIC and the percentage reduction in residual recruitment variance are calculated relative to models using the same years and covariate observations."
 #| tbl-pos: "H"
 
 dsem_summary |>
@@ -1987,25 +2033,25 @@ dsem_summary |>
     Model,
     AIC,
     `Delta AIC`,
-    maximum_gradient,
-    positive_definite_hessian,
-    convergence_status
+    `Residual variation reduced (%)`
   ) |>
   arrange(AIC) |>
   gt() |>
   fmt_number(columns = c(AIC, `Delta AIC`), decimals = 2) |>
-  fmt_scientific(columns = maximum_gradient, decimals = 2) |>
+  fmt_number(columns = `Residual variation reduced (%)`, decimals = 1) |>
   cols_label(
-    maximum_gradient = "Maximum gradient",
-    positive_definite_hessian = "PD Hessian",
-    convergence_status = "Status"
+    `Residual variation reduced (%)` = "Residual variation reduced (%)"
   ) |>
   cols_width(
     Model ~ px(180),
-    everything() ~ px(105)
+    `Residual variation reduced (%)` ~ px(125),
+    everything() ~ px(95)
   )
 ```
 
+All four initial fits reached `OK` status with positive-definite Hessians and
+maximum absolute gradients no larger than
+`r format(max(dsem_summary$maximum_gradient), scientific = TRUE, digits = 2)`.
 The model containing only age-0 late-summer SST had the lowest AIC
 (@tbl-dsem-model-comparison; @fig-dsem-aic). Its estimated residual
 recruitment variance was
@@ -2121,6 +2167,12 @@ AIC comparisons are valid within this suite; they should not be compared
 directly with AIC from a run containing a different environmental observation
 block.
 
+In plain language, the comparison asks whether recruitment is better described
+with no physical edge, a winter-sea-ice edge, a spring-SST edge, or both edges.
+The combined model asks whether each physical proxy contributes after the
+other is already included; it does not assume that both arrows represent
+separate mechanisms.
+
 The model graph includes AR(1) persistence for each observed covariate and
 tests either or both dashed paths to age-1 recruitment
 (@fig-ecostate-physical-dag). The sea-ice-to-SST arrow is a mechanistic
@@ -2157,7 +2209,7 @@ knitr::include_graphics(ecostate_physical$files$covariate_figure)
 
 ```{r}
 #| label: tbl-ecostate-physical-models
-#| tbl-cap: "Separate Rceattle-DSEM physical-candidate model comparison. Delta AIC is calculated only within the common physical-candidate observation block."
+#| tbl-cap: "Separate Rceattle-DSEM physical-candidate model comparison. Delta AIC and the percentage reduction in residual recruitment variance are calculated only within the common physical-candidate observation block."
 #| tbl-pos: "H"
 
 ecostate_physical$summary |>
@@ -2165,24 +2217,22 @@ ecostate_physical$summary |>
     Model,
     AIC,
     `Delta AIC`,
-    maximum_gradient,
-    positive_definite_hessian,
-    convergence_status
+    `Residual variation reduced (%)`
   ) |>
   arrange(AIC) |>
   gt() |>
   fmt_number(columns = c(AIC, `Delta AIC`), decimals = 2) |>
-  fmt_scientific(columns = maximum_gradient, decimals = 2) |>
+  fmt_number(columns = `Residual variation reduced (%)`, decimals = 1) |>
   cols_label(
-    maximum_gradient = "Maximum gradient",
-    positive_definite_hessian = "PD Hessian",
-    convergence_status = "Status"
+    `Residual variation reduced (%)` = "Residual variation reduced (%)"
   )
 ```
 
 All four physical-candidate fits reached `OK` status with positive-definite
-Hessians (@tbl-ecostate-physical-models). The combined model had the lowest
-AIC and reduced estimated unexplained recruitment variance by
+Hessians and maximum absolute gradients no larger than
+`r format(max(ecostate_physical$summary$maximum_gradient), scientific = TRUE, digits = 2)`
+(@tbl-ecostate-physical-models). The combined model had the lowest AIC and
+reduced estimated unexplained recruitment variance by
 `r sprintf("%.1f", 100 * ecostate_physical$variance$variance_reduction_from_iid[ecostate_physical$variance$model == "combined"])`%
 relative to IID. April--May SST was negative in its single-path fit and in the
 combined fit. Maximum winter sea ice was weakly positive by itself, then
@@ -2261,6 +2311,12 @@ state. Because the bottom-trawl survey occurs after the start-of-year state,
 these are contemporaneous exploratory associations rather than established
 predation effects.
 
+In plain language, the four models ask whether recruitment is better described
+with no overlap edge, an arrowtooth-overlap edge, an adult-pollock-overlap
+edge, or both edges. The combined model asks whether arrowtooth overlap adds
+information after adult-pollock overlap is known, and vice versa; it does not
+estimate predation or cannibalism mortality directly.
+
 The graph distinguishes the direct paths actually fitted from the intervening
 predation and cannibalism mechanisms (@fig-ecostate-overlap-dag). The run does
 not estimate predation mortality, and the adult-pollock overlap index remains
@@ -2300,7 +2356,7 @@ knitr::include_graphics(ecostate_overlap$files$covariate_figure)
 
 ```{r}
 #| label: tbl-ecostate-overlap-models
-#| tbl-cap: "Separate Rceattle-DSEM juvenile-predator-overlap model comparison. Delta AIC is calculated only within the common overlap observation block."
+#| tbl-cap: "Separate Rceattle-DSEM juvenile-predator-overlap model comparison. Delta AIC and the percentage reduction in residual recruitment variance are calculated only within the common overlap observation block."
 #| tbl-pos: "H"
 
 ecostate_overlap$summary |>
@@ -2308,22 +2364,20 @@ ecostate_overlap$summary |>
     Model,
     AIC,
     `Delta AIC`,
-    maximum_gradient,
-    positive_definite_hessian,
-    convergence_status
+    `Residual variation reduced (%)`
   ) |>
   arrange(AIC) |>
   gt() |>
   fmt_number(columns = c(AIC, `Delta AIC`), decimals = 2) |>
-  fmt_scientific(columns = maximum_gradient, decimals = 2) |>
+  fmt_number(columns = `Residual variation reduced (%)`, decimals = 1) |>
   cols_label(
-    maximum_gradient = "Maximum gradient",
-    positive_definite_hessian = "PD Hessian",
-    convergence_status = "Status"
+    `Residual variation reduced (%)` = "Residual variation reduced (%)"
   )
 ```
 
-All four overlap fits reached `OK` status with positive-definite Hessians
+All four overlap fits reached `OK` status with positive-definite Hessians and
+maximum absolute gradients no larger than
+`r format(max(ecostate_overlap$summary$maximum_gradient), scientific = TRUE, digits = 2)`
 (@tbl-ecostate-overlap-models). The adult-pollock-overlap model had the lowest
 AIC and reduced estimated unexplained recruitment variance by
 `r sprintf("%.1f", 100 * ecostate_overlap$variance$variance_reduction_from_iid[ecostate_overlap$variance$model == "candidate2"])`%
