@@ -97,18 +97,10 @@ params:
   dsem_variance_file: "results/dsem_5.8.1_sst/dsem_recruitment_variance.csv"
   dsem_covariates_file: "results/dsem_5.8.1_sst/cohort_aligned_covariates.csv"
   dsem_random_summary_file: "results/dsem_5.8.1_sst_randomized/dsem_model_summary.csv"
-  dsem_random_paths_file: "results/dsem_5.8.1_sst_randomized/dsem_path_estimates.csv"
-  dsem_design_file: "results/dsem_5.8.1_sst/dsem_run_design.csv"
   dsem_random_design_file: "results/dsem_5.8.1_sst_randomized/dsem_run_design.csv"
   dsem_aic_figure_file: "results/dsem_5.8.1_sst/dsem_aic_comparison.png"
   dsem_edges_figure_file: "results/dsem_5.8.1_sst/dsem_edge_coefficients.png"
-  dsem_recruitment_figure_file: "results/dsem_5.8.1_sst/dsem_recruitment_comparison.png"
   dsem_script: "2024 EBS pollock DSEM proof of concept.R"
-  ecostate_dsem_script: "2024 EBS pollock EcoState DSEM candidates.R"
-  ecostate_physical_dir: "results/dsem_5.8.1_ecostate_physical"
-  ecostate_physical_random_dir: "results/dsem_5.8.1_ecostate_physical_randomized"
-  ecostate_overlap_dir: "results/dsem_5.8.1_ecostate_overlap"
-  ecostate_overlap_random_dir: "results/dsem_5.8.1_ecostate_overlap_randomized"
 editor:
   markdown:
     wrap: 72
@@ -297,36 +289,9 @@ dsem_paths_file <- project_file(params$dsem_paths_file)
 dsem_variance_file <- project_file(params$dsem_variance_file)
 dsem_covariates_file <- project_file(params$dsem_covariates_file)
 dsem_random_summary_file <- project_file(params$dsem_random_summary_file)
-dsem_random_paths_file <- project_file(params$dsem_random_paths_file)
-dsem_design_file <- project_file(params$dsem_design_file)
 dsem_random_design_file <- project_file(params$dsem_random_design_file)
 dsem_aic_figure_file <- project_file(params$dsem_aic_figure_file)
 dsem_edges_figure_file <- project_file(params$dsem_edges_figure_file)
-dsem_recruitment_figure_file <- project_file(params$dsem_recruitment_figure_file)
-
-ecostate_suite_files <- function(directory) {
-  directory <- project_file(directory)
-  list(
-    summary = file.path(directory, "dsem_model_summary.csv"),
-    paths = file.path(directory, "dsem_path_estimates.csv"),
-    variance = file.path(directory, "dsem_recruitment_variance.csv"),
-    covariates = file.path(directory, "cohort_aligned_covariates.csv"),
-    design = file.path(directory, "dsem_run_design.csv"),
-    covariate_figure = file.path(directory, "dsem_covariates.png"),
-    aic_figure = file.path(directory, "dsem_aic_comparison.png"),
-    edge_figure = file.path(directory, "dsem_edge_coefficients.png"),
-    recruitment_figure = file.path(directory, "dsem_recruitment_comparison.png")
-  )
-}
-
-ecostate_physical_files <- ecostate_suite_files(params$ecostate_physical_dir)
-ecostate_physical_random_files <- ecostate_suite_files(
-  params$ecostate_physical_random_dir
-)
-ecostate_overlap_files <- ecostate_suite_files(params$ecostate_overlap_dir)
-ecostate_overlap_random_files <- ecostate_suite_files(
-  params$ecostate_overlap_random_dir
-)
 
 core_files <- c(
   method_file,
@@ -346,16 +311,9 @@ core_files <- c(
   dsem_variance_file,
   dsem_covariates_file,
   dsem_random_summary_file,
-  dsem_random_paths_file,
-  dsem_design_file,
   dsem_random_design_file,
   dsem_aic_figure_file,
-  dsem_edges_figure_file,
-  dsem_recruitment_figure_file,
-  unlist(ecostate_physical_files),
-  unlist(ecostate_physical_random_files),
-  unlist(ecostate_overlap_files),
-  unlist(ecostate_overlap_random_files)
+  dsem_edges_figure_file
 )
 if (any(!file.exists(core_files))) {
   stop(
@@ -397,11 +355,6 @@ dsem_random_summary <- readr::read_csv(
   dsem_random_summary_file,
   show_col_types = FALSE
 )
-dsem_random_paths <- readr::read_csv(
-  dsem_random_paths_file,
-  show_col_types = FALSE
-)
-dsem_design <- readr::read_csv(dsem_design_file, show_col_types = FALSE)
 dsem_random_design <- readr::read_csv(
   dsem_random_design_file,
   show_col_types = FALSE
@@ -438,83 +391,6 @@ dsem_recruitment_paths <- dsem_paths |>
   )
 dsem_random_summary <- dsem_random_summary |>
   mutate(`Delta AIC` = AIC - min(AIC))
-dsem_random_recruitment_paths <- dsem_random_paths |>
-  filter(grepl("_to_R$", parameter))
-
-read_ecostate_suite <- function(files, model_labels, candidate_labels) {
-  variance <- readr::read_csv(files$variance, show_col_types = FALSE)
-  summary <- readr::read_csv(files$summary, show_col_types = FALSE) |>
-    mutate(
-      Model = unname(model_labels[model]),
-      `Delta AIC` = AIC - min(AIC)
-    ) |>
-    left_join(
-      variance |>
-        select(model, variance_reduction_from_iid),
-      by = "model"
-    ) |>
-    mutate(
-      `Residual variation reduced (%)` = 100 * variance_reduction_from_iid
-    )
-  paths <- readr::read_csv(files$paths, show_col_types = FALSE)
-  recruitment_paths <- paths |>
-    filter(grepl("_to_R$", parameter)) |>
-    mutate(
-      Model = unname(model_labels[model]),
-      Covariate = unname(candidate_labels[parameter])
-    )
-  list(
-    summary = summary,
-    paths = paths,
-    recruitment_paths = recruitment_paths,
-    variance = variance,
-    covariates = readr::read_csv(files$covariates, show_col_types = FALSE),
-    design = readr::read_csv(files$design, show_col_types = FALSE),
-    files = files
-  )
-}
-
-ecostate_physical_labels <- c(
-  iid = "IID recruitment deviations",
-  candidate1 = "Maximum winter sea ice",
-  candidate2 = "Age-0 April--May SST",
-  combined = "Both physical candidates"
-)
-ecostate_overlap_labels <- c(
-  iid = "IID recruitment deviations",
-  candidate1 = "Arrowtooth overlap",
-  candidate2 = "Adult-pollock overlap",
-  combined = "Both overlap candidates"
-)
-ecostate_physical_candidates <- c(
-  Candidate1_to_R = "Maximum winter sea ice",
-  Candidate2_to_R = "Age-0 April--May SST"
-)
-ecostate_overlap_candidates <- c(
-  Candidate1_to_R = "Arrowtooth--juvenile pollock overlap",
-  Candidate2_to_R = "Adult-pollock--juvenile pollock overlap"
-)
-
-ecostate_physical <- read_ecostate_suite(
-  ecostate_physical_files,
-  ecostate_physical_labels,
-  ecostate_physical_candidates
-)
-ecostate_physical_random <- read_ecostate_suite(
-  ecostate_physical_random_files,
-  ecostate_physical_labels,
-  ecostate_physical_candidates
-)
-ecostate_overlap <- read_ecostate_suite(
-  ecostate_overlap_files,
-  ecostate_overlap_labels,
-  ecostate_overlap_candidates
-)
-ecostate_overlap_random <- read_ecostate_suite(
-  ecostate_overlap_random_files,
-  ecostate_overlap_labels,
-  ecostate_overlap_candidates
-)
 est <- fits$data
 yrs <- fits$years
 nyr <- length(yrs)
@@ -923,16 +799,15 @@ file_inventory <- tibble::tribble(
   "Diagnostics script", "Local R script", params$diagnostics_script,
   "Next-assessment update script", "Local R script", params$update_script,
   "ADMB comparison script", "Local R script", params$admb_comparison_script,
+  "Rceattle-to-SPM input writer", "Local R script", "R/write_spmr_projection_inputs.R",
+  "spmR Tier 3 projection runner", "Local R script", "R/run_spmr_tier3_projection.R",
+  "SPM projection manifest", "Local CSV file", file.path(params$projection_dir, "manifest.csv"),
   "Exploratory DSEM script", "Local R script", params$dsem_script,
   "DSEM model comparison", "Local CSV file", params$dsem_summary_file,
   "DSEM recruitment-path estimates", "Local CSV file", params$dsem_paths_file,
   "Randomized DSEM control", "Local CSV file", params$dsem_random_summary_file,
-  "Physical and overlap DSEM script", "Local R script", params$ecostate_dsem_script,
-  "Physical-forcing DSEM comparison", "Local CSV file", file.path(params$ecostate_physical_dir, "dsem_model_summary.csv"),
-  "Top-down-overlap DSEM comparison", "Local CSV file", file.path(params$ecostate_overlap_dir, "dsem_model_summary.csv"),
   "DSEM AIC comparison figure", "Local PNG file", params$dsem_aic_figure_file,
   "DSEM edge-coefficient figure", "Local PNG file", params$dsem_edges_figure_file,
-  "DSEM recruitment-trajectory figure", "Local PNG file", params$dsem_recruitment_figure_file,
   "Modified ADMB retrospective file", "Local ADMB output", params$admb_retro_file,
   "Legacy ADMB retrospective file", "Local ADMB output", params$legacy_admb_retro_file
 ) |>
@@ -1592,12 +1467,14 @@ fishery input for the Standard Projection Model calculations implemented in
 `spmR` [@ianelli2026spmR]. The run uses `spmR` version 0.3.0 from pinned
 main-branch commit `e86fc6aa`. The adapter in
 `R/write_spmr_projection_inputs.R` writes terminal abundance, natural
-mortality, maturity, spawning and fishery weights, terminal fishery
-selectivity, recruitment, and spawning-biomass histories to `pm.prj`. The
-reproducible runner `R/run_spmr_tier3_projection.R` then applies those inputs
-to all seven Tier 3 alternatives. The report reads the saved projection
-products, so every table and figure in this section comes from the same saved
-Rceattle fit.
+mortality, maturity, spawning and fishery weights, the arithmetic mean of
+fishery selectivity-at-age over the most recent five assessment years
+(2020--2024), recruitment, and spawning-biomass histories to `pm.prj`. The
+same five years define the recent average fishing mortality. The reproducible
+runner `R/run_spmr_tier3_projection.R` then applies those inputs to all seven
+Tier 3 alternatives. The report reads the saved projection products, so every
+table and figure in this section comes from the same saved Rceattle fit. The
+complete field mapping and validation sequence are documented in Appendix A-2.
 
 ```{r}
 #| label: spmr-projection-products
@@ -1612,6 +1489,10 @@ spmr_lineage <- readr::read_csv(
 )
 spmr_age_schedules <- readr::read_csv(
   file.path(projection_dir, "age_schedules.csv"), show_col_types = FALSE
+)
+spmr_selectivity_history <- readr::read_csv(
+  file.path(projection_dir, "fishery_selectivity_recent_years.csv"),
+  show_col_types = FALSE
 )
 spmr_detail <- readr::read_csv(
   file.path(projection_dir, "spm_detail.csv"), show_col_types = FALSE
@@ -1640,21 +1521,37 @@ spmr_alt_desc <- tibble(
 
 ```{r}
 #| label: tbl-spmr-projection-files
-#| tbl-cap: "Projection files generated from the saved Rceattle fit for the spmR/SPM calculations."
+#| tbl-cap: "Projection files generated from the saved Rceattle fit for the spmR/SPM calculations. Checksums show the first eight MD5 characters; the complete values are retained in manifest.csv."
+#| tbl-pos: "H"
 spmr_manifest |>
-  select(file, role, exists, md5) |>
+  transmute(
+    file,
+    role,
+    exists,
+    checksum = substr(md5, 1, 8)
+  ) |>
   gt() |>
+  cols_width(
+    file ~ px(200),
+    role ~ px(300),
+    exists ~ px(50),
+    checksum ~ px(70)
+  ) |>
+  tab_options(table.font.size = px(8)) |>
   tab_header(title = "spmR Projection Files")
 ```
 
 ```{r}
 #| label: tbl-spmr-projection-settings
 #| tbl-cap: "Key settings and source information for the Rceattle-derived SPM projection."
+#| tbl-pos: "H"
 tibble(
   Item = c(
     "Rceattle source fit", "Source checksum", "Composition likelihood",
     "Composition sample sizes", "spmR version", "spmR commit",
     "Terminal assessment year",
+    "Fishery selectivity rule", "Fishery selectivity years",
+    "Recent average-F years",
     "Spawning timing", "Rceattle encoding", "SPM encoding",
     "Timing compatibility check", "Spawning-biomass timing convention", "Projection begin year",
     "Projection years", "Simulations", "Alternatives"
@@ -1665,6 +1562,9 @@ tibble(
     spmr_lineage$composition_sample_sizes,
     spmr_lineage$spmR, substr(spmr_lineage$spmR_commit, 1, 8),
     spmr_lineage$terminal_year,
+    spmr_lineage$fishery_selectivity_rule,
+    gsub(";", ", ", spmr_lineage$fishery_selectivity_years),
+    gsub(";", ", ", spmr_lineage$fishing_mortality_years),
     "0.25 year from January 1 (start of April)",
     "spawn_month = 3 elapsed months; 3/12 = 0.25",
     "Spawnmo = 4 as a one-based calendar-month code; (4 - 1)/12 = 0.25",
@@ -1674,14 +1574,26 @@ tibble(
   )
 ) |>
   gt() |>
+  cols_width(
+    Item ~ px(185),
+    Value ~ px(420)
+  ) |>
+  tab_options(table.font.size = px(9)) |>
   tab_header(title = "Generated SPM Setup and Source Information")
 ```
 
 ```{r}
 #| label: tbl-spmr-alternative-descriptions
 #| tbl-cap: "SPM projection alternatives included in the generated setup file."
+#| tbl-pos: "H"
 spmr_alt_desc |>
   gt() |>
+  cols_width(
+    Alternative ~ px(65),
+    Name ~ px(170),
+    Description ~ px(370)
+  ) |>
+  tab_options(table.font.size = px(9)) |>
   tab_header(title = "SPM Projection Alternatives")
 ```
 
@@ -1695,22 +1607,39 @@ from 1,000 SPM simulations.
 ```{r}
 #| label: tbl-spmr-tier3-seven-scenarios
 #| tbl-cap: 'Tier 3 projection results for all seven FMP alternatives using inputs generated from the Rceattle EBS pollock model. Catch and biomass quantities are in thousand t; B/B~35%~ is spawning biomass relative to the Tier 3 B~35%~ proxy.'
+#| tbl-pos: "H"
 readr::read_csv(
   file.path(projection_dir, "tier3_seven_scenario_table.csv"),
   show_col_types = FALSE
 ) |>
+  pivot_longer(
+    cols = -c(Alt, Scenario),
+    names_to = c(".value", "Year"),
+    names_pattern = "(.+)_(\\d{4})"
+  ) |>
+  mutate(Year = as.integer(Year)) |>
+  rename(`B/B35` = B_B35) |>
+  arrange(Alt, Year) |>
   gt() |>
-  fmt_number(columns = matches("^(Catch|ABC|OFL|SSB)_"), decimals = 0) |>
-  fmt_number(columns = matches("^F_"), decimals = 3) |>
-  fmt_number(columns = matches("^B_B35_"), decimals = 2) |>
-  tab_spanner(label = "2027", columns = ends_with("_2027")) |>
-  tab_spanner(label = "2028", columns = ends_with("_2028")) |>
+  fmt_number(columns = c(Catch, ABC, OFL, SSB), decimals = 0) |>
+  fmt_number(columns = F, decimals = 3) |>
+  fmt_number(columns = `B/B35`, decimals = 2) |>
+  cols_width(
+    Alt ~ px(35),
+    Scenario ~ px(175),
+    Year ~ px(45),
+    c(Catch, ABC, OFL, SSB) ~ px(58),
+    F ~ px(45),
+    `B/B35` ~ px(55)
+  ) |>
+  tab_options(table.font.size = px(8)) |>
   tab_header(title = "Seven Tier 3 Projection Alternatives")
 ```
 
 ```{r}
 #| label: tbl-spmr-projection-age-schedules
-#| tbl-cap: "Age-specific schedules generated from the terminal-year Rceattle fit and applied in SPM."
+#| tbl-cap: "Age-specific schedules applied in SPM. Natural mortality, maturity, and weights come from the terminal Rceattle configuration; fishery selectivity is the arithmetic mean at age over 2020--2024."
+#| tbl-pos: "H"
 spmr_age_schedules |>
   gt() |>
   fmt_number(columns = -Age, decimals = 3) |>
@@ -1851,169 +1780,191 @@ spmr_plot_data |>
 
 ## Exploratory DSEM Recruitment Pathways
 
-This section is organized around causal pathways, the covariates used to
-represent them, and the comparison approach. It adapts the bottom-up energy,
-top-down overlap, transport, and switching-control hypotheses developed in the
+This section is the indicator-analysis pilot within a draft EBS pollock
+Ecosystem and Socioeconomic Profile (ESP), rather than an attempt to estimate
+the full pollock early-survival system. The BSAI Groundfish Plan Team
+recommended in 2021 that an EBS walleye pollock ESP be added to the list of
+future ESPs [@npfmc2021bsai]. The analysis follows the
+sequence recommended in the AFSC causal-modeling guidance: define the outcome,
+build a literature-based mechanism table and generic DAG, select a small set of
+scientifically defensible graphs, retain a no-edge baseline, and compare all
+graphs on the same data [@monnahan2026causalpractices]. The mechanism table and
+DAG draw on the January 2025 pollock workshop, the age-0 pollock working-group
+material, and the Tiger Team data-availability synthesis
+[@monnahan2026pollockworkshop; @siddon2026age0pollock; @afsc2026age0dag;
+@ianelli2026tigerteam] and the
 [EBS pollock Early Survival Pathways synthesis](https://afsc-assessments.github.io/ebswp_esp/)
-[@ianelli2026ebswpesp]. The Rceattle experiments target the age-1 recruitment
-state, whereas the broader synthesis follows cohorts through survival to age
-3. Some annual sea-ice, spring-SST, and juvenile-predator-overlap series used
-below were provided by the EcoState case-study work [@goodman2026ecostatedsem].
-EcoState supplied covariate products; the Rceattle fits and their
-interpretation were developed separately for this working paper.
+[@ianelli2026ebswpesp].
 
-### Causal graph proof of concept and covariate roles
+The response is the Rceattle age-1 recruitment state. The two examples test
+late-summer SST in the cohort's age-0 year and cold-pool extent in the following
+age-1 calendar year. They were selected because both have relatively long
+annual records and represent distinct, prespecified hypotheses. The analysis
+does not treat them as direct measurements of prey quality, energetic
+condition, cannibalism, or survival.
 
-The integration of DSEM within the Rceattle package is an enhancement that we
-think provides greater facility to account for broader ecological aspects
-within a management framework. Environmentally informed recruitment models
-benefit from covariates linked to plausible mechanisms, evaluated at relevant
-temporal and spatial scales, and tested for predictive and management value;
-otherwise added complexity can produce unstable or spurious relationships
-[@haltuch2019recruitment]. DSEM provides a computational framework for
-representing simultaneous and lagged ecological pathways in incomplete
-multivariate time series [@thorson2024dsem]. Here, causal-method testing means
-comparing prespecified graphs rather than searching for the strongest
-individual correlation. The tests ask whether the data are consistent with
-the graph's implied conditional-independence relationships, whether added
-edges improve prediction, and whether conclusions persist across alternative
-cohort timing, proxy, and missing-data assumptions [@thorson2025validating]. A
-recent Gulf of Alaska pollock application embedded DSEM within a state-space
-stock assessment and found that an intermediate-complexity causal model
-reduced unexplained recruitment variance and improved one-year-ahead
-forecasts, illustrating the value of parsimonious, hypothesis-driven model
-comparison [@champagnat2026causal].
+### ESP development scope
 
-The conceptual pathway links spawning and environmental conditions to
-recruitment while identifying the two covariates used here within that broader
-context (@fig-dsem-dag). The current proof of concept estimates only the two
-dashed paths to age-1 recruitment; the solid paths identify mechanisms and
-covariates for future expansion rather than fitted paths in this analysis.
-
-```{mermaid}
-%%| label: fig-dsem-dag
-%%| fig-cap: "Compact conceptual directed acyclic graph for eastern Bering Sea pollock early survival. Solid arrows summarize broader mechanisms that motivate future covariates. Dashed arrows identify the two direct environmental effects estimated in the current DSEM proof of concept: age-0 late-summer SST and age-1-year cold-pool extent on age-1 recruitment."
-%%| fig-alt: "A compact directed graph links spawning timing and location plus physical transport to egg-larval distribution; physical conditions to prey production, juvenile condition, and overwinter survival; and adult pollock biomass and cold-pool extent to predator overlap and juvenile survival. Solid arrows show conceptual mechanisms. Dashed arrows from late-summer sea surface temperature and cold-pool extent to age-1 recruitment show the two environmental effects fitted in the proof of concept."
-%%| fig-width: 7.5
-%%| fig-pos: H
-flowchart TB
-  SPAWN["Spawning timing<br/>and location"] --> COHORT["Egg-larval<br/>distribution"]
-  PHYS["Sea ice, temperature,<br/>wind, and circulation"] --> PREY["Prey production<br/>and match"]
-  PHYS --> COHORT
-  SST["Age-0 late-summer<br/>SST"] --> CONDITION
-  PREY --> CONDITION["Age-0 size,<br/>condition, and energy"]
-  CONDITION --> WINTER["Overwinter survival<br/>to age 1"]
-  COHORT --> JUV["Juvenile<br/>distribution"]
-
-  ADULT["Adult pollock<br/>biomass"] --> CANN["Cannibalism<br/>pressure"]
-  COLD["Cold-pool<br/>extent"] --> PREDIST["Predator<br/>distribution"]
-  JUV --> OVERLAP["Juvenile-predator<br/>overlap"]
-  CANN --> OVERLAP
-  PREDIST --> OVERLAP
-
-  WINTER --> SURV["Age-1 and age-2<br/>survival"]
-  OVERLAP --> SURV
-  SURV --> RECRUIT["Recruitment"]
-
-  SST -. "fitted path" .-> RECRUIT
-  COLD -. "fitted path" .-> RECRUIT
-
-  classDef physical fill:#e8f2f7,stroke:#26739b,stroke-width:2px,color:#1f2933;
-  classDef prey fill:#ecf5eb,stroke:#6b8f24,stroke-width:2px,color:#1f2933;
-  classDef early fill:#fff3df,stroke:#c68519,stroke-width:2px,color:#1f2933;
-  classDef predator fill:#fdf2e8,stroke:#c8523f,stroke-width:2px,color:#1f2933;
-  classDef survival fill:#e8f6f2,stroke:#13856f,stroke-width:2px,color:#1f2933;
-  class SPAWN,PHYS,COLD,SST physical;
-  class PREY prey;
-  class COHORT,CONDITION,JUV early;
-  class ADULT,CANN,PREDIST,OVERLAP predator;
-  class WINTER,SURV,RECRUIT survival;
-```
-
-```{=latex}
-\clearpage
-```
+The September product documents the justification, synthesis, generic DAG,
+mechanism table, and two illustrative fits. It does not substitute a long list
+of available covariates for a small set of causal hypotheses. The intended
+progression to November is summarized in @tbl-esp-development-scope; the full
+draft ESP structure is provided in Appendix A-3.
 
 ```{r}
-#| label: tbl-dsem-pathway-covariates
-#| tbl-cap: "Causal pathways, their representation in the exploratory Rceattle-DSEM runs, and the next measurements needed to represent each pathway more directly."
+#| label: tbl-esp-development-scope
+#| tbl-cap: "Development scope for the EBS pollock ESP and its Rceattle-DSEM indicator analysis."
 #| tbl-pos: "H"
 
 tibble::tribble(
-  ~Pathway, ~Representation_in_current_runs, ~Next_direct_measurements,
-  "Bottom-up energy", "Cold-pool extent; late-summer SST; maximum winter sea ice; April--May SST", "Sea-ice days after February; lipid-rich copepods; fall age-0 energy; bloom or prey-match timing",
-  "Top-down overlap", "Arrowtooth and adult-pollock range-overlap indices", "Uncertainty-aware overlap; predation mortality; age-specific juvenile distributions",
-  "Transport and match", "Physical covariates serve only as indirect proxies", "Wind and circulation; spawning distribution; larval-delivery and spatial prey-match indices",
-  "Switching control", "Separate physical and overlap suites with stationary coefficients", "Interactions or regime models; rolling stability; blocked prediction"
+  ~Component, ~September_draft, ~November_target,
+  "Justification and outcome", "Document the Plan Team request and define age-1 recruitment as the focal population response.", "Confirm the focal response and management use with the ESP team.",
+  "Indicator synthesis", "Provide a life-history synthesis, generic DAG, mechanism table, and data-availability review.", "Update indicators through the ESP and Ecosystem Status Report data-collection process.",
+  "Candidate hypotheses", "Retain two transparent proxy examples: age-0 late-summer SST and cold-pool extent.", "Fit two to five defensible candidate DAGs that represent proximal mediators where data permit.",
+  "Indicator analysis", "Compare the two single-edge examples and their combined diagnostic with the no-edge IID reference.", "Add predictive, retrospective, timing, and observation-error checks to the candidate-DAG comparison.",
+  "Management use", "Use results to illustrate the integrated Rceattle-DSEM workflow and identify data gaps.", "Determine whether validated indicators are suitable for operational recruitment modeling or risk-table context."
+) |>
+  gt() |>
+  cols_label(
+    September_draft = "September draft",
+    November_target = "November target"
+  ) |>
+  cols_width(
+    Component ~ px(135),
+    September_draft ~ px(275),
+    November_target ~ px(275)
+  ) |>
+  tab_options(table.font.size = px(9))
+```
+
+### Mechanism table and generic DAG
+
+The reduced mechanism table distinguishes processes that can be tested with the
+current annual data from biologically important mediators that remain
+intermittent or unavailable (@tbl-dsem-mechanisms). Expected signs describe the
+direction from the listed driver toward age-1 recruitment, whether directly or
+through the stated mechanism.
+
+```{r}
+#| label: tbl-dsem-mechanisms
+#| tbl-cap: "Reduced mechanism table for the illustrative age-0 to age-1 recruitment analysis. Coverage refers to the cohort-aligned data presently available to this working paper."
+#| tbl-pos: "H"
+
+tibble::tribble(
+  ~Driver, ~Mechanism, ~Expected_sign, ~Current_coverage, ~Role_in_this_section,
+  "Sea ice", "Winter ice affects summer cold-pool extent, bloom conditions, and prey production.", "Indirect", "Annual physical index available; not fitted here", "Upstream context",
+  "Cold-pool extent", "A larger cold pool can separate juveniles from adult pollock and reduce cannibalism.", "Positive", sprintf("%d annual values", sum(is.finite(dsem_covariates$ColdPool))), "Illustrative proxy edge",
+  "Age-0 late-summer SST", "Warmer water can increase metabolic demand and reduce energy stored before winter.", "Negative", sprintf("%d annual values", sum(is.finite(dsem_covariates$LateSummerSST))), "Illustrative proxy edge",
+  "Large copepods and euphausiids", "Lipid-rich prey supports age-0 growth, energy storage, and overwinter survival.", "Positive", "Intermittent; 15 values in the current ESP cohort table", "Unfitted mediator",
+  "Fall age-0 energy", "Higher energy density and total energy increase overwinter survival to age 1.", "Positive", "Absent from the current annual cohort table", "Priority mediator",
+  "Adult-pollock overlap", "Greater adult-juvenile overlap increases cannibalism exposure.", "Negative", "A separate range-overlap product exists, but its survey timing is contemporaneous with the age-1 state", "Deferred from the main example"
 ) |>
   gt() |>
   cols_width(
-    Pathway ~ px(105),
-    Representation_in_current_runs ~ px(255),
-    Next_direct_measurements ~ px(270)
+    Driver ~ px(90),
+    Mechanism ~ px(205),
+    Expected_sign ~ px(65),
+    Current_coverage ~ px(145),
+    Role_in_this_section ~ px(95)
   ) |>
   cols_label(
-    Representation_in_current_runs = "Representation in current runs",
-    Next_direct_measurements = "Next direct measurements"
+    Expected_sign = "Expected sign",
+    Current_coverage = "Current coverage",
+    Role_in_this_section = "Role here"
   ) |>
-  tab_options(
-    table.font.size = px(10)
-  )
+  tab_options(table.font.size = px(8))
 ```
 
-The dashed arrows in @fig-dsem-dag identify the direct environmental paths in
-the initial proof of concept. The solid paths organize covariates by mechanism
-and show why a temperature or sea-ice index is an upstream proxy rather than a
-measured energy, transport, or predation process. The two later suites test
-alternative physical proxies and observed range-overlap indices; they do not
-fit the full mediated graph in @fig-dsem-dag.
+The generic DAG is adapted from the age-0 pollock working-group graph and
+retains both bottom-up and top-down routes (@fig-dsem-dag). It makes the
+unobserved or intermittent mediators visible instead of allowing the two
+available physical proxies to stand in for entire mechanisms. Solid arrows are
+conceptual. Dashed arrows are the only recruitment paths fitted in this proof
+of concept.
 
-### Cohort alignment and model-comparison approach
+```{mermaid}
+%%| label: fig-dsem-dag
+%%| fig-cap: "Generic directed acyclic graph for eastern Bering Sea pollock survival from age 0 to age 1. Solid arrows summarize hypothesized mechanisms. Dashed arrows are the two direct proxy paths fitted in the illustrative Rceattle-DSEM comparison."
+%%| fig-alt: "Sea ice influences cold-pool extent, summer temperature, bloom conditions, and prey. Prey and juvenile abundance influence age-0 energy, which affects overwinter survival. Cold-pool extent, juvenile distribution, and adult pollock affect cannibalism exposure. Overwinter survival and predation survival lead to age-1 recruitment. Dashed arrows connect late-summer SST and cold-pool extent directly to recruitment for the two illustrative fitted hypotheses."
+%%| fig-width: 6.3
+%%| fig-pos: H
+flowchart LR
+  ICE["Winter<br/>sea ice"] --> COLD["Summer<br/>cold pool"]
+  ICE --> BLOOM["Bloom timing<br/>and production"]
+  ICE --> SST["Age-0 late-<br/>summer SST"]
 
-The proof of concept treats recruitment deviations as random effects and
-aligns covariates with the year in which each cohort enters the model at age 1.
-The spawning-biomass proxy was removed. The two standardized environmental
-series are cold-pool extent in the age-1 calendar year
-(`r sum(is.finite(dsem_covariates$ColdPool))` observations) and late-summer sea
-surface temperature (SST) in the cohort's age-0 year
-(`r sum(is.finite(dsem_covariates$LateSummerSST))` observations). The age-0 SST
-value is carried forward to the DSEM row for that cohort's age-1 recruitment;
-the zero-lag path is therefore cohort-aligned rather than a claim that SST was
-measured in the age-1 year.
+  BLOOM --> PREY["Large copepods<br/>and euphausiids"]
+  SST --> PREY
+  PREY --> A0["Age-0 abundance,<br/>growth, and size"]
+  PREY --> ENERGY["Age-0 diet lipid,<br/>energy density,<br/>and total energy"]
+  A0 --> ENERGY
+  ENERGY --> WINTER["Overwinter<br/>survival"]
 
-In this section "IID" refers to the no-recruitment-edge reference model.
+  COLD --> SEP["Juvenile-adult<br/>spatial separation"]
+  A0 --> JLOC["Juvenile<br/>distribution"]
+  JLOC --> OVER["Cannibalism<br/>exposure"]
+  SEP --> OVER
+  ADULT["Adult pollock<br/>biomass and distribution"] --> OVER
+  OVER --> PSURV["Predation<br/>survival"]
 
-The comparisons can therefore be read as three increasingly specific
-questions:
+  WINTER --> REC["Age-1<br/>recruitment"]
+  PSURV --> REC
 
-- **IID reference:** how much recruitment variation remains when neither
-  candidate is connected directly to recruitment?
-- **One-edge model:** does adding one specified arrow explain enough of the
-  between-year recruitment pattern to improve the model?
-- **Two-edge model:** does the second arrow add information after accounting
-  for the first, or are the two covariates largely describing the same years?
+  SST -. "fitted proxy edge" .-> REC
+  COLD -. "fitted proxy edge" .-> REC
 
-Each arrow is a statistical test of the biological hypothesis represented by
-that covariate, not proof of the full mechanism in the causal graph. Models
-within a suite use the same observation years, missingness pattern,
-standardization, and AR1 covariate processes. AIC is therefore interpreted
-only within a suite. The tables also report the percentage by which each
-model's estimated residual recruitment variance is lower than its suite's IID
-reference. A positive value means less recruitment variation remains
-unexplained; zero identifies the IID baseline. This is an in-sample variance
-comparison, not a causal R-squared or a predictive-skill score. Path intervals,
-convergence diagnostics, randomized controls, and blocked or terminal-year
-prediction remain necessary before a pathway is considered supported.
+  classDef physical fill:#e8f2f7,stroke:#26739b,stroke-width:2px,color:#1f2933;
+  classDef prey fill:#ecf5eb,stroke:#6b8f24,stroke-width:2px,color:#1f2933;
+  classDef juvenile fill:#fff3df,stroke:#c68519,stroke-width:2px,color:#1f2933;
+  classDef predator fill:#fdf2e8,stroke:#c8523f,stroke-width:2px,color:#1f2933;
+  classDef survival fill:#e8f6f2,stroke:#13856f,stroke-width:2px,color:#1f2933;
+  class ICE,COLD,SST physical;
+  class BLOOM,PREY prey;
+  class A0,ENERGY,JLOC juvenile;
+  class SEP,ADULT,OVER predator;
+  class WINTER,PSURV,REC survival;
+```
 
-### Introducing alternative covariates
+The generic graph is intentionally broader than the statistical examples. It
+shows that a negative SST coefficient would be consistent with an energetic
+constraint, but would not identify prey quality, age-0 energy, or overwinter
+survival as the active mediator. Likewise, a cold-pool coefficient would be a
+proxy for spatial separation and cannibalism unless overlap and mortality were
+observed directly.
 
-In plain language, these four models ask whether recruitment is better
-described with no environmental edge, a cold-pool edge, an age-0 late-summer
-SST edge, or both edges estimated together.
+### Two illustrative hypotheses
+
+The proof of concept compares two single-edge hypotheses with a common
+reference:
+
+- **Energetic-condition proxy:** higher age-0 late-summer SST is associated
+  with lower age-1 recruitment because warmer conditions can increase
+  metabolic demand and reduce fall energy reserves
+  [@heintz2013; @siddon2013; @duffyanderson2016].
+- **Spatial-separation proxy:** larger cold-pool extent is associated with
+  higher age-1 recruitment because it can reduce juvenile-adult spatial
+  overlap and cannibalism.
+
+The age-0 SST value is carried forward to the DSEM row for that cohort's age-1
+recruitment. The zero-lag path is therefore cohort-aligned rather than a claim
+that SST was measured in the age-1 year. In this section "IID" refers to the
+no-recruitment-edge reference model. The combined model is retained as a
+limited diagnostic of whether the two proxy edges add information when fitted
+together; it is not a third mechanistic hypothesis.
+
+All four specifications use the same observation-year universe, missingness
+pattern, standardization, and AR(1) processes for the observed covariates.
+Within this common data block, AIC compares relative fit after accounting for
+model complexity. The percentage reduction in residual recruitment variation
+compares each model's estimated unexplained recruitment variance with the IID
+reference. It is an in-sample description, not a causal R-squared or a
+predictive-skill score.
+
+### Illustrative results
 
 ```{r}
 #| label: tbl-dsem-model-comparison
-#| tbl-cap: "Exploratory DSEM recruitment-covariate models based on Rceattle 5.8.1. Delta AIC and the percentage reduction in residual recruitment variance are calculated relative to models using the same years and covariate observations."
+#| tbl-cap: "Illustrative Rceattle-DSEM model comparison. Delta AIC and the percentage reduction in residual recruitment variation are calculated within the common observation block."
 #| tbl-pos: "H"
 
 dsem_summary |>
@@ -2027,38 +1978,31 @@ dsem_summary |>
   gt() |>
   fmt_number(columns = c(AIC, `Delta AIC`), decimals = 2) |>
   fmt_number(columns = `Residual variation reduced (%)`, decimals = 1) |>
-  cols_label(
-    `Residual variation reduced (%)` = "Residual variation reduced (%)"
-  ) |>
   cols_width(
-    Model ~ px(180),
-    `Residual variation reduced (%)` ~ px(125),
+    Model ~ px(190),
+    `Residual variation reduced (%)` ~ px(130),
     everything() ~ px(95)
   )
 ```
 
-All four initial fits reached `OK` status with positive-definite Hessians and
+All four fits reached `OK` status, had positive-definite Hessians, and had
 maximum absolute gradients no larger than
 `r format(max(dsem_summary$maximum_gradient), scientific = TRUE, digits = 2)`.
-The model containing only age-0 late-summer SST had the lowest AIC
-(@tbl-dsem-model-comparison; @fig-dsem-aic). Its estimated residual
-recruitment variance was
+The age-0 late-summer SST model had the lowest AIC
+(@tbl-dsem-model-comparison; @fig-dsem-aic) and reduced estimated residual
+recruitment variation by
 `r sprintf("%.1f", 100 * dsem_variance$variance_reduction_from_iid[dsem_variance$model == "late_summer_sst"])`%
-lower than in the IID model; adding cold pool changed that reduction only to
-`r sprintf("%.1f", 100 * dsem_variance$variance_reduction_from_iid[dsem_variance$model == "combined"])`%.
-The cold-pool recruitment coefficient was small and its interval included
-zero in both the single-covariate and combined models. The SST coefficient was
-negative and its interval excluded zero in both configurations. This is a
-modest in-sample signal: the SST-only model improved AIC by
-`r sprintf("%.2f", dsem_summary$AIC[dsem_summary$model == "iid"] - dsem_summary$AIC[dsem_summary$model == "late_summer_sst"])`
-units relative to IID, but the result has not yet passed a blocked or
-terminal-year predictive test.
+relative to IID. The cold-pool-only model reduced residual variation by
+`r sprintf("%.1f", 100 * dsem_variance$variance_reduction_from_iid[dsem_variance$model == "cold_pool"])`%
+and had higher AIC than IID. The combined model reduced residual variation by
+`r sprintf("%.1f", 100 * dsem_variance$variance_reduction_from_iid[dsem_variance$model == "combined"])`%,
+but its additional parameter left its AIC above the SST-only model.
 
 ```{r}
 #| label: fig-dsem-aic
-#| fig-cap: "Akaike information criterion differences for the four exploratory DSEM recruitment models. The age-0 late-summer SST model has the lowest AIC; bars show the increase in AIC relative to that model."
-#| fig-alt: "Horizontal bars compare delta AIC for IID recruitment deviations, cold pool, age-0 late-summer SST, and the combined environmental model. The SST-only model has the lowest AIC, followed by the combined model, IID, and cold-pool-only model."
-#| out-width: "78%"
+#| fig-cap: "Akaike information criterion differences for the illustrative DSEM models. The age-0 late-summer SST model has the lowest AIC."
+#| fig-alt: "Horizontal bars compare delta AIC for the no-edge IID reference, cold pool, age-0 late-summer SST, and the combined proxy model. The SST-only model has the lowest AIC, followed by the combined model, IID, and cold-pool-only model."
+#| out-width: "76%"
 #| fig-align: center
 
 knitr::include_graphics(dsem_aic_figure_file)
@@ -2066,7 +2010,7 @@ knitr::include_graphics(dsem_aic_figure_file)
 
 ```{r}
 #| label: tbl-dsem-recruitment-paths
-#| tbl-cap: "Standardized DSEM paths to age-1 recruitment. Intervals are estimate plus or minus 1.96 standard errors."
+#| tbl-cap: "Standardized proxy paths to age-1 recruitment. Intervals are the estimate plus or minus 1.96 standard errors."
 #| tbl-pos: "H"
 
 dsem_recruitment_paths |>
@@ -2084,397 +2028,57 @@ dsem_recruitment_paths |>
   )
 ```
 
-The age-0 late-summer SST effect is negative and separated from zero, whereas
-the cold-pool effect remains near zero (@fig-dsem-edges). This direction is
-consistent with the hypothesized warm-year energetic constraint on age-0
-pollock, but the fitted path does not by itself identify the intervening prey,
-condition, or overwinter-survival mechanism [@heintz2013; @duffyanderson2016].
-The resulting recruitment trajectories remain visually similar despite the
-AIC differences (@fig-dsem-recruitment).
+The SST coefficient was negative and its interval excluded zero in both the
+single-edge and combined models. The cold-pool coefficient was small and its
+interval included zero in both models (@tbl-dsem-recruitment-paths;
+@fig-dsem-edges). In plain language, the current annual data contain a modest
+in-sample association consistent with the warm-year energetic-constraint
+hypothesis, while the direct cold-pool proxy edge received little support.
+Neither result establishes the intervening mechanism.
 
 ```{r}
 #| label: fig-dsem-edges
-#| fig-cap: "Standardized directed-edge coefficients for the four exploratory DSEM models. Points are estimates and horizontal lines are 95% intervals. Blue edges describe temporal persistence in the observed covariates; orange edges describe direct effects on age-1 recruitment."
-#| fig-alt: "Four panels show standardized DSEM coefficients. Both environmental covariates have positive temporal persistence. Age-0 late-summer SST has a negative recruitment effect with its interval below zero, while the cold-pool recruitment effect is close to zero and its interval overlaps zero."
+#| fig-cap: "Standardized coefficients for the illustrative DSEM models. Points are estimates and horizontal lines are 95% intervals. Blue edges describe temporal persistence in observed covariates; orange edges are the two direct proxy paths to age-1 recruitment."
+#| fig-alt: "Four panels show standardized DSEM coefficients. Both environmental series have positive temporal persistence. Age-0 late-summer SST has a negative recruitment coefficient with its interval below zero, while the cold-pool recruitment coefficient is close to zero and its interval overlaps zero."
 #| out-width: "100%"
 
 knitr::include_graphics(dsem_edges_figure_file)
 ```
 
-```{r}
-#| label: fig-dsem-recruitment
-#| fig-cap: "Estimated age-1 recruitment from the IID, cold-pool, age-0 late-summer SST, and combined exploratory DSEM models."
-#| fig-alt: "Four nearly overlapping recruitment trajectories from 1964 through 2024 show the same large cohort peaks and low-recruitment periods, with small differences among the DSEM specifications."
-#| out-width: "100%"
-
-knitr::include_graphics(dsem_recruitment_figure_file)
-```
-
-As a randomization check, the analysis replaced both observed environmental
-series with independent standard-normal values while preserving their
-missing-year patterns (seed
-`r sprintf("%d", as.integer(dsem_random_design$seed))`). None of the randomized recruitment paths
-improved on the randomized IID model: their delta AIC values ranged from
+The missingness-preserving randomization check replaced both environmental
+series with independent standard-normal values using seed
+`r sprintf("%d", as.integer(dsem_random_design$seed))`. None of the randomized
+recruitment paths improved on the randomized IID model: their delta AIC values
+ranged from
 `r sprintf("%.2f", min(dsem_random_summary[["Delta AIC"]][dsem_random_summary$model != "iid"]))`
 to
 `r sprintf("%.2f", max(dsem_random_summary[["Delta AIC"]][dsem_random_summary$model != "iid"]))`,
-and every randomized path interval included zero. This result shows that the
-same procedure did not identify an effect in these randomized series, but it
-does not replace out-of-sample validation.
+and every randomized path interval included zero. This is a basic check against
+an identical signal arising from arbitrary series with the same gaps; it does
+not replace out-of-sample validation.
 
-### Covariate suites
+### Interpretation and next test
 
-The experiments use three small, biologically prespecified covariate suites.
-The initial environmental suite compares cold-pool extent with age-0
-late-summer SST. The physical-forcing suite compares maximum winter regional
-sea ice with April--May southeastern Bering Sea SST. The top-down suite
-compares juvenile-pollock range overlap with arrowtooth flounder and adult
-pollock. The latter four annual series were supplied by the EcoState case-study
-repository [@goodman2026ecostatedsem]; they serve only as covariate inputs to
-the separate Rceattle-DSEM runs reported here.
+This proof of concept supports keeping the candidate set small. The SST result
+is useful as an illustration of the Rceattle-DSEM connection, but SST is an
+upstream proxy. The next scientifically stronger test is to insert a proximal
+mediator from the mechanism table: fall age-0 total energy or energy density,
+followed by a lipid-rich large-copepod/euphausiid index when enough cohort years
+are available [@eisner2020copepods; @heintz2013; @siddon2013]. That sequence
+would test whether the SST association weakens when the hypothesized energetic
+path is represented directly.
 
-The overlap products are occurrence-range indices rather than biomass-weighted
-overlap or direct predation mortality. The adult-pollock index is also partly
-population-derived. These properties, and the missing uncertainty across the
-100 occurrence simulations used to construct the means, limit causal
-interpretation. The physical and overlap suites are therefore tests of direct
-proxy paths in the larger causal graph rather than estimates of the intervening
-energy or mortality processes.
+A top-down overlap example should return only after its timing and uncertainty
+are aligned with the age-0-to-age-1 survival interval. The available
+adult-pollock overlap product is informative, but its survey occurs after the
+start-of-year age-1 state and it is partly population-derived. Including it here
+would blur a causal example with a contemporaneous association.
 
-### Physical-forcing pathway
-
-The physical-candidate suite is a separate Rceattle-DSEM run from the earlier
-cold-pool and late-summer-SST analysis. It compares IID recruitment deviations,
-maximum winter regional sea-ice extent, April--May southeastern Bering Sea SST,
-and both physical candidates. The source-year values describe the cohort's
-age-0 winter and spring and are carried to the following age-1 DSEM row. The
-model contains 45 finite sea-ice values and 41 finite spring-SST values; the 41
-paired values have correlation
-`r sprintf("%.3f", cor(ecostate_physical$covariates$Candidate1, ecostate_physical$covariates$Candidate2, use = "complete.obs"))`.
-AIC comparisons are valid within this suite; they should not be compared
-directly with AIC from a run containing a different environmental observation
-block.
-
-In plain language, the comparison asks whether recruitment is better described
-with no physical edge, a winter-sea-ice edge, a spring-SST edge, or both edges.
-The combined model asks whether each physical proxy contributes after the
-other is already included; it does not assume that both arrows represent
-separate mechanisms.
-
-The model graph includes AR(1) persistence for each observed covariate and
-tests either or both dashed paths to age-1 recruitment
-(@fig-ecostate-physical-dag). The sea-ice-to-SST arrow is a mechanistic
-hypothesis shown for interpretation; the fitted combined model estimates two
-direct recruitment paths rather than that intermediate edge.
-
-```{mermaid}
-%%| label: fig-ecostate-physical-dag
-%%| fig-cap: "Directed graph for the physical-forcing Rceattle-DSEM suite. Solid horizontal arrows are fitted AR(1) covariate-persistence paths. Dashed arrows are the direct recruitment paths fitted singly and jointly. The sea-ice-to-SST arrow is a conceptual mechanism and is not estimated in this run."
-%%| fig-alt: "Prior-year maximum winter sea ice points to current maximum winter sea ice, and prior-year spring SST points to current spring SST. Current sea ice and spring SST each have dashed candidate paths to age-1 recruitment. A separate conceptual arrow links sea ice to spring SST."
-%%| fig-width: 8
-flowchart LR
-  ICEPREV["Maximum winter<br/>sea ice (t-1)"] --> ICE["Maximum winter<br/>sea ice (t)"]
-  SSTPREV["April-May SST<br/>(t-1)"] --> SST["April-May SST<br/>(t)"]
-  ICE -. "fitted candidate path" .-> REC["Age-1<br/>recruitment"]
-  SST -. "fitted candidate path" .-> REC
-  ICE -->|"conceptual; not fitted"| SST
-
-  classDef physical fill:#e8f2f7,stroke:#26739b,stroke-width:2px,color:#1f2933;
-  classDef response fill:#e8f6f2,stroke:#13856f,stroke-width:2px,color:#1f2933;
-  class ICEPREV,ICE,SSTPREV,SST physical;
-  class REC response;
-```
-
-```{r}
-#| label: fig-ecostate-physical-covariates
-#| fig-cap: "Physical-forcing source series and the standardized, cohort-aligned values supplied to the Rceattle-DSEM suite."
-#| fig-alt: "Two upper time-series panels show maximum winter regional sea-ice extent and April-May southeastern Bering Sea SST. A lower panel overlays their standardized cohort-aligned values and shows their opposing long-term variation and missing years."
-#| out-width: "90%"
-#| fig-align: center
-
-knitr::include_graphics(ecostate_physical$files$covariate_figure)
-```
-
-```{r}
-#| label: tbl-ecostate-physical-models
-#| tbl-cap: "Separate Rceattle-DSEM physical-candidate model comparison. Delta AIC and the percentage reduction in residual recruitment variance are calculated only within the common physical-candidate observation block."
-#| tbl-pos: "H"
-
-ecostate_physical$summary |>
-  select(
-    Model,
-    AIC,
-    `Delta AIC`,
-    `Residual variation reduced (%)`
-  ) |>
-  arrange(AIC) |>
-  gt() |>
-  fmt_number(columns = c(AIC, `Delta AIC`), decimals = 2) |>
-  fmt_number(columns = `Residual variation reduced (%)`, decimals = 1) |>
-  cols_label(
-    `Residual variation reduced (%)` = "Residual variation reduced (%)"
-  )
-```
-
-All four physical-candidate fits reached `OK` status with positive-definite
-Hessians and maximum absolute gradients no larger than
-`r format(max(ecostate_physical$summary$maximum_gradient), scientific = TRUE, digits = 2)`
-(@tbl-ecostate-physical-models). The combined model had the lowest AIC and
-reduced estimated unexplained recruitment variance by
-`r sprintf("%.1f", 100 * ecostate_physical$variance$variance_reduction_from_iid[ecostate_physical$variance$model == "combined"])`%
-relative to IID. April--May SST was negative in its single-path fit and in the
-combined fit. Maximum winter sea ice was weakly positive by itself, then
-negative with an interval spanning zero in the combined fit. This sign change,
-together with the strong inverse correlation between the two covariates,
-indicates a suppression pattern; the joint AIC improvement should not be
-interpreted as two independently identified causal effects.
-
-```{r}
-#| label: fig-ecostate-physical-aic
-#| fig-cap: "Akaike information criterion differences for the four models in the physical-forcing Rceattle-DSEM suite."
-#| fig-alt: "Horizontal bars compare delta AIC for IID recruitment, maximum winter sea ice, April-May SST, and both physical candidates. The combined model has the lowest AIC."
-#| out-width: "78%"
-#| fig-align: center
-
-knitr::include_graphics(ecostate_physical$files$aic_figure)
-```
-
-```{r}
-#| label: tbl-ecostate-physical-paths
-#| tbl-cap: "Standardized direct paths to age-1 recruitment in the physical-forcing Rceattle-DSEM suite."
-#| tbl-pos: "H"
-
-ecostate_physical$recruitment_paths |>
-  select(Model, Covariate, estimate, standard_error, lower_95, upper_95) |>
-  gt(groupname_col = "Model") |>
-  fmt_number(
-    columns = c(estimate, standard_error, lower_95, upper_95),
-    decimals = 3
-  ) |>
-  cols_label(
-    estimate = "Estimate",
-    standard_error = "Standard error",
-    lower_95 = "Lower 95%",
-    upper_95 = "Upper 95%"
-  )
-```
-
-```{r}
-#| label: fig-ecostate-physical-edges
-#| fig-cap: "Standardized directed-edge coefficients for the physical-forcing Rceattle-DSEM suite. Points are estimates and horizontal lines are 95% intervals."
-#| fig-alt: "Four panels show AR1 persistence and recruitment coefficients for IID, maximum winter sea ice, April-May SST, and the combined physical-candidate models. April-May SST has a negative recruitment coefficient, while the combined sea-ice coefficient spans zero."
-#| out-width: "100%"
-
-knitr::include_graphics(ecostate_physical$files$edge_figure)
-```
-
-```{r}
-#| label: fig-ecostate-physical-recruitment
-#| fig-cap: "Estimated age-1 recruitment from the four models in the physical-forcing Rceattle-DSEM suite."
-#| fig-alt: "Four largely overlapping recruitment trajectories compare IID recruitment with maximum winter sea ice, April-May SST, and both physical candidates."
-#| out-width: "100%"
-
-knitr::include_graphics(ecostate_physical$files$recruitment_figure)
-```
-
-The matching missingness-preserving randomization control used independent
-standard-normal values with seed
-`r sprintf("%d", as.integer(ecostate_physical_random$design$seed))`.
-Every randomized physical-candidate model had higher AIC than its IID model;
-the AIC increases ranged from
-`r sprintf("%.2f", min(ecostate_physical_random$summary$AIC[ecostate_physical_random$summary$model != "iid"] - ecostate_physical_random$summary$AIC[ecostate_physical_random$summary$model == "iid"]))`
-to
-`r sprintf("%.2f", max(ecostate_physical_random$summary$AIC[ecostate_physical_random$summary$model != "iid"] - ecostate_physical_random$summary$AIC[ecostate_physical_random$summary$model == "iid"]))`
-units, and every randomized recruitment-path interval included zero.
-
-### Top-down overlap pathway
-
-The second separate run compares IID recruitment deviations with annual
-arrowtooth--juvenile pollock range overlap, adult-pollock--juvenile pollock
-range overlap, and both overlap indices. Each index has 40 observations from
-1982--2022 with the 2020 survey gap, and their paired correlation is
-`r sprintf("%.3f", cor(ecostate_overlap$covariates$Candidate1, ecostate_overlap$covariates$Candidate2, use = "complete.obs"))`.
-The indices are aligned to the same calendar year as the age-1 recruitment
-state. Because the bottom-trawl survey occurs after the start-of-year state,
-these are contemporaneous exploratory associations rather than established
-predation effects.
-
-In plain language, the four models ask whether recruitment is better described
-with no overlap edge, an arrowtooth-overlap edge, an adult-pollock-overlap
-edge, or both edges. The combined model asks whether arrowtooth overlap adds
-information after adult-pollock overlap is known, and vice versa; it does not
-estimate predation or cannibalism mortality directly.
-
-The graph distinguishes the direct paths actually fitted from the intervening
-predation and cannibalism mechanisms (@fig-ecostate-overlap-dag). The run does
-not estimate predation mortality, and the adult-pollock overlap index remains
-partly population-derived.
-
-```{mermaid}
-%%| label: fig-ecostate-overlap-dag
-%%| fig-cap: "Directed graph for the top-down juvenile-predator-overlap Rceattle-DSEM suite. Solid horizontal arrows are fitted AR(1) persistence paths. Dashed arrows are the direct recruitment paths fitted singly and jointly. Predation and cannibalism nodes show conceptual mechanisms that are not estimated in this run."
-%%| fig-alt: "Prior-year arrowtooth overlap and adult-pollock overlap point to their current-year values. Each current overlap index has a dashed fitted path to age-1 recruitment. Conceptual paths connect arrowtooth overlap through predation exposure and adult-pollock overlap through cannibalism exposure to juvenile survival."
-%%| fig-width: 9
-flowchart LR
-  ATFPREV["Arrowtooth overlap<br/>(t-1)"] --> ATF["Arrowtooth overlap<br/>(t)"]
-  PLKPREV["Adult-pollock overlap<br/>(t-1)"] --> PLK["Adult-pollock overlap<br/>(t)"]
-  ATF -. "fitted candidate path" .-> REC["Age-1<br/>recruitment"]
-  PLK -. "fitted candidate path" .-> REC
-  ATF -->|"conceptual"| PRED["Predation<br/>exposure"] --> SURV["Juvenile<br/>survival"]
-  PLK -->|"conceptual"| CANN["Cannibalism<br/>exposure"] --> SURV
-  SURV --> REC
-
-  classDef overlap fill:#fdf2e8,stroke:#c8523f,stroke-width:2px,color:#1f2933;
-  classDef mechanism fill:#fff3df,stroke:#c68519,stroke-width:2px,color:#1f2933;
-  classDef response fill:#e8f6f2,stroke:#13856f,stroke-width:2px,color:#1f2933;
-  class ATFPREV,ATF,PLKPREV,PLK overlap;
-  class PRED,CANN mechanism;
-  class SURV,REC response;
-```
-
-```{r}
-#| label: fig-ecostate-overlap-covariates
-#| fig-cap: "Juvenile-predator range-overlap series and the standardized values supplied to the top-down Rceattle-DSEM suite."
-#| fig-alt: "Two upper panels show annual arrowtooth-juvenile pollock and adult-pollock-juvenile pollock range-overlap indices. A lower panel overlays their standardized values and shows the shared 2020 gap."
-#| out-width: "90%"
-#| fig-align: center
-
-knitr::include_graphics(ecostate_overlap$files$covariate_figure)
-```
-
-```{r}
-#| label: tbl-ecostate-overlap-models
-#| tbl-cap: "Separate Rceattle-DSEM juvenile-predator-overlap model comparison. Delta AIC and the percentage reduction in residual recruitment variance are calculated only within the common overlap observation block."
-#| tbl-pos: "H"
-
-ecostate_overlap$summary |>
-  select(
-    Model,
-    AIC,
-    `Delta AIC`,
-    `Residual variation reduced (%)`
-  ) |>
-  arrange(AIC) |>
-  gt() |>
-  fmt_number(columns = c(AIC, `Delta AIC`), decimals = 2) |>
-  fmt_number(columns = `Residual variation reduced (%)`, decimals = 1) |>
-  cols_label(
-    `Residual variation reduced (%)` = "Residual variation reduced (%)"
-  )
-```
-
-All four overlap fits reached `OK` status with positive-definite Hessians and
-maximum absolute gradients no larger than
-`r format(max(ecostate_overlap$summary$maximum_gradient), scientific = TRUE, digits = 2)`
-(@tbl-ecostate-overlap-models). The adult-pollock-overlap model had the lowest
-AIC and reduced estimated unexplained recruitment variance by
-`r sprintf("%.1f", 100 * ecostate_overlap$variance$variance_reduction_from_iid[ecostate_overlap$variance$model == "candidate2"])`%
-relative to IID. Each overlap coefficient was negative and separated from zero
-when fitted alone. In the combined model, the adult-pollock-overlap coefficient
-remained negative, whereas the arrowtooth-overlap coefficient shifted near zero
-and its interval included zero. Adding arrowtooth overlap to adult-pollock
-overlap increased AIC by
-`r sprintf("%.2f", ecostate_overlap$summary$AIC[ecostate_overlap$summary$model == "combined"] - ecostate_overlap$summary$AIC[ecostate_overlap$summary$model == "candidate2"])`
-units and produced essentially no further reduction in unexplained recruitment
-variance.
-
-```{r}
-#| label: fig-ecostate-overlap-aic
-#| fig-cap: "Akaike information criterion differences for the four models in the top-down juvenile-predator-overlap Rceattle-DSEM suite."
-#| fig-alt: "Horizontal bars compare delta AIC for IID recruitment, arrowtooth overlap, adult-pollock overlap, and both overlap candidates. Adult-pollock overlap has the lowest AIC."
-#| out-width: "78%"
-#| fig-align: center
-
-knitr::include_graphics(ecostate_overlap$files$aic_figure)
-```
-
-```{r}
-#| label: tbl-ecostate-overlap-paths
-#| tbl-cap: "Standardized direct paths to age-1 recruitment in the top-down juvenile-predator-overlap Rceattle-DSEM suite."
-#| tbl-pos: "H"
-
-ecostate_overlap$recruitment_paths |>
-  select(Model, Covariate, estimate, standard_error, lower_95, upper_95) |>
-  gt(groupname_col = "Model") |>
-  fmt_number(
-    columns = c(estimate, standard_error, lower_95, upper_95),
-    decimals = 3
-  ) |>
-  cols_label(
-    estimate = "Estimate",
-    standard_error = "Standard error",
-    lower_95 = "Lower 95%",
-    upper_95 = "Upper 95%"
-  )
-```
-
-```{r}
-#| label: fig-ecostate-overlap-edges
-#| fig-cap: "Standardized directed-edge coefficients for the top-down juvenile-predator-overlap Rceattle-DSEM suite. Points are estimates and horizontal lines are 95% intervals."
-#| fig-alt: "Four panels show AR1 persistence and recruitment coefficients for IID, arrowtooth overlap, adult-pollock overlap, and the combined overlap models. Both single-model overlap effects are negative; only adult-pollock overlap remains negative in the combined model."
-#| out-width: "100%"
-
-knitr::include_graphics(ecostate_overlap$files$edge_figure)
-```
-
-```{r}
-#| label: fig-ecostate-overlap-recruitment
-#| fig-cap: "Estimated age-1 recruitment from the four models in the top-down juvenile-predator-overlap Rceattle-DSEM suite."
-#| fig-alt: "Four largely overlapping recruitment trajectories compare IID recruitment with arrowtooth overlap, adult-pollock overlap, and both overlap candidates."
-#| out-width: "100%"
-
-knitr::include_graphics(ecostate_overlap$files$recruitment_figure)
-```
-
-The overlap randomization control used the same seed and preserved the common
-2020 gap. Its random candidate-2 model improved AIC by only
-`r sprintf("%.2f", ecostate_overlap_random$summary$AIC[ecostate_overlap_random$summary$model == "iid"] - ecostate_overlap_random$summary$AIC[ecostate_overlap_random$summary$model == "candidate2"])`
-units relative to randomized IID, and every randomized recruitment-path
-interval included zero. This small chance improvement is much smaller than the
-observed adult-pollock-overlap AIC improvement, but it reinforces the need for
-blocked prediction and timing sensitivities before interpretation.
-
-### Next-stage pathway tests
-
-The next covariates should fill mechanisms in the causal graph rather than add
-more interchangeable physical proxies. For the bottom-up pathway, sea-ice days
-after February remains the highest-priority physical candidate because it was
-the best-performing sea-ice metric in a regional analysis, although its
-relationship with year-class strength differed between historical periods
-[@hunt2020seaice]. Large lipid-rich copepods provide a more proximal food-web
-measure, but the current cohort table contains only 15 observations
-[@eisner2020copepods]. A consistent fall age-0 total-energy or energy-density
-series would measure the overwinter-survival mediator most directly
-[@heintz2013; @siddon2013]. Wind mixing, stratification, bloom timing, and a
-spatial prey-match index belong upstream of prey and age-0 condition rather
-than as unstructured additions to recruitment [@gann2016].
-
-For the top-down pathway, the priority is to propagate uncertainty in the
-range-overlap indices and develop predator-specific mortality or age-specific
-juvenile-distribution products. For the transport pathway, the missing
-measurements are spawning distribution, wind and circulation, and a
-cohort-specific larval-delivery index. Broad atmospheric indices such as the
-North Pacific Index or Aleutian Low are most useful as switching-control or
-regime descriptors after the shelf-scale mechanisms are represented.
-
-The DSEM script is structured so additional cohort-level covariates can be
-added without altering the assessment configuration. Each expansion should:
-
-- state the recruitment mechanism and cohort timing for each candidate before
-  fitting it;
-- preserve a common observation-year universe and document original units,
-  standardization, gaps, and data sources;
-- screen correlated covariates, then compare IID, single-path, and limited
-  joint-path models rather than searching many combinations;
-- repeat missingness-preserving randomized controls and examine sensitivity to
-  observation error, process assumptions, and priors; and
-- use blocked or terminal-year holdouts to test prediction before interpreting
-  an in-sample AIC improvement.
-
-This approach can accommodate additional ESP covariates, but the candidate
-set should remain biologically prespecified and small relative to the available
-cohort record. DSEM results should remain research products until the paths are
-stable across timing assumptions, retrospective peels, and predictive checks.
+Before either proxy is considered for operational recruitment inference, the
+paths should be tested with terminal-year or blocked prediction, retrospective
+stability, alternative cohort timing, and observation-error sensitivity.
+These DSEM results remain separate from the assessment configuration and
+projection results.
 
 ## Summary
 
@@ -2498,16 +2102,14 @@ recruitment, together with negative bias in fishing mortality. The historical
 50-jitter diagnostic recovered the best solution 48 times and found a poorer
 mode twice; the age-3+ natural-mortality profile is shallow.
 
-Both pathway-oriented covariate suites also produced `OK` fits with
-positive-definite Hessians. Within the physical suite, the combined sea-ice
-and April--May SST model had the lowest AIC and the largest reduction in
-recruitment-process variance, but the correlated covariates produced a
-suppression pattern that limits interpretation of their individual paths.
-Within the overlap suite, adult-pollock--juvenile-pollock overlap had the
-lowest AIC; adding arrowtooth overlap provided essentially no further variance
-reduction. The overlap results remain contemporaneous associations, and the
-adult-pollock index is partly population-derived, so neither result is treated
-as a causal recruitment effect.
+The scaled-back DSEM proof of concept compared two prespecified proxy edges
+with the no-edge IID reference. The age-0 late-summer SST model had the lowest
+AIC and reduced estimated residual recruitment variation by
+`r sprintf("%.1f", 100 * dsem_variance$variance_reduction_from_iid[dsem_variance$model == "late_summer_sst"])`%
+relative to IID. The cold-pool edge received little support. This result
+illustrates the Rceattle-DSEM connection, but the annual data do not yet
+represent the prey, age-0 energy, overwinter-survival, and cannibalism
+mediators required to attribute the association to a causal mechanism.
 
 Immediate work should retain the ADMB-to-Rceattle comparison as a repeatable
 numerical check, evaluate selectivity and survey influence on the retrospective
@@ -2574,10 +2176,7 @@ required by a later analysis.
    observed-covariate models with
    `Rscript "2024 EBS pollock DSEM proof of concept.R"` and the
    missingness-preserving randomized controls with
-   `Rscript "2024 EBS pollock DSEM proof of concept.R" --randomized`. The
-   [separate EcoState-candidate runner](<2024 EBS pollock EcoState DSEM candidates.R>)
-   is run with `--suite=physical` and `--suite=overlap`; append `--randomized`
-   to each command to reproduce the corresponding randomized controls.
+   `Rscript "2024 EBS pollock DSEM proof of concept.R" --randomized`.
 8. After these saved products are available, the HTML and PDF are generated
    together with `quarto render ebswp.qmd`.
 
@@ -2609,7 +2208,245 @@ session_text <- capture.output(sessionInfo()) |>
 cat(session_text, sep = "\n")
 ```
 
-### A-2 Model fitting details {.unnumbered}
+### A-2 Rceattle-to-spmR projection bridge {.unnumbered}
+
+The projection bridge is a deterministic file adapter rather than a second
+assessment fit. The [input writer](R/write_spmr_projection_inputs.R) reads the
+saved `nonparametric_pm` Rceattle object, extracts the population state,
+biological schedules, fishery schedule, and historical series needed by the
+Standard Projection Model (SPM), and writes them in the SPM `pm.prj` format.
+It also writes the projection controls in `spm.dat`. The
+[projection runner](R/run_spmr_tier3_projection.R) passes those files to
+`spmR::runSPM(..., engine = "admb")`, which executes the validated SPM binary
+and returns the simulation-level output used by the report.
+
+The adapter preserves the terminal assessment state and makes each conversion
+explicit (@tbl-spmr-bridge-fields). Numbers at age, natural mortality, and the
+weight schedules are passed on their Rceattle scales. With abundance in
+millions of fish and weight in kilograms, their product has units of thousand
+metric tons. Maturity is divided by its maximum, matching the SPM input
+convention used for this stock. The spawning-month encodings differ by one
+because Rceattle records elapsed months and SPM uses a one-based calendar
+month; both represent survival through 0.25 of the year.
+
+```{r}
+#| label: tbl-spmr-bridge-fields
+#| tbl-cap: "Mapping from the saved Rceattle fit to the SPM species input file."
+#| tbl-pos: "H"
+
+tibble::tribble(
+  ~SPM_field, ~Rceattle_source, ~Transformation_and_years,
+  "Average recent F", "quantities: F_spp", "Arithmetic mean for 2020--2024; used by Alternative 3",
+  "Natural mortality at age", "quantities: M_at_age", "Terminal-year schedule (2024)",
+  "Maturity at age", "data_list: maturity", "Divided by its maximum to match the SPM convention",
+  "Spawning weight at age", "data_list: weight and ssb_wt_index", "Terminal-year spawning-weight schedule",
+  "Fishery weight at age", "data_list: weight, fishery index", "Terminal-year fishery-weight schedule",
+  "Fishery selectivity at age", "quantities: sel_at_age for Fishery", "Arithmetic mean at each age for 2020--2024",
+  "Terminal numbers at age", "quantities: N_at_age", "Terminal assessment state (2024)",
+  "Recruitment history", "quantities: R", "Annual age-1 recruitment for 1978--2024",
+  "Spawning-biomass history", "quantities: ssb", "Annual spawning biomass for 1977--2023",
+  "Spawning month", "data_list: spawn_month = 3", "Written as SPM Spawnmo = 4; both equal 0.25 year"
+) |>
+  gt() |>
+  cols_label(
+    SPM_field = "SPM field",
+    Rceattle_source = "Rceattle source",
+    Transformation_and_years = "Transformation and years"
+  ) |>
+  cols_width(
+    SPM_field ~ px(145),
+    Rceattle_source ~ px(185),
+    Transformation_and_years ~ px(280)
+  )
+```
+
+Annual Rceattle fishery selectivity is already normalized to a mean of one
+across ages. The projection schedule is calculated as the arithmetic mean at
+each age across 2020--2024; averaging these normalized annual curves retains a
+mean of one. This five-year schedule replaces the former terminal-year-only
+curve. The writer saves the five contributing curves in
+`fishery_selectivity_recent_years.csv`, the applied average in
+`age_schedules.csv`, and the rule and exact years in `lineage.csv`. Thus the
+projection input can be reconstructed without reading values back from the
+formatted `pm.prj` file.
+
+The `spm.dat` file starts projections in 2025, runs 14 projection years and
+1,000 simulations, and requests all seven Tier 3 alternatives. Catch is fixed
+at 1,350 thousand t in 2025 and 2026 before the alternatives diverge. A
+separate call uses Alternative 2 with catch fixed at 1,300 thousand t for
+2025--2032. The writer copies the validated SPM executable and `tacpar.dat`
+control file into each run directory. `manifest.csv` records the role,
+presence, and MD5 checksum of every required input, while `lineage.csv`
+records the Rceattle source checksum, terminal year, Rceattle and spmR
+versions, selectivity rule, and averaging years.
+
+The saved products passed the bridge checks in @tbl-spmr-bridge-checks. These
+checks establish file and field consistency; they do not replace review of the
+harvest assumptions or the biological appropriateness of a five-year
+selectivity average.
+
+```{r}
+#| label: tbl-spmr-bridge-checks
+#| tbl-cap: "Automated consistency checks for the Rceattle-to-spmR projection bridge."
+#| tbl-pos: "H"
+
+selectivity_average_check <- spmr_selectivity_history |>
+  group_by(Age) |>
+  summarize(Selectivity = mean(Selectivity), .groups = "drop") |>
+  left_join(
+    spmr_age_schedules |> select(Age, Applied = Selectivity),
+    by = "Age"
+  )
+
+expected_selectivity_years <- seq.int(
+  spmr_lineage$terminal_year - spmr_lineage$fishery_selectivity_year_count + 1L,
+  spmr_lineage$terminal_year
+)
+
+tibble(
+  Check = c(
+    "Required projection files",
+    "Recent selectivity years",
+    "Applied five-year selectivity mean",
+    "Projection alternatives",
+    "Projection start year"
+  ),
+  Result = c(
+    if_else(all(spmr_manifest$exists), "Pass", "Fail"),
+    if_else(
+      identical(
+        as.integer(sort(unique(spmr_selectivity_history$Year))),
+        expected_selectivity_years
+      ),
+      "Pass", "Fail"
+    ),
+    if_else(
+      max(abs(selectivity_average_check$Selectivity - selectivity_average_check$Applied)) < 1e-10,
+      "Pass", "Fail"
+    ),
+    if_else(
+      identical(as.integer(sort(unique(spmr_detail$Alt))), 1:7),
+      "Pass", "Fail"
+    ),
+    if_else(
+      min(spmr_detail$Year) == spmr_lineage$terminal_year + 1L,
+      "Pass", "Fail"
+    )
+  ),
+  Evidence = c(
+    paste(sum(spmr_manifest$exists), "of", nrow(spmr_manifest), "manifest targets present"),
+    paste(sort(unique(spmr_selectivity_history$Year)), collapse = ", "),
+    paste0(
+      "maximum absolute difference = ",
+      format(max(abs(selectivity_average_check$Selectivity - selectivity_average_check$Applied)), scientific = TRUE)
+    ),
+    paste(sort(unique(spmr_detail$Alt)), collapse = ", "),
+    as.character(min(spmr_detail$Year))
+  )
+) |>
+  gt() |>
+  tab_style(
+    style = cell_text(weight = "bold"),
+    locations = cells_body(columns = Result)
+  )
+```
+
+### A-3 Draft EBS pollock ESP development framework {.unnumbered}
+
+The most effective way to integrate the ecosystem work into this working paper
+is to keep the concise DSEM pilot in Section 7 and develop the full ESP as an
+appendix. This preserves the assessment narrative while giving the ESP its own
+standard structure, evidence trail, and update cycle. The scaffold below adapts
+the national ESP tables and the 2026 Gulf of Alaska arrowtooth flounder ESP
+[@afsc2026esptemplate; @shotwell2026goaatfesp]. It is a September draft: the
+indicator synthesis and proposed causal structure are present, while the final
+indicator updates, expanded candidate-DAG comparison, and management summary
+are November deliverables.
+
+```{r}
+#| label: tbl-esp-appendix-structure
+#| tbl-cap: "Proposed EBS pollock ESP appendix structure and status in this working paper."
+#| tbl-pos: "H"
+
+tibble::tribble(
+  ~ESP_component, ~EBS_pollock_content, ~Current_status,
+  "Executive summary", "ABC/TAC relevance, predictive and contextual indicators, principal data gaps.", "Write after the November indicator analysis.",
+  "Introduction and justification", "2021 BSAI Plan Team request; focal response is age-1 recruitment and its early-survival mechanisms.", "Justification documented; team review pending.",
+  "Data", "Assessment states, physical indices, plankton and prey indices, age-0 condition, predation/overlap products, and selected socioeconomic series.", "Inventory started; several proximal biological series remain short or intermittent.",
+  "Indicator synthesis", "Life-history table, conceptual diagram, generic DAG, and mechanism table developed from the workshop and working-group material.", "Draft synthesis presented here and in Section 7.",
+  "Proposed indicators", "A small set selected by mechanism, timing, record length, uncertainty, and availability rather than correlation alone.", "SST and cold pool illustrate the workflow; age-0 energy and lipid-rich prey are priorities.",
+  "Indicator assessment", "Current condition, trends, uncertainty, and interpretation for ecosystem and socioeconomic indicators.", "Complete after current-year ESP and ESR data collection.",
+  "Indicator analysis", "No-edge reference, candidate DAGs, common-data AIC, path estimates, residual-variance change, predictive checks, and scientific sign checks.", "Two proxy examples completed; expanded candidate-DAG analysis deferred to November.",
+  "Data gaps and priorities", "Fall age-0 energy, prey lipid/abundance, bloom-prey match timing, juvenile-adult overlap, and consistent observation-error information.", "Priorities identified; feasible annual products require team confirmation.",
+  "Conclusion and management use", "Separate predictive indicators from contextual indicators and state whether each is suitable for recruitment modeling, the risk table, or monitoring only.", "Complete after validation and team review."
+) |>
+  gt() |>
+  cols_label(
+    ESP_component = "ESP component",
+    EBS_pollock_content = "EBS pollock content",
+    Current_status = "Current status"
+  ) |>
+  cols_width(
+    ESP_component ~ px(145),
+    EBS_pollock_content ~ px(300),
+    Current_status ~ px(230)
+  ) |>
+  tab_options(table.font.size = px(8.5))
+```
+
+The draft life-history synthesis in @tbl-esp-life-history condenses the
+standard ESP life-history table to the stages and information needed for the
+recruitment question. A later stand-alone ESP can expand each stage into the
+national-template fields for habitat and distribution, phenology, growth,
+energetics, diet, and predators or competitors.
+
+```{r}
+#| label: tbl-esp-life-history
+#| tbl-cap: "Draft life-history synthesis for EBS pollock recruitment, condensed from the national ESP template."
+#| tbl-pos: "H"
+
+tibble::tribble(
+  ~Stage, ~Process_emphasized, ~Available_evidence, ~Priority_gap,
+  "Spawning and eggs", "Adult condition, spawn timing and location, egg development, and transport.", "Adult condition and physical indices are regularly available.", "Cohort-specific egg production and transport exposure.",
+  "Larvae", "Bloom timing, prey match, transport, temperature-dependent growth, and predation.", "Physical forcing is available; biological observations are less consistent.", "Annual bloom-prey match and larval survival indices.",
+  "Young of year", "Prey quantity and lipid quality, growth, distribution, and accumulation of fall energy.", "SST is long; prey and condition series are shorter or intermittent.", "Consistent fall age-0 abundance, diet lipid, energy density, and total energy.",
+  "Overwinter age 0 to age 1", "Energy reserves, metabolic demand, winter severity, and predation determine survival.", "Physical proxies and modeled recruitment are available.", "Direct annual overwinter-survival observations and uncertainty.",
+  "Juvenile and pre-recruit", "Spatial overlap with adults and other predators affects cannibalism and natural mortality.", "Adult abundance is long; overlap and mortality products require timing review.", "Cohort-aligned juvenile-adult overlap and predation mortality.",
+  "Adult", "Spawner abundance, condition, distribution, and cannibalism affect production and juvenile survival.", "Assessment abundance, maturity, distribution, and condition products are available.", "Separate maternal and density-dependent pathways from shared assessment information."
+) |>
+  gt() |>
+  cols_label(
+    Process_emphasized = "Process emphasized",
+    Available_evidence = "Available evidence",
+    Priority_gap = "Priority gap"
+  ) |>
+  cols_width(
+    Stage ~ px(95),
+    Process_emphasized ~ px(190),
+    Available_evidence ~ px(160),
+    Priority_gap ~ px(155)
+  ) |>
+  tab_options(table.font.size = px(8))
+```
+
+The generic DAG in Section 7 serves as the initial full conceptual graph. The
+fitted SST and cold-pool graphs are deliberately simplified descendants of
+that graph, not a search across every available series. For November, each
+candidate graph should be traceable to a row in the mechanism table and should
+use the same analysis data block as the IID no-recruitment-edge reference. The
+final ESP should then report the causal statement, lag, expected sign, data
+limitations, path estimate, uncertainty, change in unexplained recruitment
+variation, and predictive check for every retained recruitment edge.
+
+Fishery performance and socioeconomic indicators can be transferred from the
+SAFE after the biological indicator set is stable. They should occupy the
+standard socioeconomic synthesis and monitoring subsections rather than be
+inserted as recruitment causes unless a separate, defensible causal hypothesis
+requires them. This division keeps the integrated Rceattle-DSEM analysis
+focused on the population response while allowing the ESP appendix to inform
+both biological risk and TAC considerations.
+
+### A-4 Model fitting details {.unnumbered}
 
 The fishery selectivity likelihood has multiple modes, so the reported
 Rceattle configuration used data-based fishery-selectivity starting values and two fitting
@@ -2657,7 +2494,7 @@ initial_development_status |>
   )
 ```
 
-### A-3 Jitter and natural-mortality profile {.unnumbered}
+### A-5 Jitter and natural-mortality profile {.unnumbered}
 
 The [extended-diagnostics runner](R/run_rceattle_5_8_1_extended_diagnostics.R)
 generates both the 50 jitter fits and the age-3-and-older natural-mortality
@@ -2721,7 +2558,7 @@ ggplot(
   ggthemes::theme_few()
 ```
 
-### A-4 Composition-likelihood sensitivity {.unnumbered}
+### A-6 Composition-likelihood sensitivity {.unnumbered}
 
 The [5.8.1 summary script](R/finalize_rceattle_5_8_1_analysis.R) fits the
 standard-multinomial sensitivity and writes the summaries used here when run
@@ -2785,7 +2622,7 @@ and total biomass by
 `r sprintf("%.2f", comparison_summary$Mean_absolute_percent[comparison_summary$Method == "Standard multinomial sensitivity" & comparison_summary$Quantity == "Total biomass"])`%
 on average in absolute percentage terms.
 
-### A-5 2D age-by-year AR1 selectivity sensitivity {.unnumbered}
+### A-7 2D age-by-year AR1 selectivity sensitivity {.unnumbered}
 
 The penalized-effects initialization and subsequent Laplace fit are in the
 [two-stage fitting script](<2024 EBS pollock.R>) and are run with
@@ -2871,7 +2708,7 @@ ggplot(
   )
 ```
 
-### A-6 Acronyms {.unnumbered}
+### A-8 Acronyms {.unnumbered}
 
 This appendix follows the glossary convention in the [Alaska Stock Assessment
 Report (`asar`) package](https://github.com/nmfs-ost/asar)
