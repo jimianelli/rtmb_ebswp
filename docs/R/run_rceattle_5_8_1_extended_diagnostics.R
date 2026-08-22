@@ -66,5 +66,11 @@ write.csv(
   row.names = FALSE
 )
 
+source(file.path("R", "summarize_rceattle_5_8_1_m_profile.R"))
+summarize_m_profile(
+  profile_file = file.path(output_dir, "profile_M_age3plus.rds"),
+  output_dir = output_dir
+)
+
 capture.output(sessionInfo(), file = file.path(output_dir, "session_info.txt"))
 message("Extended diagnostics saved under ", output_dir, ".")

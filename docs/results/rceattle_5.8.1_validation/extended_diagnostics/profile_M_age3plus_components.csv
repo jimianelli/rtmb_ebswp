@@ -1,0 +1,177 @@
+Age-3+ natural mortality,Group,Component,NLL,Delta_component
+0.15,Total objective,Total objective,716.7033153600829,0.14733484794078322
+0.2,Total objective,Total objective,716.5559805121421,0
+0.25,Total objective,Total objective,716.6388999077044,0.08291939556227135
+0.30000000000000004,Total objective,Total objective,716.9480700740974,0.39208956195523115
+0.35,Total objective,Total objective,717.4795928543261,0.9236123421840148
+0.4,Total objective,Total objective,718.2301936671186,1.674213154976428
+0.45000000000000007,Total objective,Total objective,719.1959463169259,2.639965804783742
+0.5,Total objective,Total objective,720.373176812022,3.8171962998799245
+0.15,Data likelihoods,CAAL data,0,0
+0.15,Data likelihoods,Catch data,-123.85885223898168,-0.006646318704028431
+0.15,Other penalties,Catchability deviates,0,0
+0.15,Other penalties,Catchability prior,0,0
+0.15,Data likelihoods,Composition data,400.7110189804877,0.4677913827791258
+0.15,Data likelihoods,Index data,154.81573865111295,-0.16700391119331925
+0.15,Population penalties,Initial abundance deviates,19.869191065410533,0.07491861459813265
+0.15,Other penalties,Linkage random effects,0,0
+0.15,Other penalties,Linkage-table priors,0,0
+0.15,Population penalties,M prior,0,0
+0.15,Population penalties,M random effects,0,0
+0.15,Selectivity penalties,Non-parametric selectivity,15.866639858586925,-0.205409164343628
+0.15,Other penalties,Ration,0,0
+0.15,Other penalties,Ration penalties,0,0
+0.15,Population penalties,Recruitment deviates,68.86257450654377,0.004252979792397582
+0.15,Other penalties,Reference point penalties,0,0
+0.15,Selectivity penalties,Selectivity deviates,180.4370045369228,-0.020568734987875814
+0.15,Population penalties,Stock-recruit penalty,0,0
+0.15,Population penalties,Stock-recruit prior,0,0
+0.15,Data likelihoods,Stomach content data,0,0
+0.15,Other penalties,Zero n-at-age penalty,0,0
+0.2,Data likelihoods,CAAL data,0,0
+0.2,Data likelihoods,Catch data,-123.85220592027765,0
+0.2,Other penalties,Catchability deviates,0,0
+0.2,Other penalties,Catchability prior,0,0
+0.2,Data likelihoods,Composition data,400.2432275977086,0
+0.2,Data likelihoods,Index data,154.98274256230627,0
+0.2,Population penalties,Initial abundance deviates,19.7942724508124,0
+0.2,Other penalties,Linkage random effects,0,0
+0.2,Other penalties,Linkage-table priors,0,0
+0.2,Population penalties,M prior,0,0
+0.2,Population penalties,M random effects,0,0
+0.2,Selectivity penalties,Non-parametric selectivity,16.072049022930553,0
+0.2,Other penalties,Ration,0,0
+0.2,Other penalties,Ration penalties,0,0
+0.2,Population penalties,Recruitment deviates,68.85832152675137,0
+0.2,Other penalties,Reference point penalties,0,0
+0.2,Selectivity penalties,Selectivity deviates,180.4575732719107,0
+0.2,Population penalties,Stock-recruit penalty,0,0
+0.2,Population penalties,Stock-recruit prior,0,0
+0.2,Data likelihoods,Stomach content data,0,0
+0.2,Other penalties,Zero n-at-age penalty,0,0
+0.25,Data likelihoods,CAAL data,0,0
+0.25,Data likelihoods,Catch data,-123.8465384936155,0.005667426662157027
+0.25,Other penalties,Catchability deviates,0,0
+0.25,Other penalties,Catchability prior,0,0
+0.25,Data likelihoods,Composition data,399.88535780664745,-0.35786979106114813
+0.25,Data likelihoods,Index data,155.17878414373405,0.19604158142777806
+0.25,Population penalties,Initial abundance deviates,19.719262313715713,-0.07501013709668669
+0.25,Other penalties,Linkage random effects,0,0
+0.25,Other penalties,Linkage-table priors,0,0
+0.25,Population penalties,M prior,0,0
+0.25,Population penalties,M random effects,0,0
+0.25,Selectivity penalties,Non-parametric selectivity,16.310940708274018,0.2388916853434644
+0.25,Other penalties,Ration,0,0
+0.25,Other penalties,Ration penalties,0,0
+0.25,Population penalties,Recruitment deviates,68.85521954645962,-0.0031019802917455763
+0.25,Other penalties,Reference point penalties,0,0
+0.25,Selectivity penalties,Selectivity deviates,180.53587388248908,0.07830061057839544
+0.25,Population penalties,Stock-recruit penalty,0,0
+0.25,Population penalties,Stock-recruit prior,0,0
+0.25,Data likelihoods,Stomach content data,0,0
+0.25,Other penalties,Zero n-at-age penalty,0,0
+0.30000000000000004,Data likelihoods,CAAL data,0,0
+0.30000000000000004,Data likelihoods,Catch data,-123.84172454651375,0.010481373763909119
+0.30000000000000004,Other penalties,Catchability deviates,0,0
+0.30000000000000004,Other penalties,Catchability prior,0,0
+0.30000000000000004,Data likelihoods,Composition data,399.630797531056,-0.612430066652621
+0.30000000000000004,Data likelihoods,Index data,155.40573089956294,0.42298833725666896
+0.30000000000000004,Population penalties,Initial abundance deviates,19.644212156737467,-0.15006029407493315
+0.30000000000000004,Other penalties,Linkage random effects,0,0
+0.30000000000000004,Other penalties,Linkage-table priors,0,0
+0.30000000000000004,Population penalties,M prior,0,0
+0.30000000000000004,Population penalties,M random effects,0,0
+0.30000000000000004,Selectivity penalties,Non-parametric selectivity,16.584513133956015,0.5124641110254622
+0.30000000000000004,Other penalties,Ration,0,0
+0.30000000000000004,Other penalties,Ration penalties,0,0
+0.30000000000000004,Population penalties,Recruitment deviates,68.85327769474044,-0.005043832010926508
+0.30000000000000004,Other penalties,Reference point penalties,0,0
+0.30000000000000004,Selectivity penalties,Selectivity deviates,180.67126320455802,0.21368993264732694
+0.30000000000000004,Population penalties,Stock-recruit penalty,0,0
+0.30000000000000004,Population penalties,Stock-recruit prior,0,0
+0.30000000000000004,Data likelihoods,Stomach content data,0,0
+0.30000000000000004,Other penalties,Zero n-at-age penalty,0,0
+0.35,Data likelihoods,CAAL data,0,0
+0.35,Data likelihoods,Catch data,-123.83750447643372,0.014701443843932793
+0.35,Other penalties,Catchability deviates,0,0
+0.35,Other penalties,Catchability prior,0,0
+0.35,Data likelihoods,Composition data,399.4733570578913,-0.7698705398173047
+0.35,Data likelihoods,Index data,155.6635603460247,0.6808177837184246
+0.35,Population penalties,Initial abundance deviates,19.569234724761028,-0.2250377260513723
+0.35,Other penalties,Linkage random effects,0,0
+0.35,Other penalties,Linkage-table priors,0,0
+0.35,Population penalties,M prior,0,0
+0.35,Population penalties,M random effects,0,0
+0.35,Selectivity penalties,Non-parametric selectivity,16.894224673456222,0.8221756505256685
+0.35,Other penalties,Ration,0,0
+0.35,Other penalties,Ration penalties,0,0
+0.35,Population penalties,Recruitment deviates,68.85258209453977,-0.005739432211598228
+0.35,Other penalties,Reference point penalties,0,0
+0.35,Selectivity penalties,Selectivity deviates,180.86413843408704,0.4065651621763493
+0.35,Population penalties,Stock-recruit penalty,0,0
+0.35,Population penalties,Stock-recruit prior,0,0
+0.35,Data likelihoods,Stomach content data,0,0
+0.35,Other penalties,Zero n-at-age penalty,0,0
+0.4,Data likelihoods,CAAL data,0,0
+0.4,Data likelihoods,Catch data,-123.83414421663403,0.018061703643624583
+0.4,Other penalties,Catchability deviates,0,0
+0.4,Other penalties,Catchability prior,0,0
+0.4,Data likelihoods,Composition data,399.4070924635255,-0.8361351341831096
+0.4,Data likelihoods,Index data,155.95347401505816,0.9707314527518918
+0.4,Population penalties,Initial abundance deviates,19.496882889143897,-0.2973895616685027
+0.4,Other penalties,Linkage random effects,0,0
+0.4,Other penalties,Linkage-table priors,0,0
+0.4,Population penalties,M prior,0,0
+0.4,Population penalties,M random effects,0,0
+0.4,Selectivity penalties,Non-parametric selectivity,17.24037865792022,1.168329634989668
+0.4,Other penalties,Ration,0,0
+0.4,Other penalties,Ration penalties,0,0
+0.4,Population penalties,Recruitment deviates,68.85380658378176,-0.00451494296960675
+0.4,Other penalties,Reference point penalties,0,0
+0.4,Selectivity penalties,Selectivity deviates,181.11270327432285,0.6551300024121645
+0.4,Population penalties,Stock-recruit penalty,0,0
+0.4,Population penalties,Stock-recruit prior,0,0
+0.4,Data likelihoods,Stomach content data,0,0
+0.4,Other penalties,Zero n-at-age penalty,0,0
+0.45000000000000007,Data likelihoods,CAAL data,0,0
+0.45000000000000007,Data likelihoods,Catch data,-123.83169041293385,0.020515507343802142
+0.45000000000000007,Other penalties,Catchability deviates,0,0
+0.45000000000000007,Other penalties,Catchability prior,0,0
+0.45000000000000007,Data likelihoods,Composition data,399.42797783373726,-0.8152497639713374
+0.45000000000000007,Data likelihoods,Index data,156.2747617989106,1.2920192366043182
+0.45000000000000007,Population penalties,Initial abundance deviates,19.42571145912714,-0.3685609916852606
+0.45000000000000007,Other penalties,Linkage random effects,0,0
+0.45000000000000007,Other penalties,Linkage-table priors,0,0
+0.45000000000000007,Population penalties,M prior,0,0
+0.45000000000000007,Population penalties,M random effects,0,0
+0.45000000000000007,Selectivity penalties,Non-parametric selectivity,17.623339534821646,1.551290511891093
+0.45000000000000007,Other penalties,Ration,0,0
+0.45000000000000007,Other penalties,Ration penalties,0,0
+0.45000000000000007,Population penalties,Recruitment deviates,68.85656037962363,-0.0017611471277376722
+0.45000000000000007,Other penalties,Reference point penalties,0,0
+0.45000000000000007,Selectivity penalties,Selectivity deviates,181.41928572363955,0.9617124517288573
+0.45000000000000007,Population penalties,Stock-recruit penalty,0,0
+0.45000000000000007,Population penalties,Stock-recruit prior,0,0
+0.45000000000000007,Data likelihoods,Stomach content data,0,0
+0.45000000000000007,Other penalties,Zero n-at-age penalty,0,0
+0.5,Data likelihoods,CAAL data,0,0
+0.5,Data likelihoods,Catch data,-123.82976156576427,0.022444354513382336
+0.5,Other penalties,Catchability deviates,0,0
+0.5,Other penalties,Catchability prior,0,0
+0.5,Data likelihoods,Composition data,399.5313723152806,-0.7118552824280187
+0.5,Data likelihoods,Index data,156.6274198745102,1.6446773122039247
+0.5,Population penalties,Initial abundance deviates,19.354957497501758,-0.4393149533106424
+0.5,Other penalties,Linkage random effects,0,0
+0.5,Other penalties,Linkage-table priors,0,0
+0.5,Population penalties,M prior,0,0
+0.5,Population penalties,M random effects,0,0
+0.5,Selectivity penalties,Non-parametric selectivity,18.041979288766612,1.9699302658360587
+0.5,Other penalties,Ration,0,0
+0.5,Other penalties,Ration penalties,0,0
+0.5,Population penalties,Recruitment deviates,68.86078967527966,0.002468148528294023
+0.5,Other penalties,Reference point penalties,0,0
+0.5,Selectivity penalties,Selectivity deviates,181.7864197264478,1.3288464545371141
+0.5,Population penalties,Stock-recruit penalty,0,0
+0.5,Population penalties,Stock-recruit prior,0,0
+0.5,Data likelihoods,Stomach content data,0,0
+0.5,Other penalties,Zero n-at-age penalty,0,0
