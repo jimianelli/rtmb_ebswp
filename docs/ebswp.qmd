@@ -81,6 +81,8 @@ params:
   rceattle_581_restart_comparison_file: "results/rceattle_5.8.1_validation/self_test/self_test_restart_comparison.csv"
   jitter_summary_file: "results/rceattle_5.8.1_validation/extended_diagnostics/jitter_50_summary.csv"
   mortality_profile_file: "results/rceattle_5.8.1_validation/extended_diagnostics/profile_M_age3plus.csv"
+  mortality_profile_components_file: "results/rceattle_5.8.1_validation/extended_diagnostics/profile_M_age3plus_components.csv"
+  mortality_profile_fleet_components_file: "results/rceattle_5.8.1_validation/extended_diagnostics/profile_M_age3plus_fleet_components.csv"
   model_input_workbook: "Data/EBS_24_pollock_m23_rceattle_full_1964-2024.xlsx"
   bts_covariance_file: "Data/BTS_survey_covariance_2024.dat"
   admb_retro_file: "ADMB/m23_rceattle_full/retro.rep"
@@ -284,6 +286,12 @@ rceattle_581_restart_comparison_file <- project_file(
 )
 jitter_summary_file <- project_file(params$jitter_summary_file)
 mortality_profile_file <- project_file(params$mortality_profile_file)
+mortality_profile_components_file <- project_file(
+  params$mortality_profile_components_file
+)
+mortality_profile_fleet_components_file <- project_file(
+  params$mortality_profile_fleet_components_file
+)
 dsem_summary_file <- project_file(params$dsem_summary_file)
 dsem_paths_file <- project_file(params$dsem_paths_file)
 dsem_variance_file <- project_file(params$dsem_variance_file)
@@ -306,6 +314,8 @@ core_files <- c(
   rceattle_581_restart_comparison_file,
   jitter_summary_file,
   mortality_profile_file,
+  mortality_profile_components_file,
+  mortality_profile_fleet_components_file,
   dsem_summary_file,
   dsem_paths_file,
   dsem_variance_file,
@@ -347,6 +357,57 @@ mortality_profile <- readr::read_csv(
   show_col_types = FALSE
 ) |>
   rename(`Age-3+ natural mortality` = slot_1)
+mortality_profile_components <- readr::read_csv(
+  mortality_profile_components_file,
+  show_col_types = FALSE
+)
+mortality_profile_fleet_components <- readr::read_csv(
+  mortality_profile_fleet_components_file,
+  show_col_types = FALSE
+)
+mortality_profile_min_m <- mortality_profile[["Age-3+ natural mortality"]][
+  which.min(mortality_profile$Objective)
+]
+mortality_profile_compare_m <- max(
+  mortality_profile[["Age-3+ natural mortality"]]
+)
+mortality_profile_material_contributions <- mortality_profile_fleet_components |>
+  filter(
+    abs(`Age-3+ natural mortality` - mortality_profile_compare_m) < 1e-10,
+    abs(Delta_component) >= 0.25
+  ) |>
+  mutate(
+    Fleet_label = recode(Fleet, `EBS Pollock or Fishery` = "Fishery"),
+    Term = case_when(
+      Fleet == "AVO" & Component == "Non-parametric selectivity" ~
+        "Shared ATS/AVO selectivity-curve penalty",
+      Fleet == "AVO" & Component == "Selectivity deviates" ~
+        "Shared ATS/AVO annual-selectivity penalty",
+      Component == "Composition data" ~
+        paste(Fleet_label, "age-composition likelihood"),
+      Component == "Index data" ~ paste(Fleet_label, "index likelihood"),
+      Component == "Non-parametric selectivity" ~
+        paste(Fleet_label, "selectivity-curve penalty"),
+      Component == "Selectivity deviates" ~
+        paste(Fleet_label, "annual-selectivity penalty"),
+      Component == "Initial abundance deviates" ~
+        "Population initial-abundance penalty",
+      Component == "Recruitment deviates" ~
+        "Population recruitment-deviation penalty",
+      TRUE ~ paste(Fleet_label, tolower(Component))
+    ),
+    Direction = if_else(
+      Delta_component > 0,
+      "Lower M",
+      "Higher M"
+    )
+  ) |>
+  select(Term, Direction, `NLL contribution` = Delta_component) |>
+  arrange(desc(`NLL contribution`))
+mortality_profile_contribution <- setNames(
+  mortality_profile_material_contributions[["NLL contribution"]],
+  mortality_profile_material_contributions$Term
+)
 dsem_summary <- readr::read_csv(dsem_summary_file, show_col_types = FALSE)
 dsem_paths <- readr::read_csv(dsem_paths_file, show_col_types = FALSE)
 dsem_variance <- readr::read_csv(dsem_variance_file, show_col_types = FALSE)
@@ -794,6 +855,9 @@ file_inventory <- tibble::tribble(
   "Rceattle 5.8.1 restart comparison", "Local CSV file", params$rceattle_581_restart_comparison_file,
   "Rceattle 5.8.1 jitter summary", "Local CSV file", params$jitter_summary_file,
   "Age-3+ natural-mortality profile", "Local CSV file", params$mortality_profile_file,
+  "Age-3+ natural-mortality profile components", "Local CSV file", params$mortality_profile_components_file,
+  "Age-3+ natural-mortality fleet components", "Local CSV file", params$mortality_profile_fleet_components_file,
+  "Natural-mortality profile summarizer", "Local R script", "R/summarize_rceattle_5_8_1_m_profile.R",
   "ADMB-to-Rceattle comparison summary", "Local comma-separated-values (CSV) file", params$fixed_parameter_summary_file,
   "Rceattle fitting script", "Local R script", params$two_stage_script,
   "Diagnostics script", "Local R script", params$diagnostics_script,
@@ -2499,6 +2563,9 @@ initial_development_status |>
 The [extended-diagnostics runner](R/run_rceattle_5_8_1_extended_diagnostics.R)
 generates both the 50 jitter fits and the age-3-and-older natural-mortality
 profile with `Rscript R/run_rceattle_5_8_1_extended_diagnostics.R`.
+The [profile-component summarizer](R/summarize_rceattle_5_8_1_m_profile.R)
+extracts the saved `jnll_comp` matrices without refitting the model and is run
+with `Rscript R/summarize_rceattle_5_8_1_m_profile.R`.
 
 The 50 phased jitter runs test sensitivity to dispersed starting values.
 Forty-eight returned to the best objective within numerical precision. Two
@@ -2540,22 +2607,116 @@ but the objective changed by only
 across the entire grid. The profile is therefore shallow and does not support
 precise estimation of natural mortality from these data alone.
 
+The saved profile fits retain Rceattle's full negative-log-likelihood (NLL)
+component matrix. The component entries sum to the reported objective at every
+grid point to within numerical precision. In @fig-natural-mortality-profile,
+each component is centered on its value at the grid minimum of
+`r sprintf("%.2f", mortality_profile_min_m)`. Positive changes indicate that a
+component favors the lower grid-minimum value over the plotted value; negative
+changes indicate that the component favors the plotted value. The total panel
+is the sum of the data and penalty panels. The M-prior contribution is zero in
+this configuration.
+
 ```{r}
 #| label: fig-natural-mortality-profile
-#| fig-cap: "Profile of age-3-and-older natural mortality for the Rceattle 5.8.1 configuration. Points are evaluated grid values and the vertical axis is objective difference from the grid minimum."
-#| fig-alt: "A shallow natural-mortality profile has its grid minimum near 0.20; the objective difference rises to about 3.82 at 0.50."
-#| fig-width: 8
-#| fig-height: 4.5
+#| fig-cap: "Component decomposition of the age-3-and-older natural-mortality profile. Each curve is the change in that NLL component relative to its value at M = 0.20. Positive values favor M = 0.20 over the plotted value; negative values favor the plotted value. Components in the three lower panels sum to the total objective change in the upper-left panel."
+#| fig-alt: "Four-panel natural-mortality profile. The total objective is shallow with a minimum at M equals 0.20. Index likelihood and both selectivity penalties rise toward M equals 0.50 and therefore favor lower M. Composition likelihood and initial-abundance penalties decline and partly offset that preference. Catch and recruitment-deviation contributions change little."
+#| fig-width: 9
+#| fig-height: 7
+#| fig-pos: "H"
 
-ggplot(
-  mortality_profile,
-  aes(x = `Age-3+ natural mortality`, y = Delta_objective)
-) +
+mortality_profile_components |>
+  filter(Component %in% c(
+    "Total objective",
+    "Index data", "Catch data", "Composition data",
+    "Non-parametric selectivity", "Selectivity deviates",
+    "Initial abundance deviates", "Recruitment deviates"
+  )) |>
+  mutate(
+    Group = factor(
+      Group,
+      levels = c(
+        "Total objective", "Data likelihoods",
+        "Selectivity penalties", "Population penalties"
+      )
+    ),
+    Component = recode(
+      Component,
+      `Non-parametric selectivity` = "Selectivity-curve penalty",
+      `Selectivity deviates` = "Annual-selectivity penalty",
+      `Initial abundance deviates` = "Initial-abundance penalty",
+      `Recruitment deviates` = "Recruitment-deviation penalty"
+    )
+  ) |>
+  ggplot(aes(
+    x = `Age-3+ natural mortality`,
+    y = Delta_component,
+    color = Component,
+    shape = Component
+  )) +
   geom_hline(yintercept = 0, color = "gray55", linetype = 2) +
-  geom_line(color = "#1b9e77", linewidth = 0.8) +
-  geom_point(color = "#1b9e77", size = 2) +
-  labs(x = "Age-3+ natural mortality", y = "Delta objective") +
-  ggthemes::theme_few()
+  geom_line(linewidth = 0.8) +
+  geom_point(size = 2) +
+  facet_wrap(vars(Group), ncol = 2, scales = "free_y") +
+  scale_color_brewer(type = "qual", palette = "Dark2") +
+  labs(
+    x = "Age-3+ natural mortality",
+    y = "Change in NLL component from M = 0.20",
+    color = NULL,
+    shape = NULL
+  ) +
+  ggthemes::theme_few() +
+  theme(
+    legend.position = "bottom",
+    legend.key.width = grid::unit(1.2, "lines")
+  ) +
+  guides(
+    color = guide_legend(nrow = 3, byrow = TRUE),
+    shape = guide_legend(nrow = 3, byrow = TRUE)
+  )
+```
+
+The increase in total NLL from \(M=0.20\) to \(M=0.50\) was
+`r sprintf("%.2f", mortality_profile$Objective[mortality_profile[["Age-3+ natural mortality"]] == mortality_profile_compare_m] - min(mortality_profile$Objective))`.
+The material fleet-specific contributions to that change are shown in
+@tbl-natural-mortality-profile-components. The strongest single counterweight
+was the BTS age-composition likelihood, which improved by
+`r sprintf("%.2f", abs(mortality_profile_contribution[["BTS age-composition likelihood"]]))`
+NLL units as M increased. Lower M was favored mainly by the ATS age-composition
+likelihood, the BTS index likelihood, and the selectivity penalties. Because
+ATS and AVO share a selectivity index in this configuration, the shared
+ATS/AVO penalties are stored in the AVO-labeled column of `jnll_comp`.
+
+```{r}
+#| label: tbl-natural-mortality-profile-components
+#| tbl-cap: "Material fleet-specific contributions to the total NLL change from M = 0.20 to M = 0.50. The direction column identifies the M value favored by each term; positive contributions favor lower M and negative contributions favor higher M. Terms with absolute contributions below 0.25 NLL units are omitted."
+#| tbl-pos: "H"
+
+mortality_profile_material_contributions |>
+  gt() |>
+  fmt_number(columns = `NLL contribution`, decimals = 2) |>
+  cols_label(Direction = "Direction favored") |>
+  cols_width(
+    Term ~ px(320),
+    Direction ~ px(115),
+    `NLL contribution` ~ px(110)
+  ) |>
+  tab_style(
+    style = cell_text(weight = "bold"),
+    locations = cells_body(columns = Direction)
+  )
+```
+
+This decomposition shows that the low profile minimum is a trade-off among
+specific survey, composition, and selectivity terms rather than a uniform
+signal for lower natural mortality. It also explains why this result can
+differ from natural-mortality analyses that use different composition
+likelihoods, survey weights, or selectivity penalties. A direct comparison
+with those analyses should match these components and their weights before
+interpreting the difference as biological evidence about M.
+
+```{=latex}
+\clearpage
 ```
 
 ### A-6 Composition-likelihood sensitivity {.unnumbered}
@@ -2574,6 +2735,7 @@ direction remained in the shared ATS/AVO annual selectivity deviations.
 ```{r}
 #| label: tbl-composition-likelihoods
 #| tbl-cap: "Composition-likelihood sensitivity for the Rceattle 5.8.1 configuration. Raw objectives are shown for run provenance but are not compared because likelihood constants and conventions differ."
+#| tbl-pos: "H"
 
 model_summary |>
   filter(!grepl("2D AR1", Model)) |>
@@ -2640,6 +2802,7 @@ failed the gradient, Hessian, and bound checks.
 ```{r}
 #| label: tbl-ar1-selectivity-parameter-summary
 #| tbl-cap: "Diagnostic 2D AR1 fishery-selectivity correlation and scale estimates."
+#| tbl-pos: "H"
 
 ar1_selectivity_parameter_summary |>
   select(-Final_internal_value) |>

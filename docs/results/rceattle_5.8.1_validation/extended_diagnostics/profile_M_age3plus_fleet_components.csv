@@ -1,0 +1,1177 @@
+Age-3+ natural mortality,Component,Fleet,NLL,Delta_component
+0.15,Index data,EBS Pollock or Fishery,0,0
+0.15,Catch data,EBS Pollock or Fishery,-123.85885223898168,-0.006646318704028431
+0.15,Composition data,EBS Pollock or Fishery,170.8744120059912,-0.16824219960460596
+0.15,CAAL data,EBS Pollock or Fishery,0,0
+0.15,Non-parametric selectivity,EBS Pollock or Fishery,14.618373274686217,-0.06672713186939916
+0.15,Selectivity deviates,EBS Pollock or Fishery,125.68803632711708,0.01012887361407877
+0.15,Catchability prior,EBS Pollock or Fishery,0,0
+0.15,Catchability deviates,EBS Pollock or Fishery,0,0
+0.15,Stock-recruit prior,EBS Pollock or Fishery,0,0
+0.15,Initial abundance deviates,EBS Pollock or Fishery,19.869191065410533,0.07491861459813265
+0.15,Recruitment deviates,EBS Pollock or Fishery,68.86257450654377,0.004252979792397582
+0.15,Stock-recruit penalty,EBS Pollock or Fishery,0,0
+0.15,Reference point penalties,EBS Pollock or Fishery,0,0
+0.15,Zero n-at-age penalty,EBS Pollock or Fishery,0,0
+0.15,M prior,EBS Pollock or Fishery,0,0
+0.15,M random effects,EBS Pollock or Fishery,0,0
+0.15,Ration,EBS Pollock or Fishery,0,0
+0.15,Ration penalties,EBS Pollock or Fishery,0,0
+0.15,Stomach content data,EBS Pollock or Fishery,0,0
+0.15,Linkage-table priors,EBS Pollock or Fishery,0,0
+0.15,Linkage random effects,EBS Pollock or Fishery,0,0
+0.15,Index data,AVO,9.60683249742432,0.09949224879152396
+0.15,Catch data,AVO,0,0
+0.15,Composition data,AVO,0,0
+0.15,CAAL data,AVO,0,0
+0.15,Non-parametric selectivity,AVO,1.2482665839007079,-0.13868203247422928
+0.15,Selectivity deviates,AVO,7.102497985484257,-0.2596075876180697
+0.15,Catchability prior,AVO,0,0
+0.15,Catchability deviates,AVO,0,0
+0.15,Stock-recruit prior,AVO,0,0
+0.15,Initial abundance deviates,AVO,0,0
+0.15,Recruitment deviates,AVO,0,0
+0.15,Stock-recruit penalty,AVO,0,0
+0.15,Reference point penalties,AVO,0,0
+0.15,Zero n-at-age penalty,AVO,0,0
+0.15,M prior,AVO,0,0
+0.15,M random effects,AVO,0,0
+0.15,Ration,AVO,0,0
+0.15,Ration penalties,AVO,0,0
+0.15,Stomach content data,AVO,0,0
+0.15,Linkage-table priors,AVO,0,0
+0.15,Linkage random effects,AVO,0,0
+0.15,Index data,BTS,28.78227163447235,-0.33543691549073174
+0.15,Catch data,BTS,0,0
+0.15,Composition data,BTS,198.70734947361896,1.0633208461294998
+0.15,CAAL data,BTS,0,0
+0.15,Non-parametric selectivity,BTS,0,0
+0.15,Selectivity deviates,BTS,47.64647022432148,0.22890997901610888
+0.15,Catchability prior,BTS,0,0
+0.15,Catchability deviates,BTS,0,0
+0.15,Stock-recruit prior,BTS,0,0
+0.15,Initial abundance deviates,BTS,0,0
+0.15,Recruitment deviates,BTS,0,0
+0.15,Stock-recruit penalty,BTS,0,0
+0.15,Reference point penalties,BTS,0,0
+0.15,Zero n-at-age penalty,BTS,0,0
+0.15,M prior,BTS,0,0
+0.15,M random effects,BTS,0,0
+0.15,Ration,BTS,0,0
+0.15,Ration penalties,BTS,0,0
+0.15,Stomach content data,BTS,0,0
+0.15,Linkage-table priors,BTS,0,0
+0.15,Linkage random effects,BTS,0,0
+0.15,Index data,ATS,-5.622278221081799,0.04755617734264472
+0.15,Catch data,ATS,0,0
+0.15,Composition data,ATS,31.12925750087758,-0.4272872637458107
+0.15,CAAL data,ATS,0,0
+0.15,Non-parametric selectivity,ATS,0,0
+0.15,Selectivity deviates,ATS,0,0
+0.15,Catchability prior,ATS,0,0
+0.15,Catchability deviates,ATS,0,0
+0.15,Stock-recruit prior,ATS,0,0
+0.15,Initial abundance deviates,ATS,0,0
+0.15,Recruitment deviates,ATS,0,0
+0.15,Stock-recruit penalty,ATS,0,0
+0.15,Reference point penalties,ATS,0,0
+0.15,Zero n-at-age penalty,ATS,0,0
+0.15,M prior,ATS,0,0
+0.15,M random effects,ATS,0,0
+0.15,Ration,ATS,0,0
+0.15,Ration penalties,ATS,0,0
+0.15,Stomach content data,ATS,0,0
+0.15,Linkage-table priors,ATS,0,0
+0.15,Linkage random effects,ATS,0,0
+0.15,Index data,BTS_1,0,0
+0.15,Catch data,BTS_1,0,0
+0.15,Composition data,BTS_1,0,0
+0.15,CAAL data,BTS_1,0,0
+0.15,Non-parametric selectivity,BTS_1,0,0
+0.15,Selectivity deviates,BTS_1,0,0
+0.15,Catchability prior,BTS_1,0,0
+0.15,Catchability deviates,BTS_1,0,0
+0.15,Stock-recruit prior,BTS_1,0,0
+0.15,Initial abundance deviates,BTS_1,0,0
+0.15,Recruitment deviates,BTS_1,0,0
+0.15,Stock-recruit penalty,BTS_1,0,0
+0.15,Reference point penalties,BTS_1,0,0
+0.15,Zero n-at-age penalty,BTS_1,0,0
+0.15,M prior,BTS_1,0,0
+0.15,M random effects,BTS_1,0,0
+0.15,Ration,BTS_1,0,0
+0.15,Ration penalties,BTS_1,0,0
+0.15,Stomach content data,BTS_1,0,0
+0.15,Linkage-table priors,BTS_1,0,0
+0.15,Linkage random effects,BTS_1,0,0
+0.15,Index data,ATS_1,27.566026487956716,0.012003148882161696
+0.15,Catch data,ATS_1,0,0
+0.15,Composition data,ATS_1,0,0
+0.15,CAAL data,ATS_1,0,0
+0.15,Non-parametric selectivity,ATS_1,0,0
+0.15,Selectivity deviates,ATS_1,0,0
+0.15,Catchability prior,ATS_1,0,0
+0.15,Catchability deviates,ATS_1,0,0
+0.15,Stock-recruit prior,ATS_1,0,0
+0.15,Initial abundance deviates,ATS_1,0,0
+0.15,Recruitment deviates,ATS_1,0,0
+0.15,Stock-recruit penalty,ATS_1,0,0
+0.15,Reference point penalties,ATS_1,0,0
+0.15,Zero n-at-age penalty,ATS_1,0,0
+0.15,M prior,ATS_1,0,0
+0.15,M random effects,ATS_1,0,0
+0.15,Ration,ATS_1,0,0
+0.15,Ration penalties,ATS_1,0,0
+0.15,Stomach content data,ATS_1,0,0
+0.15,Linkage-table priors,ATS_1,0,0
+0.15,Linkage random effects,ATS_1,0,0
+0.15,Index data,CPUE,94.48288625234134,0.009381429281063447
+0.15,Catch data,CPUE,0,0
+0.15,Composition data,CPUE,0,0
+0.15,CAAL data,CPUE,0,0
+0.15,Non-parametric selectivity,CPUE,0,0
+0.15,Selectivity deviates,CPUE,0,0
+0.15,Catchability prior,CPUE,0,0
+0.15,Catchability deviates,CPUE,0,0
+0.15,Stock-recruit prior,CPUE,0,0
+0.15,Initial abundance deviates,CPUE,0,0
+0.15,Recruitment deviates,CPUE,0,0
+0.15,Stock-recruit penalty,CPUE,0,0
+0.15,Reference point penalties,CPUE,0,0
+0.15,Zero n-at-age penalty,CPUE,0,0
+0.15,M prior,CPUE,0,0
+0.15,M random effects,CPUE,0,0
+0.15,Ration,CPUE,0,0
+0.15,Ration penalties,CPUE,0,0
+0.15,Stomach content data,CPUE,0,0
+0.15,Linkage-table priors,CPUE,0,0
+0.15,Linkage random effects,CPUE,0,0
+0.2,Index data,EBS Pollock or Fishery,0,0
+0.2,Catch data,EBS Pollock or Fishery,-123.85220592027765,0
+0.2,Composition data,EBS Pollock or Fishery,171.0426542055958,0
+0.2,CAAL data,EBS Pollock or Fishery,0,0
+0.2,Non-parametric selectivity,EBS Pollock or Fishery,14.685100406555616,0
+0.2,Selectivity deviates,EBS Pollock or Fishery,125.677907453503,0
+0.2,Catchability prior,EBS Pollock or Fishery,0,0
+0.2,Catchability deviates,EBS Pollock or Fishery,0,0
+0.2,Stock-recruit prior,EBS Pollock or Fishery,0,0
+0.2,Initial abundance deviates,EBS Pollock or Fishery,19.7942724508124,0
+0.2,Recruitment deviates,EBS Pollock or Fishery,68.85832152675137,0
+0.2,Stock-recruit penalty,EBS Pollock or Fishery,0,0
+0.2,Reference point penalties,EBS Pollock or Fishery,0,0
+0.2,Zero n-at-age penalty,EBS Pollock or Fishery,0,0
+0.2,M prior,EBS Pollock or Fishery,0,0
+0.2,M random effects,EBS Pollock or Fishery,0,0
+0.2,Ration,EBS Pollock or Fishery,0,0
+0.2,Ration penalties,EBS Pollock or Fishery,0,0
+0.2,Stomach content data,EBS Pollock or Fishery,0,0
+0.2,Linkage-table priors,EBS Pollock or Fishery,0,0
+0.2,Linkage random effects,EBS Pollock or Fishery,0,0
+0.2,Index data,AVO,9.507340248632795,0
+0.2,Catch data,AVO,0,0
+0.2,Composition data,AVO,0,0
+0.2,CAAL data,AVO,0,0
+0.2,Non-parametric selectivity,AVO,1.3869486163749372,0
+0.2,Selectivity deviates,AVO,7.362105573102327,0
+0.2,Catchability prior,AVO,0,0
+0.2,Catchability deviates,AVO,0,0
+0.2,Stock-recruit prior,AVO,0,0
+0.2,Initial abundance deviates,AVO,0,0
+0.2,Recruitment deviates,AVO,0,0
+0.2,Stock-recruit penalty,AVO,0,0
+0.2,Reference point penalties,AVO,0,0
+0.2,Zero n-at-age penalty,AVO,0,0
+0.2,M prior,AVO,0,0
+0.2,M random effects,AVO,0,0
+0.2,Ration,AVO,0,0
+0.2,Ration penalties,AVO,0,0
+0.2,Stomach content data,AVO,0,0
+0.2,Linkage-table priors,AVO,0,0
+0.2,Linkage random effects,AVO,0,0
+0.2,Index data,BTS,29.117708549963083,0
+0.2,Catch data,BTS,0,0
+0.2,Composition data,BTS,197.64402862748946,0
+0.2,CAAL data,BTS,0,0
+0.2,Non-parametric selectivity,BTS,0,0
+0.2,Selectivity deviates,BTS,47.417560245305374,0
+0.2,Catchability prior,BTS,0,0
+0.2,Catchability deviates,BTS,0,0
+0.2,Stock-recruit prior,BTS,0,0
+0.2,Initial abundance deviates,BTS,0,0
+0.2,Recruitment deviates,BTS,0,0
+0.2,Stock-recruit penalty,BTS,0,0
+0.2,Reference point penalties,BTS,0,0
+0.2,Zero n-at-age penalty,BTS,0,0
+0.2,M prior,BTS,0,0
+0.2,M random effects,BTS,0,0
+0.2,Ration,BTS,0,0
+0.2,Ration penalties,BTS,0,0
+0.2,Stomach content data,BTS,0,0
+0.2,Linkage-table priors,BTS,0,0
+0.2,Linkage random effects,BTS,0,0
+0.2,Index data,ATS,-5.6698343984244435,0
+0.2,Catch data,ATS,0,0
+0.2,Composition data,ATS,31.55654476462339,0
+0.2,CAAL data,ATS,0,0
+0.2,Non-parametric selectivity,ATS,0,0
+0.2,Selectivity deviates,ATS,0,0
+0.2,Catchability prior,ATS,0,0
+0.2,Catchability deviates,ATS,0,0
+0.2,Stock-recruit prior,ATS,0,0
+0.2,Initial abundance deviates,ATS,0,0
+0.2,Recruitment deviates,ATS,0,0
+0.2,Stock-recruit penalty,ATS,0,0
+0.2,Reference point penalties,ATS,0,0
+0.2,Zero n-at-age penalty,ATS,0,0
+0.2,M prior,ATS,0,0
+0.2,M random effects,ATS,0,0
+0.2,Ration,ATS,0,0
+0.2,Ration penalties,ATS,0,0
+0.2,Stomach content data,ATS,0,0
+0.2,Linkage-table priors,ATS,0,0
+0.2,Linkage random effects,ATS,0,0
+0.2,Index data,BTS_1,0,0
+0.2,Catch data,BTS_1,0,0
+0.2,Composition data,BTS_1,0,0
+0.2,CAAL data,BTS_1,0,0
+0.2,Non-parametric selectivity,BTS_1,0,0
+0.2,Selectivity deviates,BTS_1,0,0
+0.2,Catchability prior,BTS_1,0,0
+0.2,Catchability deviates,BTS_1,0,0
+0.2,Stock-recruit prior,BTS_1,0,0
+0.2,Initial abundance deviates,BTS_1,0,0
+0.2,Recruitment deviates,BTS_1,0,0
+0.2,Stock-recruit penalty,BTS_1,0,0
+0.2,Reference point penalties,BTS_1,0,0
+0.2,Zero n-at-age penalty,BTS_1,0,0
+0.2,M prior,BTS_1,0,0
+0.2,M random effects,BTS_1,0,0
+0.2,Ration,BTS_1,0,0
+0.2,Ration penalties,BTS_1,0,0
+0.2,Stomach content data,BTS_1,0,0
+0.2,Linkage-table priors,BTS_1,0,0
+0.2,Linkage random effects,BTS_1,0,0
+0.2,Index data,ATS_1,27.554023339074554,0
+0.2,Catch data,ATS_1,0,0
+0.2,Composition data,ATS_1,0,0
+0.2,CAAL data,ATS_1,0,0
+0.2,Non-parametric selectivity,ATS_1,0,0
+0.2,Selectivity deviates,ATS_1,0,0
+0.2,Catchability prior,ATS_1,0,0
+0.2,Catchability deviates,ATS_1,0,0
+0.2,Stock-recruit prior,ATS_1,0,0
+0.2,Initial abundance deviates,ATS_1,0,0
+0.2,Recruitment deviates,ATS_1,0,0
+0.2,Stock-recruit penalty,ATS_1,0,0
+0.2,Reference point penalties,ATS_1,0,0
+0.2,Zero n-at-age penalty,ATS_1,0,0
+0.2,M prior,ATS_1,0,0
+0.2,M random effects,ATS_1,0,0
+0.2,Ration,ATS_1,0,0
+0.2,Ration penalties,ATS_1,0,0
+0.2,Stomach content data,ATS_1,0,0
+0.2,Linkage-table priors,ATS_1,0,0
+0.2,Linkage random effects,ATS_1,0,0
+0.2,Index data,CPUE,94.47350482306028,0
+0.2,Catch data,CPUE,0,0
+0.2,Composition data,CPUE,0,0
+0.2,CAAL data,CPUE,0,0
+0.2,Non-parametric selectivity,CPUE,0,0
+0.2,Selectivity deviates,CPUE,0,0
+0.2,Catchability prior,CPUE,0,0
+0.2,Catchability deviates,CPUE,0,0
+0.2,Stock-recruit prior,CPUE,0,0
+0.2,Initial abundance deviates,CPUE,0,0
+0.2,Recruitment deviates,CPUE,0,0
+0.2,Stock-recruit penalty,CPUE,0,0
+0.2,Reference point penalties,CPUE,0,0
+0.2,Zero n-at-age penalty,CPUE,0,0
+0.2,M prior,CPUE,0,0
+0.2,M random effects,CPUE,0,0
+0.2,Ration,CPUE,0,0
+0.2,Ration penalties,CPUE,0,0
+0.2,Stomach content data,CPUE,0,0
+0.2,Linkage-table priors,CPUE,0,0
+0.2,Linkage random effects,CPUE,0,0
+0.25,Index data,EBS Pollock or Fishery,0,0
+0.25,Catch data,EBS Pollock or Fishery,-123.8465384936155,0.005667426662157027
+0.25,Composition data,EBS Pollock or Fishery,171.21915323842788,0.17649903283208346
+0.25,CAAL data,EBS Pollock or Fishery,0,0
+0.25,Non-parametric selectivity,EBS Pollock or Fishery,14.763459618599516,0.07835921204389962
+0.25,Selectivity deviates,EBS Pollock or Fishery,125.6762079763794,-0.0016994771235943062
+0.25,Catchability prior,EBS Pollock or Fishery,0,0
+0.25,Catchability deviates,EBS Pollock or Fishery,0,0
+0.25,Stock-recruit prior,EBS Pollock or Fishery,0,0
+0.25,Initial abundance deviates,EBS Pollock or Fishery,19.719262313715713,-0.07501013709668669
+0.25,Recruitment deviates,EBS Pollock or Fishery,68.85521954645962,-0.0031019802917455763
+0.25,Stock-recruit penalty,EBS Pollock or Fishery,0,0
+0.25,Reference point penalties,EBS Pollock or Fishery,0,0
+0.25,Zero n-at-age penalty,EBS Pollock or Fishery,0,0
+0.25,M prior,EBS Pollock or Fishery,0,0
+0.25,M random effects,EBS Pollock or Fishery,0,0
+0.25,Ration,EBS Pollock or Fishery,0,0
+0.25,Ration penalties,EBS Pollock or Fishery,0,0
+0.25,Stomach content data,EBS Pollock or Fishery,0,0
+0.25,Linkage-table priors,EBS Pollock or Fishery,0,0
+0.25,Linkage random effects,EBS Pollock or Fishery,0,0
+0.25,Index data,AVO,9.410952199621653,-0.09638804901114284
+0.25,Catch data,AVO,0,0
+0.25,Composition data,AVO,0,0
+0.25,CAAL data,AVO,0,0
+0.25,Non-parametric selectivity,AVO,1.5474810896745004,0.16053247329956322
+0.25,Selectivity deviates,AVO,7.67145792839553,0.3093523552932034
+0.25,Catchability prior,AVO,0,0
+0.25,Catchability deviates,AVO,0,0
+0.25,Stock-recruit prior,AVO,0,0
+0.25,Initial abundance deviates,AVO,0,0
+0.25,Recruitment deviates,AVO,0,0
+0.25,Stock-recruit penalty,AVO,0,0
+0.25,Reference point penalties,AVO,0,0
+0.25,Zero n-at-age penalty,AVO,0,0
+0.25,M prior,AVO,0,0
+0.25,M random effects,AVO,0,0
+0.25,Ration,AVO,0,0
+0.25,Ration penalties,AVO,0,0
+0.25,Stomach content data,AVO,0,0
+0.25,Linkage-table priors,AVO,0,0
+0.25,Linkage random effects,AVO,0,0
+0.25,Index data,BTS,29.47694544618531,0.3592368962222281
+0.25,Catch data,BTS,0,0
+0.25,Composition data,BTS,196.64302010996485,-1.0010085175246104
+0.25,CAAL data,BTS,0,0
+0.25,Non-parametric selectivity,BTS,0,0
+0.25,Selectivity deviates,BTS,47.18820797771414,-0.2293522675912314
+0.25,Catchability prior,BTS,0,0
+0.25,Catchability deviates,BTS,0,0
+0.25,Stock-recruit prior,BTS,0,0
+0.25,Initial abundance deviates,BTS,0,0
+0.25,Recruitment deviates,BTS,0,0
+0.25,Stock-recruit penalty,BTS,0,0
+0.25,Reference point penalties,BTS,0,0
+0.25,Zero n-at-age penalty,BTS,0,0
+0.25,M prior,BTS,0,0
+0.25,M random effects,BTS,0,0
+0.25,Ration,BTS,0,0
+0.25,Ration penalties,BTS,0,0
+0.25,Stomach content data,BTS,0,0
+0.25,Linkage-table priors,BTS,0,0
+0.25,Linkage random effects,BTS,0,0
+0.25,Index data,ATS,-5.71633913375944,-0.046504735334996106
+0.25,Catch data,ATS,0,0
+0.25,Composition data,ATS,32.02318445825472,0.46663969363132907
+0.25,CAAL data,ATS,0,0
+0.25,Non-parametric selectivity,ATS,0,0
+0.25,Selectivity deviates,ATS,0,0
+0.25,Catchability prior,ATS,0,0
+0.25,Catchability deviates,ATS,0,0
+0.25,Stock-recruit prior,ATS,0,0
+0.25,Initial abundance deviates,ATS,0,0
+0.25,Recruitment deviates,ATS,0,0
+0.25,Stock-recruit penalty,ATS,0,0
+0.25,Reference point penalties,ATS,0,0
+0.25,Zero n-at-age penalty,ATS,0,0
+0.25,M prior,ATS,0,0
+0.25,M random effects,ATS,0,0
+0.25,Ration,ATS,0,0
+0.25,Ration penalties,ATS,0,0
+0.25,Stomach content data,ATS,0,0
+0.25,Linkage-table priors,ATS,0,0
+0.25,Linkage random effects,ATS,0,0
+0.25,Index data,BTS_1,0,0
+0.25,Catch data,BTS_1,0,0
+0.25,Composition data,BTS_1,0,0
+0.25,CAAL data,BTS_1,0,0
+0.25,Non-parametric selectivity,BTS_1,0,0
+0.25,Selectivity deviates,BTS_1,0,0
+0.25,Catchability prior,BTS_1,0,0
+0.25,Catchability deviates,BTS_1,0,0
+0.25,Stock-recruit prior,BTS_1,0,0
+0.25,Initial abundance deviates,BTS_1,0,0
+0.25,Recruitment deviates,BTS_1,0,0
+0.25,Stock-recruit penalty,BTS_1,0,0
+0.25,Reference point penalties,BTS_1,0,0
+0.25,Zero n-at-age penalty,BTS_1,0,0
+0.25,M prior,BTS_1,0,0
+0.25,M random effects,BTS_1,0,0
+0.25,Ration,BTS_1,0,0
+0.25,Ration penalties,BTS_1,0,0
+0.25,Stomach content data,BTS_1,0,0
+0.25,Linkage-table priors,BTS_1,0,0
+0.25,Linkage random effects,BTS_1,0,0
+0.25,Index data,ATS_1,27.54232650059888,-0.011696838475675264
+0.25,Catch data,ATS_1,0,0
+0.25,Composition data,ATS_1,0,0
+0.25,CAAL data,ATS_1,0,0
+0.25,Non-parametric selectivity,ATS_1,0,0
+0.25,Selectivity deviates,ATS_1,0,0
+0.25,Catchability prior,ATS_1,0,0
+0.25,Catchability deviates,ATS_1,0,0
+0.25,Stock-recruit prior,ATS_1,0,0
+0.25,Initial abundance deviates,ATS_1,0,0
+0.25,Recruitment deviates,ATS_1,0,0
+0.25,Stock-recruit penalty,ATS_1,0,0
+0.25,Reference point penalties,ATS_1,0,0
+0.25,Zero n-at-age penalty,ATS_1,0,0
+0.25,M prior,ATS_1,0,0
+0.25,M random effects,ATS_1,0,0
+0.25,Ration,ATS_1,0,0
+0.25,Ration penalties,ATS_1,0,0
+0.25,Stomach content data,ATS_1,0,0
+0.25,Linkage-table priors,ATS_1,0,0
+0.25,Linkage random effects,ATS_1,0,0
+0.25,Index data,CPUE,94.46489913108763,-0.008605691972647378
+0.25,Catch data,CPUE,0,0
+0.25,Composition data,CPUE,0,0
+0.25,CAAL data,CPUE,0,0
+0.25,Non-parametric selectivity,CPUE,0,0
+0.25,Selectivity deviates,CPUE,0,0
+0.25,Catchability prior,CPUE,0,0
+0.25,Catchability deviates,CPUE,0,0
+0.25,Stock-recruit prior,CPUE,0,0
+0.25,Initial abundance deviates,CPUE,0,0
+0.25,Recruitment deviates,CPUE,0,0
+0.25,Stock-recruit penalty,CPUE,0,0
+0.25,Reference point penalties,CPUE,0,0
+0.25,Zero n-at-age penalty,CPUE,0,0
+0.25,M prior,CPUE,0,0
+0.25,M random effects,CPUE,0,0
+0.25,Ration,CPUE,0,0
+0.25,Ration penalties,CPUE,0,0
+0.25,Stomach content data,CPUE,0,0
+0.25,Linkage-table priors,CPUE,0,0
+0.25,Linkage random effects,CPUE,0,0
+0.30000000000000004,Index data,EBS Pollock or Fishery,0,0
+0.30000000000000004,Catch data,EBS Pollock or Fishery,-123.84172454651375,0.010481373763909119
+0.30000000000000004,Composition data,EBS Pollock or Fishery,171.40269837212344,0.3600441665276435
+0.30000000000000004,CAAL data,EBS Pollock or Fishery,0,0
+0.30000000000000004,Non-parametric selectivity,EBS Pollock or Fishery,14.85413567000712,0.16903526345150333
+0.30000000000000004,Selectivity deviates,EBS Pollock or Fishery,125.68254809926754,0.004640645764538931
+0.30000000000000004,Catchability prior,EBS Pollock or Fishery,0,0
+0.30000000000000004,Catchability deviates,EBS Pollock or Fishery,0,0
+0.30000000000000004,Stock-recruit prior,EBS Pollock or Fishery,0,0
+0.30000000000000004,Initial abundance deviates,EBS Pollock or Fishery,19.644212156737467,-0.15006029407493315
+0.30000000000000004,Recruitment deviates,EBS Pollock or Fishery,68.85327769474044,-0.005043832010926508
+0.30000000000000004,Stock-recruit penalty,EBS Pollock or Fishery,0,0
+0.30000000000000004,Reference point penalties,EBS Pollock or Fishery,0,0
+0.30000000000000004,Zero n-at-age penalty,EBS Pollock or Fishery,0,0
+0.30000000000000004,M prior,EBS Pollock or Fishery,0,0
+0.30000000000000004,M random effects,EBS Pollock or Fishery,0,0
+0.30000000000000004,Ration,EBS Pollock or Fishery,0,0
+0.30000000000000004,Ration penalties,EBS Pollock or Fishery,0,0
+0.30000000000000004,Stomach content data,EBS Pollock or Fishery,0,0
+0.30000000000000004,Linkage-table priors,EBS Pollock or Fishery,0,0
+0.30000000000000004,Linkage random effects,EBS Pollock or Fishery,0,0
+0.30000000000000004,Index data,AVO,9.318251203951807,-0.18908904468098875
+0.30000000000000004,Catch data,AVO,0,0
+0.30000000000000004,Composition data,AVO,0,0
+0.30000000000000004,CAAL data,AVO,0,0
+0.30000000000000004,Non-parametric selectivity,AVO,1.7303774639488947,0.34342884757395753
+0.30000000000000004,Selectivity deviates,AVO,8.029621763494728,0.6675161903924005
+0.30000000000000004,Catchability prior,AVO,0,0
+0.30000000000000004,Catchability deviates,AVO,0,0
+0.30000000000000004,Stock-recruit prior,AVO,0,0
+0.30000000000000004,Initial abundance deviates,AVO,0,0
+0.30000000000000004,Recruitment deviates,AVO,0,0
+0.30000000000000004,Stock-recruit penalty,AVO,0,0
+0.30000000000000004,Reference point penalties,AVO,0,0
+0.30000000000000004,Zero n-at-age penalty,AVO,0,0
+0.30000000000000004,M prior,AVO,0,0
+0.30000000000000004,M random effects,AVO,0,0
+0.30000000000000004,Ration,AVO,0,0
+0.30000000000000004,Ration penalties,AVO,0,0
+0.30000000000000004,Stomach content data,AVO,0,0
+0.30000000000000004,Linkage-table priors,AVO,0,0
+0.30000000000000004,Linkage random effects,AVO,0,0
+0.30000000000000004,Index data,BTS,29.86076816386901,0.7430596139059276
+0.30000000000000004,Catch data,BTS,0,0
+0.30000000000000004,Composition data,BTS,195.6984313719851,-1.9455972555043672
+0.30000000000000004,CAAL data,BTS,0,0
+0.30000000000000004,Non-parametric selectivity,BTS,0,0
+0.30000000000000004,Selectivity deviates,BTS,46.95909334179574,-0.45846690350963115
+0.30000000000000004,Catchability prior,BTS,0,0
+0.30000000000000004,Catchability deviates,BTS,0,0
+0.30000000000000004,Stock-recruit prior,BTS,0,0
+0.30000000000000004,Initial abundance deviates,BTS,0,0
+0.30000000000000004,Recruitment deviates,BTS,0,0
+0.30000000000000004,Stock-recruit penalty,BTS,0,0
+0.30000000000000004,Reference point penalties,BTS,0,0
+0.30000000000000004,Zero n-at-age penalty,BTS,0,0
+0.30000000000000004,M prior,BTS,0,0
+0.30000000000000004,M random effects,BTS,0,0
+0.30000000000000004,Ration,BTS,0,0
+0.30000000000000004,Ration penalties,BTS,0,0
+0.30000000000000004,Stomach content data,BTS,0,0
+0.30000000000000004,Linkage-table priors,BTS,0,0
+0.30000000000000004,Linkage random effects,BTS,0,0
+0.30000000000000004,Index data,ATS,-5.76130979803308,-0.09147539960863682
+0.30000000000000004,Catch data,ATS,0,0
+0.30000000000000004,Composition data,ATS,32.52966778694742,0.9731230223240317
+0.30000000000000004,CAAL data,ATS,0,0
+0.30000000000000004,Non-parametric selectivity,ATS,0,0
+0.30000000000000004,Selectivity deviates,ATS,0,0
+0.30000000000000004,Catchability prior,ATS,0,0
+0.30000000000000004,Catchability deviates,ATS,0,0
+0.30000000000000004,Stock-recruit prior,ATS,0,0
+0.30000000000000004,Initial abundance deviates,ATS,0,0
+0.30000000000000004,Recruitment deviates,ATS,0,0
+0.30000000000000004,Stock-recruit penalty,ATS,0,0
+0.30000000000000004,Reference point penalties,ATS,0,0
+0.30000000000000004,Zero n-at-age penalty,ATS,0,0
+0.30000000000000004,M prior,ATS,0,0
+0.30000000000000004,M random effects,ATS,0,0
+0.30000000000000004,Ration,ATS,0,0
+0.30000000000000004,Ration penalties,ATS,0,0
+0.30000000000000004,Stomach content data,ATS,0,0
+0.30000000000000004,Linkage-table priors,ATS,0,0
+0.30000000000000004,Linkage random effects,ATS,0,0
+0.30000000000000004,Index data,BTS_1,0,0
+0.30000000000000004,Catch data,BTS_1,0,0
+0.30000000000000004,Composition data,BTS_1,0,0
+0.30000000000000004,CAAL data,BTS_1,0,0
+0.30000000000000004,Non-parametric selectivity,BTS_1,0,0
+0.30000000000000004,Selectivity deviates,BTS_1,0,0
+0.30000000000000004,Catchability prior,BTS_1,0,0
+0.30000000000000004,Catchability deviates,BTS_1,0,0
+0.30000000000000004,Stock-recruit prior,BTS_1,0,0
+0.30000000000000004,Initial abundance deviates,BTS_1,0,0
+0.30000000000000004,Recruitment deviates,BTS_1,0,0
+0.30000000000000004,Stock-recruit penalty,BTS_1,0,0
+0.30000000000000004,Reference point penalties,BTS_1,0,0
+0.30000000000000004,Zero n-at-age penalty,BTS_1,0,0
+0.30000000000000004,M prior,BTS_1,0,0
+0.30000000000000004,M random effects,BTS_1,0,0
+0.30000000000000004,Ration,BTS_1,0,0
+0.30000000000000004,Ration penalties,BTS_1,0,0
+0.30000000000000004,Stomach content data,BTS_1,0,0
+0.30000000000000004,Linkage-table priors,BTS_1,0,0
+0.30000000000000004,Linkage random effects,BTS_1,0,0
+0.30000000000000004,Index data,ATS_1,27.530934210792214,-0.02308912828234
+0.30000000000000004,Catch data,ATS_1,0,0
+0.30000000000000004,Composition data,ATS_1,0,0
+0.30000000000000004,CAAL data,ATS_1,0,0
+0.30000000000000004,Non-parametric selectivity,ATS_1,0,0
+0.30000000000000004,Selectivity deviates,ATS_1,0,0
+0.30000000000000004,Catchability prior,ATS_1,0,0
+0.30000000000000004,Catchability deviates,ATS_1,0,0
+0.30000000000000004,Stock-recruit prior,ATS_1,0,0
+0.30000000000000004,Initial abundance deviates,ATS_1,0,0
+0.30000000000000004,Recruitment deviates,ATS_1,0,0
+0.30000000000000004,Stock-recruit penalty,ATS_1,0,0
+0.30000000000000004,Reference point penalties,ATS_1,0,0
+0.30000000000000004,Zero n-at-age penalty,ATS_1,0,0
+0.30000000000000004,M prior,ATS_1,0,0
+0.30000000000000004,M random effects,ATS_1,0,0
+0.30000000000000004,Ration,ATS_1,0,0
+0.30000000000000004,Ration penalties,ATS_1,0,0
+0.30000000000000004,Stomach content data,ATS_1,0,0
+0.30000000000000004,Linkage-table priors,ATS_1,0,0
+0.30000000000000004,Linkage random effects,ATS_1,0,0
+0.30000000000000004,Index data,CPUE,94.457087118983,-0.016417704077284156
+0.30000000000000004,Catch data,CPUE,0,0
+0.30000000000000004,Composition data,CPUE,0,0
+0.30000000000000004,CAAL data,CPUE,0,0
+0.30000000000000004,Non-parametric selectivity,CPUE,0,0
+0.30000000000000004,Selectivity deviates,CPUE,0,0
+0.30000000000000004,Catchability prior,CPUE,0,0
+0.30000000000000004,Catchability deviates,CPUE,0,0
+0.30000000000000004,Stock-recruit prior,CPUE,0,0
+0.30000000000000004,Initial abundance deviates,CPUE,0,0
+0.30000000000000004,Recruitment deviates,CPUE,0,0
+0.30000000000000004,Stock-recruit penalty,CPUE,0,0
+0.30000000000000004,Reference point penalties,CPUE,0,0
+0.30000000000000004,Zero n-at-age penalty,CPUE,0,0
+0.30000000000000004,M prior,CPUE,0,0
+0.30000000000000004,M random effects,CPUE,0,0
+0.30000000000000004,Ration,CPUE,0,0
+0.30000000000000004,Ration penalties,CPUE,0,0
+0.30000000000000004,Stomach content data,CPUE,0,0
+0.30000000000000004,Linkage-table priors,CPUE,0,0
+0.30000000000000004,Linkage random effects,CPUE,0,0
+0.35,Index data,EBS Pollock or Fishery,0,0
+0.35,Catch data,EBS Pollock or Fishery,-123.83750447643372,0.014701443843932793
+0.35,Composition data,EBS Pollock or Fishery,171.59252581749308,0.549871611897288
+0.35,CAAL data,EBS Pollock or Fishery,0,0
+0.35,Non-parametric selectivity,EBS Pollock or Fishery,14.957734463421621,0.2726340568660053
+0.35,Selectivity deviates,EBS Pollock or Fishery,125.69594404817647,0.018036594673475292
+0.35,Catchability prior,EBS Pollock or Fishery,0,0
+0.35,Catchability deviates,EBS Pollock or Fishery,0,0
+0.35,Stock-recruit prior,EBS Pollock or Fishery,0,0
+0.35,Initial abundance deviates,EBS Pollock or Fishery,19.569234724761028,-0.2250377260513723
+0.35,Recruitment deviates,EBS Pollock or Fishery,68.85258209453977,-0.005739432211598228
+0.35,Stock-recruit penalty,EBS Pollock or Fishery,0,0
+0.35,Reference point penalties,EBS Pollock or Fishery,0,0
+0.35,Zero n-at-age penalty,EBS Pollock or Fishery,0,0
+0.35,M prior,EBS Pollock or Fishery,0,0
+0.35,M random effects,EBS Pollock or Fishery,0,0
+0.35,Ration,EBS Pollock or Fishery,0,0
+0.35,Ration penalties,EBS Pollock or Fishery,0,0
+0.35,Stomach content data,EBS Pollock or Fishery,0,0
+0.35,Linkage-table priors,EBS Pollock or Fishery,0,0
+0.35,Linkage random effects,EBS Pollock or Fishery,0,0
+0.35,Index data,AVO,9.229463579323326,-0.2778766693094692
+0.35,Catch data,AVO,0,0
+0.35,Composition data,AVO,0,0
+0.35,CAAL data,AVO,0,0
+0.35,Non-parametric selectivity,AVO,1.9364902100345993,0.5495415936596622
+0.35,Selectivity deviates,AVO,8.436860143876428,1.0747545707741013
+0.35,Catchability prior,AVO,0,0
+0.35,Catchability deviates,AVO,0,0
+0.35,Stock-recruit prior,AVO,0,0
+0.35,Initial abundance deviates,AVO,0,0
+0.35,Recruitment deviates,AVO,0,0
+0.35,Stock-recruit penalty,AVO,0,0
+0.35,Reference point penalties,AVO,0,0
+0.35,Zero n-at-age penalty,AVO,0,0
+0.35,M prior,AVO,0,0
+0.35,M random effects,AVO,0,0
+0.35,Ration,AVO,0,0
+0.35,Ration penalties,AVO,0,0
+0.35,Stomach content data,AVO,0,0
+0.35,Linkage-table priors,AVO,0,0
+0.35,Linkage random effects,AVO,0,0
+0.35,Index data,BTS,30.269337918390818,1.1516293684277343
+0.35,Catch data,BTS,0,0
+0.35,Composition data,BTS,194.8047779555765,-2.839250671912964
+0.35,CAAL data,BTS,0,0
+0.35,Non-parametric selectivity,BTS,0,0
+0.35,Selectivity deviates,BTS,46.73133424203413,-0.6862260032712442
+0.35,Catchability prior,BTS,0,0
+0.35,Catchability deviates,BTS,0,0
+0.35,Stock-recruit prior,BTS,0,0
+0.35,Initial abundance deviates,BTS,0,0
+0.35,Recruitment deviates,BTS,0,0
+0.35,Stock-recruit penalty,BTS,0,0
+0.35,Reference point penalties,BTS,0,0
+0.35,Zero n-at-age penalty,BTS,0,0
+0.35,M prior,BTS,0,0
+0.35,M random effects,BTS,0,0
+0.35,Ration,BTS,0,0
+0.35,Ration penalties,BTS,0,0
+0.35,Stomach content data,BTS,0,0
+0.35,Linkage-table priors,BTS,0,0
+0.35,Linkage random effects,BTS,0,0
+0.35,Index data,ATS,-5.8051717247992825,-0.13533732637483897
+0.35,Catch data,ATS,0,0
+0.35,Composition data,ATS,33.076053284821725,1.519508520198336
+0.35,CAAL data,ATS,0,0
+0.35,Non-parametric selectivity,ATS,0,0
+0.35,Selectivity deviates,ATS,0,0
+0.35,Catchability prior,ATS,0,0
+0.35,Catchability deviates,ATS,0,0
+0.35,Stock-recruit prior,ATS,0,0
+0.35,Initial abundance deviates,ATS,0,0
+0.35,Recruitment deviates,ATS,0,0
+0.35,Stock-recruit penalty,ATS,0,0
+0.35,Reference point penalties,ATS,0,0
+0.35,Zero n-at-age penalty,ATS,0,0
+0.35,M prior,ATS,0,0
+0.35,M random effects,ATS,0,0
+0.35,Ration,ATS,0,0
+0.35,Ration penalties,ATS,0,0
+0.35,Stomach content data,ATS,0,0
+0.35,Linkage-table priors,ATS,0,0
+0.35,Linkage random effects,ATS,0,0
+0.35,Index data,BTS_1,0,0
+0.35,Catch data,BTS_1,0,0
+0.35,Composition data,BTS_1,0,0
+0.35,CAAL data,BTS_1,0,0
+0.35,Non-parametric selectivity,BTS_1,0,0
+0.35,Selectivity deviates,BTS_1,0,0
+0.35,Catchability prior,BTS_1,0,0
+0.35,Catchability deviates,BTS_1,0,0
+0.35,Stock-recruit prior,BTS_1,0,0
+0.35,Initial abundance deviates,BTS_1,0,0
+0.35,Recruitment deviates,BTS_1,0,0
+0.35,Stock-recruit penalty,BTS_1,0,0
+0.35,Reference point penalties,BTS_1,0,0
+0.35,Zero n-at-age penalty,BTS_1,0,0
+0.35,M prior,BTS_1,0,0
+0.35,M random effects,BTS_1,0,0
+0.35,Ration,BTS_1,0,0
+0.35,Ration penalties,BTS_1,0,0
+0.35,Stomach content data,BTS_1,0,0
+0.35,Linkage-table priors,BTS_1,0,0
+0.35,Linkage random effects,BTS_1,0,0
+0.35,Index data,ATS_1,27.519821334693724,-0.03420200438083043
+0.35,Catch data,ATS_1,0,0
+0.35,Composition data,ATS_1,0,0
+0.35,CAAL data,ATS_1,0,0
+0.35,Non-parametric selectivity,ATS_1,0,0
+0.35,Selectivity deviates,ATS_1,0,0
+0.35,Catchability prior,ATS_1,0,0
+0.35,Catchability deviates,ATS_1,0,0
+0.35,Stock-recruit prior,ATS_1,0,0
+0.35,Initial abundance deviates,ATS_1,0,0
+0.35,Recruitment deviates,ATS_1,0,0
+0.35,Stock-recruit penalty,ATS_1,0,0
+0.35,Reference point penalties,ATS_1,0,0
+0.35,Zero n-at-age penalty,ATS_1,0,0
+0.35,M prior,ATS_1,0,0
+0.35,M random effects,ATS_1,0,0
+0.35,Ration,ATS_1,0,0
+0.35,Ration penalties,ATS_1,0,0
+0.35,Stomach content data,ATS_1,0,0
+0.35,Linkage-table priors,ATS_1,0,0
+0.35,Linkage random effects,ATS_1,0,0
+0.35,Index data,CPUE,94.45010923841612,-0.023395584644163137
+0.35,Catch data,CPUE,0,0
+0.35,Composition data,CPUE,0,0
+0.35,CAAL data,CPUE,0,0
+0.35,Non-parametric selectivity,CPUE,0,0
+0.35,Selectivity deviates,CPUE,0,0
+0.35,Catchability prior,CPUE,0,0
+0.35,Catchability deviates,CPUE,0,0
+0.35,Stock-recruit prior,CPUE,0,0
+0.35,Initial abundance deviates,CPUE,0,0
+0.35,Recruitment deviates,CPUE,0,0
+0.35,Stock-recruit penalty,CPUE,0,0
+0.35,Reference point penalties,CPUE,0,0
+0.35,Zero n-at-age penalty,CPUE,0,0
+0.35,M prior,CPUE,0,0
+0.35,M random effects,CPUE,0,0
+0.35,Ration,CPUE,0,0
+0.35,Ration penalties,CPUE,0,0
+0.35,Stomach content data,CPUE,0,0
+0.35,Linkage-table priors,CPUE,0,0
+0.35,Linkage random effects,CPUE,0,0
+0.4,Index data,EBS Pollock or Fishery,0,0
+0.4,Catch data,EBS Pollock or Fishery,-123.83414421663403,0.018061703643624583
+0.4,Composition data,EBS Pollock or Fishery,171.79023132471085,0.74757711911505
+0.4,CAAL data,EBS Pollock or Fishery,0,0
+0.4,Non-parametric selectivity,EBS Pollock or Fishery,15.072619042777397,0.38751863622178107
+0.4,Selectivity deviates,EBS Pollock or Fishery,125.71237338351443,0.03446593001143583
+0.4,Catchability prior,EBS Pollock or Fishery,0,0
+0.4,Catchability deviates,EBS Pollock or Fishery,0,0
+0.4,Stock-recruit prior,EBS Pollock or Fishery,0,0
+0.4,Initial abundance deviates,EBS Pollock or Fishery,19.496882889143897,-0.2973895616685027
+0.4,Recruitment deviates,EBS Pollock or Fishery,68.85380658378176,-0.00451494296960675
+0.4,Stock-recruit penalty,EBS Pollock or Fishery,0,0
+0.4,Reference point penalties,EBS Pollock or Fishery,0,0
+0.4,Zero n-at-age penalty,EBS Pollock or Fishery,0,0
+0.4,M prior,EBS Pollock or Fishery,0,0
+0.4,M random effects,EBS Pollock or Fishery,0,0
+0.4,Ration,EBS Pollock or Fishery,0,0
+0.4,Ration penalties,EBS Pollock or Fishery,0,0
+0.4,Stomach content data,EBS Pollock or Fishery,0,0
+0.4,Linkage-table priors,EBS Pollock or Fishery,0,0
+0.4,Linkage random effects,EBS Pollock or Fishery,0,0
+0.4,Index data,AVO,9.145277139067872,-0.3620631095649234
+0.4,Catch data,AVO,0,0
+0.4,Composition data,AVO,0,0
+0.4,CAAL data,AVO,0,0
+0.4,Non-parametric selectivity,AVO,2.1677596151428236,0.7808109987678864
+0.4,Selectivity deviates,AVO,8.894135157542072,1.5320295844397451
+0.4,Catchability prior,AVO,0,0
+0.4,Catchability deviates,AVO,0,0
+0.4,Stock-recruit prior,AVO,0,0
+0.4,Initial abundance deviates,AVO,0,0
+0.4,Recruitment deviates,AVO,0,0
+0.4,Stock-recruit penalty,AVO,0,0
+0.4,Reference point penalties,AVO,0,0
+0.4,Zero n-at-age penalty,AVO,0,0
+0.4,M prior,AVO,0,0
+0.4,M random effects,AVO,0,0
+0.4,Ration,AVO,0,0
+0.4,Ration penalties,AVO,0,0
+0.4,Stomach content data,AVO,0,0
+0.4,Linkage-table priors,AVO,0,0
+0.4,Linkage random effects,AVO,0,0
+0.4,Index data,BTS,30.702850118275762,1.5851415683126788
+0.4,Catch data,BTS,0,0
+0.4,Composition data,BTS,193.95579976465964,-3.688228862829817
+0.4,CAAL data,BTS,0,0
+0.4,Non-parametric selectivity,BTS,0,0
+0.4,Selectivity deviates,BTS,46.50619473326635,-0.9113655120390263
+0.4,Catchability prior,BTS,0,0
+0.4,Catchability deviates,BTS,0,0
+0.4,Stock-recruit prior,BTS,0,0
+0.4,Initial abundance deviates,BTS,0,0
+0.4,Recruitment deviates,BTS,0,0
+0.4,Stock-recruit penalty,BTS,0,0
+0.4,Reference point penalties,BTS,0,0
+0.4,Zero n-at-age penalty,BTS,0,0
+0.4,M prior,BTS,0,0
+0.4,M random effects,BTS,0,0
+0.4,Ration,BTS,0,0
+0.4,Ration penalties,BTS,0,0
+0.4,Stomach content data,BTS,0,0
+0.4,Linkage-table priors,BTS,0,0
+0.4,Linkage random effects,BTS,0,0
+0.4,Index data,ATS,-5.847851557983218,-0.17801715955877473
+0.4,Catch data,ATS,0,0
+0.4,Composition data,ATS,33.66106137415502,2.104516609531629
+0.4,CAAL data,ATS,0,0
+0.4,Non-parametric selectivity,ATS,0,0
+0.4,Selectivity deviates,ATS,0,0
+0.4,Catchability prior,ATS,0,0
+0.4,Catchability deviates,ATS,0,0
+0.4,Stock-recruit prior,ATS,0,0
+0.4,Initial abundance deviates,ATS,0,0
+0.4,Recruitment deviates,ATS,0,0
+0.4,Stock-recruit penalty,ATS,0,0
+0.4,Reference point penalties,ATS,0,0
+0.4,Zero n-at-age penalty,ATS,0,0
+0.4,M prior,ATS,0,0
+0.4,M random effects,ATS,0,0
+0.4,Ration,ATS,0,0
+0.4,Ration penalties,ATS,0,0
+0.4,Stomach content data,ATS,0,0
+0.4,Linkage-table priors,ATS,0,0
+0.4,Linkage random effects,ATS,0,0
+0.4,Index data,BTS_1,0,0
+0.4,Catch data,BTS_1,0,0
+0.4,Composition data,BTS_1,0,0
+0.4,CAAL data,BTS_1,0,0
+0.4,Non-parametric selectivity,BTS_1,0,0
+0.4,Selectivity deviates,BTS_1,0,0
+0.4,Catchability prior,BTS_1,0,0
+0.4,Catchability deviates,BTS_1,0,0
+0.4,Stock-recruit prior,BTS_1,0,0
+0.4,Initial abundance deviates,BTS_1,0,0
+0.4,Recruitment deviates,BTS_1,0,0
+0.4,Stock-recruit penalty,BTS_1,0,0
+0.4,Reference point penalties,BTS_1,0,0
+0.4,Zero n-at-age penalty,BTS_1,0,0
+0.4,M prior,BTS_1,0,0
+0.4,M random effects,BTS_1,0,0
+0.4,Ration,BTS_1,0,0
+0.4,Ration penalties,BTS_1,0,0
+0.4,Stomach content data,BTS_1,0,0
+0.4,Linkage-table priors,BTS_1,0,0
+0.4,Linkage random effects,BTS_1,0,0
+0.4,Index data,ATS_1,27.508891543585367,-0.045131795489187
+0.4,Catch data,ATS_1,0,0
+0.4,Composition data,ATS_1,0,0
+0.4,CAAL data,ATS_1,0,0
+0.4,Non-parametric selectivity,ATS_1,0,0
+0.4,Selectivity deviates,ATS_1,0,0
+0.4,Catchability prior,ATS_1,0,0
+0.4,Catchability deviates,ATS_1,0,0
+0.4,Stock-recruit prior,ATS_1,0,0
+0.4,Initial abundance deviates,ATS_1,0,0
+0.4,Recruitment deviates,ATS_1,0,0
+0.4,Stock-recruit penalty,ATS_1,0,0
+0.4,Reference point penalties,ATS_1,0,0
+0.4,Zero n-at-age penalty,ATS_1,0,0
+0.4,M prior,ATS_1,0,0
+0.4,M random effects,ATS_1,0,0
+0.4,Ration,ATS_1,0,0
+0.4,Ration penalties,ATS_1,0,0
+0.4,Stomach content data,ATS_1,0,0
+0.4,Linkage-table priors,ATS_1,0,0
+0.4,Linkage random effects,ATS_1,0,0
+0.4,Index data,CPUE,94.44430677211238,-0.029198050947897514
+0.4,Catch data,CPUE,0,0
+0.4,Composition data,CPUE,0,0
+0.4,CAAL data,CPUE,0,0
+0.4,Non-parametric selectivity,CPUE,0,0
+0.4,Selectivity deviates,CPUE,0,0
+0.4,Catchability prior,CPUE,0,0
+0.4,Catchability deviates,CPUE,0,0
+0.4,Stock-recruit prior,CPUE,0,0
+0.4,Initial abundance deviates,CPUE,0,0
+0.4,Recruitment deviates,CPUE,0,0
+0.4,Stock-recruit penalty,CPUE,0,0
+0.4,Reference point penalties,CPUE,0,0
+0.4,Zero n-at-age penalty,CPUE,0,0
+0.4,M prior,CPUE,0,0
+0.4,M random effects,CPUE,0,0
+0.4,Ration,CPUE,0,0
+0.4,Ration penalties,CPUE,0,0
+0.4,Stomach content data,CPUE,0,0
+0.4,Linkage-table priors,CPUE,0,0
+0.4,Linkage random effects,CPUE,0,0
+0.45000000000000007,Index data,EBS Pollock or Fishery,0,0
+0.45000000000000007,Catch data,EBS Pollock or Fishery,-123.83169041293385,0.020515507343802142
+0.45000000000000007,Composition data,EBS Pollock or Fishery,171.99402113336203,0.9513669277662302
+0.45000000000000007,CAAL data,EBS Pollock or Fishery,0,0
+0.45000000000000007,Non-parametric selectivity,EBS Pollock or Fishery,15.199099276239041,0.5139988696834248
+0.45000000000000007,Selectivity deviates,EBS Pollock or Fishery,125.73371415675184,0.055806703248848066
+0.45000000000000007,Catchability prior,EBS Pollock or Fishery,0,0
+0.45000000000000007,Catchability deviates,EBS Pollock or Fishery,0,0
+0.45000000000000007,Stock-recruit prior,EBS Pollock or Fishery,0,0
+0.45000000000000007,Initial abundance deviates,EBS Pollock or Fishery,19.42571145912714,-0.3685609916852606
+0.45000000000000007,Recruitment deviates,EBS Pollock or Fishery,68.85656037962363,-0.0017611471277376722
+0.45000000000000007,Stock-recruit penalty,EBS Pollock or Fishery,0,0
+0.45000000000000007,Reference point penalties,EBS Pollock or Fishery,0,0
+0.45000000000000007,Zero n-at-age penalty,EBS Pollock or Fishery,0,0
+0.45000000000000007,M prior,EBS Pollock or Fishery,0,0
+0.45000000000000007,M random effects,EBS Pollock or Fishery,0,0
+0.45000000000000007,Ration,EBS Pollock or Fishery,0,0
+0.45000000000000007,Ration penalties,EBS Pollock or Fishery,0,0
+0.45000000000000007,Stomach content data,EBS Pollock or Fishery,0,0
+0.45000000000000007,Linkage-table priors,EBS Pollock or Fishery,0,0
+0.45000000000000007,Linkage random effects,EBS Pollock or Fishery,0,0
+0.45000000000000007,Index data,AVO,9.06555529287743,-0.4417849557553648
+0.45000000000000007,Catch data,AVO,0,0
+0.45000000000000007,Composition data,AVO,0,0
+0.45000000000000007,CAAL data,AVO,0,0
+0.45000000000000007,Non-parametric selectivity,AVO,2.424240258582606,1.037291642207669
+0.45000000000000007,Selectivity deviates,AVO,9.400953335160553,2.038847762058226
+0.45000000000000007,Catchability prior,AVO,0,0
+0.45000000000000007,Catchability deviates,AVO,0,0
+0.45000000000000007,Stock-recruit prior,AVO,0,0
+0.45000000000000007,Initial abundance deviates,AVO,0,0
+0.45000000000000007,Recruitment deviates,AVO,0,0
+0.45000000000000007,Stock-recruit penalty,AVO,0,0
+0.45000000000000007,Reference point penalties,AVO,0,0
+0.45000000000000007,Zero n-at-age penalty,AVO,0,0
+0.45000000000000007,M prior,AVO,0,0
+0.45000000000000007,M random effects,AVO,0,0
+0.45000000000000007,Ration,AVO,0,0
+0.45000000000000007,Ration penalties,AVO,0,0
+0.45000000000000007,Stomach content data,AVO,0,0
+0.45000000000000007,Linkage-table priors,AVO,0,0
+0.45000000000000007,Linkage random effects,AVO,0,0
+0.45000000000000007,Index data,BTS,31.160610040896188,2.0429014909331045
+0.45000000000000007,Catch data,BTS,0,0
+0.45000000000000007,Composition data,BTS,193.14742836649225,-4.496600260997212
+0.45000000000000007,CAAL data,BTS,0,0
+0.45000000000000007,Non-parametric selectivity,BTS,0,0
+0.45000000000000007,Selectivity deviates,BTS,46.28461823172713,-1.1329420135782442
+0.45000000000000007,Catchability prior,BTS,0,0
+0.45000000000000007,Catchability deviates,BTS,0,0
+0.45000000000000007,Stock-recruit prior,BTS,0,0
+0.45000000000000007,Initial abundance deviates,BTS,0,0
+0.45000000000000007,Recruitment deviates,BTS,0,0
+0.45000000000000007,Stock-recruit penalty,BTS,0,0
+0.45000000000000007,Reference point penalties,BTS,0,0
+0.45000000000000007,Zero n-at-age penalty,BTS,0,0
+0.45000000000000007,M prior,BTS,0,0
+0.45000000000000007,M random effects,BTS,0,0
+0.45000000000000007,Ration,BTS,0,0
+0.45000000000000007,Ration penalties,BTS,0,0
+0.45000000000000007,Stomach content data,BTS,0,0
+0.45000000000000007,Linkage-table priors,BTS,0,0
+0.45000000000000007,Linkage random effects,BTS,0,0
+0.45000000000000007,Index data,ATS,-5.889107668825781,-0.21927327040133715
+0.45000000000000007,Catch data,ATS,0,0
+0.45000000000000007,Composition data,ATS,34.28652833388299,2.729983569259602
+0.45000000000000007,CAAL data,ATS,0,0
+0.45000000000000007,Non-parametric selectivity,ATS,0,0
+0.45000000000000007,Selectivity deviates,ATS,0,0
+0.45000000000000007,Catchability prior,ATS,0,0
+0.45000000000000007,Catchability deviates,ATS,0,0
+0.45000000000000007,Stock-recruit prior,ATS,0,0
+0.45000000000000007,Initial abundance deviates,ATS,0,0
+0.45000000000000007,Recruitment deviates,ATS,0,0
+0.45000000000000007,Stock-recruit penalty,ATS,0,0
+0.45000000000000007,Reference point penalties,ATS,0,0
+0.45000000000000007,Zero n-at-age penalty,ATS,0,0
+0.45000000000000007,M prior,ATS,0,0
+0.45000000000000007,M random effects,ATS,0,0
+0.45000000000000007,Ration,ATS,0,0
+0.45000000000000007,Ration penalties,ATS,0,0
+0.45000000000000007,Stomach content data,ATS,0,0
+0.45000000000000007,Linkage-table priors,ATS,0,0
+0.45000000000000007,Linkage random effects,ATS,0,0
+0.45000000000000007,Index data,BTS_1,0,0
+0.45000000000000007,Catch data,BTS_1,0,0
+0.45000000000000007,Composition data,BTS_1,0,0
+0.45000000000000007,CAAL data,BTS_1,0,0
+0.45000000000000007,Non-parametric selectivity,BTS_1,0,0
+0.45000000000000007,Selectivity deviates,BTS_1,0,0
+0.45000000000000007,Catchability prior,BTS_1,0,0
+0.45000000000000007,Catchability deviates,BTS_1,0,0
+0.45000000000000007,Stock-recruit prior,BTS_1,0,0
+0.45000000000000007,Initial abundance deviates,BTS_1,0,0
+0.45000000000000007,Recruitment deviates,BTS_1,0,0
+0.45000000000000007,Stock-recruit penalty,BTS_1,0,0
+0.45000000000000007,Reference point penalties,BTS_1,0,0
+0.45000000000000007,Zero n-at-age penalty,BTS_1,0,0
+0.45000000000000007,M prior,BTS_1,0,0
+0.45000000000000007,M random effects,BTS_1,0,0
+0.45000000000000007,Ration,BTS_1,0,0
+0.45000000000000007,Ration penalties,BTS_1,0,0
+0.45000000000000007,Stomach content data,BTS_1,0,0
+0.45000000000000007,Linkage-table priors,BTS_1,0,0
+0.45000000000000007,Linkage random effects,BTS_1,0,0
+0.45000000000000007,Index data,ATS_1,27.498204634381967,-0.05581870469258732
+0.45000000000000007,Catch data,ATS_1,0,0
+0.45000000000000007,Composition data,ATS_1,0,0
+0.45000000000000007,CAAL data,ATS_1,0,0
+0.45000000000000007,Non-parametric selectivity,ATS_1,0,0
+0.45000000000000007,Selectivity deviates,ATS_1,0,0
+0.45000000000000007,Catchability prior,ATS_1,0,0
+0.45000000000000007,Catchability deviates,ATS_1,0,0
+0.45000000000000007,Stock-recruit prior,ATS_1,0,0
+0.45000000000000007,Initial abundance deviates,ATS_1,0,0
+0.45000000000000007,Recruitment deviates,ATS_1,0,0
+0.45000000000000007,Stock-recruit penalty,ATS_1,0,0
+0.45000000000000007,Reference point penalties,ATS_1,0,0
+0.45000000000000007,Zero n-at-age penalty,ATS_1,0,0
+0.45000000000000007,M prior,ATS_1,0,0
+0.45000000000000007,M random effects,ATS_1,0,0
+0.45000000000000007,Ration,ATS_1,0,0
+0.45000000000000007,Ration penalties,ATS_1,0,0
+0.45000000000000007,Stomach content data,ATS_1,0,0
+0.45000000000000007,Linkage-table priors,ATS_1,0,0
+0.45000000000000007,Linkage random effects,ATS_1,0,0
+0.45000000000000007,Index data,CPUE,94.43949949958078,-0.03400532347950502
+0.45000000000000007,Catch data,CPUE,0,0
+0.45000000000000007,Composition data,CPUE,0,0
+0.45000000000000007,CAAL data,CPUE,0,0
+0.45000000000000007,Non-parametric selectivity,CPUE,0,0
+0.45000000000000007,Selectivity deviates,CPUE,0,0
+0.45000000000000007,Catchability prior,CPUE,0,0
+0.45000000000000007,Catchability deviates,CPUE,0,0
+0.45000000000000007,Stock-recruit prior,CPUE,0,0
+0.45000000000000007,Initial abundance deviates,CPUE,0,0
+0.45000000000000007,Recruitment deviates,CPUE,0,0
+0.45000000000000007,Stock-recruit penalty,CPUE,0,0
+0.45000000000000007,Reference point penalties,CPUE,0,0
+0.45000000000000007,Zero n-at-age penalty,CPUE,0,0
+0.45000000000000007,M prior,CPUE,0,0
+0.45000000000000007,M random effects,CPUE,0,0
+0.45000000000000007,Ration,CPUE,0,0
+0.45000000000000007,Ration penalties,CPUE,0,0
+0.45000000000000007,Stomach content data,CPUE,0,0
+0.45000000000000007,Linkage-table priors,CPUE,0,0
+0.45000000000000007,Linkage random effects,CPUE,0,0
+0.5,Index data,EBS Pollock or Fishery,0,0
+0.5,Catch data,EBS Pollock or Fishery,-123.82976156576427,0.022444354513382336
+0.5,Composition data,EBS Pollock or Fishery,172.20348695614237,1.1608327505465752
+0.5,CAAL data,EBS Pollock or Fishery,0,0
+0.5,Non-parametric selectivity,EBS Pollock or Fishery,15.335579298639061,0.650478892083445
+0.5,Selectivity deviates,EBS Pollock or Fishery,125.76196064344781,0.08405318994481092
+0.5,Catchability prior,EBS Pollock or Fishery,0,0
+0.5,Catchability deviates,EBS Pollock or Fishery,0,0
+0.5,Stock-recruit prior,EBS Pollock or Fishery,0,0
+0.5,Initial abundance deviates,EBS Pollock or Fishery,19.354957497501758,-0.4393149533106424
+0.5,Recruitment deviates,EBS Pollock or Fishery,68.86078967527966,0.002468148528294023
+0.5,Stock-recruit penalty,EBS Pollock or Fishery,0,0
+0.5,Reference point penalties,EBS Pollock or Fishery,0,0
+0.5,Zero n-at-age penalty,EBS Pollock or Fishery,0,0
+0.5,M prior,EBS Pollock or Fishery,0,0
+0.5,M random effects,EBS Pollock or Fishery,0,0
+0.5,Ration,EBS Pollock or Fishery,0,0
+0.5,Ration penalties,EBS Pollock or Fishery,0,0
+0.5,Stomach content data,EBS Pollock or Fishery,0,0
+0.5,Linkage-table priors,EBS Pollock or Fishery,0,0
+0.5,Linkage random effects,EBS Pollock or Fishery,0,0
+0.5,Index data,AVO,8.991051834697766,-0.5162884139350297
+0.5,Catch data,AVO,0,0
+0.5,Composition data,AVO,0,0
+0.5,CAAL data,AVO,0,0
+0.5,Non-parametric selectivity,AVO,2.7063999901275495,1.3194513737526123
+0.5,Selectivity deviates,AVO,9.95645512939486,2.5943495562925323
+0.5,Catchability prior,AVO,0,0
+0.5,Catchability deviates,AVO,0,0
+0.5,Stock-recruit prior,AVO,0,0
+0.5,Initial abundance deviates,AVO,0,0
+0.5,Recruitment deviates,AVO,0,0
+0.5,Stock-recruit penalty,AVO,0,0
+0.5,Reference point penalties,AVO,0,0
+0.5,Zero n-at-age penalty,AVO,0,0
+0.5,M prior,AVO,0,0
+0.5,M random effects,AVO,0,0
+0.5,Ration,AVO,0,0
+0.5,Ration penalties,AVO,0,0
+0.5,Stomach content data,AVO,0,0
+0.5,Linkage-table priors,AVO,0,0
+0.5,Linkage random effects,AVO,0,0
+0.5,Index data,BTS,31.641444841073564,2.523736291110481
+0.5,Catch data,BTS,0,0
+0.5,Composition data,BTS,192.37558347954055,-5.26844514794891
+0.5,CAAL data,BTS,0,0
+0.5,Non-parametric selectivity,BTS,0,0
+0.5,Selectivity deviates,BTS,46.06800395360515,-1.3495562917002246
+0.5,Catchability prior,BTS,0,0
+0.5,Catchability deviates,BTS,0,0
+0.5,Stock-recruit prior,BTS,0,0
+0.5,Initial abundance deviates,BTS,0,0
+0.5,Recruitment deviates,BTS,0,0
+0.5,Stock-recruit penalty,BTS,0,0
+0.5,Reference point penalties,BTS,0,0
+0.5,Zero n-at-age penalty,BTS,0,0
+0.5,M prior,BTS,0,0
+0.5,M random effects,BTS,0,0
+0.5,Ration,BTS,0,0
+0.5,Ration penalties,BTS,0,0
+0.5,Stomach content data,BTS,0,0
+0.5,Linkage-table priors,BTS,0,0
+0.5,Linkage random effects,BTS,0,0
+0.5,Index data,ATS,-5.928316623759612,-0.2584822253351682
+0.5,Catch data,ATS,0,0
+0.5,Composition data,ATS,34.952301879597634,3.395757114974245
+0.5,CAAL data,ATS,0,0
+0.5,Non-parametric selectivity,ATS,0,0
+0.5,Selectivity deviates,ATS,0,0
+0.5,Catchability prior,ATS,0,0
+0.5,Catchability deviates,ATS,0,0
+0.5,Stock-recruit prior,ATS,0,0
+0.5,Initial abundance deviates,ATS,0,0
+0.5,Recruitment deviates,ATS,0,0
+0.5,Stock-recruit penalty,ATS,0,0
+0.5,Reference point penalties,ATS,0,0
+0.5,Zero n-at-age penalty,ATS,0,0
+0.5,M prior,ATS,0,0
+0.5,M random effects,ATS,0,0
+0.5,Ration,ATS,0,0
+0.5,Ration penalties,ATS,0,0
+0.5,Stomach content data,ATS,0,0
+0.5,Linkage-table priors,ATS,0,0
+0.5,Linkage random effects,ATS,0,0
+0.5,Index data,BTS_1,0,0
+0.5,Catch data,BTS_1,0,0
+0.5,Composition data,BTS_1,0,0
+0.5,CAAL data,BTS_1,0,0
+0.5,Non-parametric selectivity,BTS_1,0,0
+0.5,Selectivity deviates,BTS_1,0,0
+0.5,Catchability prior,BTS_1,0,0
+0.5,Catchability deviates,BTS_1,0,0
+0.5,Stock-recruit prior,BTS_1,0,0
+0.5,Initial abundance deviates,BTS_1,0,0
+0.5,Recruitment deviates,BTS_1,0,0
+0.5,Stock-recruit penalty,BTS_1,0,0
+0.5,Reference point penalties,BTS_1,0,0
+0.5,Zero n-at-age penalty,BTS_1,0,0
+0.5,M prior,BTS_1,0,0
+0.5,M random effects,BTS_1,0,0
+0.5,Ration,BTS_1,0,0
+0.5,Ration penalties,BTS_1,0,0
+0.5,Stomach content data,BTS_1,0,0
+0.5,Linkage-table priors,BTS_1,0,0
+0.5,Linkage random effects,BTS_1,0,0
+0.5,Index data,ATS_1,27.48765816678045,-0.06636517229410543
+0.5,Catch data,ATS_1,0,0
+0.5,Composition data,ATS_1,0,0
+0.5,CAAL data,ATS_1,0,0
+0.5,Non-parametric selectivity,ATS_1,0,0
+0.5,Selectivity deviates,ATS_1,0,0
+0.5,Catchability prior,ATS_1,0,0
+0.5,Catchability deviates,ATS_1,0,0
+0.5,Stock-recruit prior,ATS_1,0,0
+0.5,Initial abundance deviates,ATS_1,0,0
+0.5,Recruitment deviates,ATS_1,0,0
+0.5,Stock-recruit penalty,ATS_1,0,0
+0.5,Reference point penalties,ATS_1,0,0
+0.5,Zero n-at-age penalty,ATS_1,0,0
+0.5,M prior,ATS_1,0,0
+0.5,M random effects,ATS_1,0,0
+0.5,Ration,ATS_1,0,0
+0.5,Ration penalties,ATS_1,0,0
+0.5,Stomach content data,ATS_1,0,0
+0.5,Linkage-table priors,ATS_1,0,0
+0.5,Linkage random effects,ATS_1,0,0
+0.5,Index data,CPUE,94.43558165571804,-0.037923167342242436
+0.5,Catch data,CPUE,0,0
+0.5,Composition data,CPUE,0,0
+0.5,CAAL data,CPUE,0,0
+0.5,Non-parametric selectivity,CPUE,0,0
+0.5,Selectivity deviates,CPUE,0,0
+0.5,Catchability prior,CPUE,0,0
+0.5,Catchability deviates,CPUE,0,0
+0.5,Stock-recruit prior,CPUE,0,0
+0.5,Initial abundance deviates,CPUE,0,0
+0.5,Recruitment deviates,CPUE,0,0
+0.5,Stock-recruit penalty,CPUE,0,0
+0.5,Reference point penalties,CPUE,0,0
+0.5,Zero n-at-age penalty,CPUE,0,0
+0.5,M prior,CPUE,0,0
+0.5,M random effects,CPUE,0,0
+0.5,Ration,CPUE,0,0
+0.5,Ration penalties,CPUE,0,0
+0.5,Stomach content data,CPUE,0,0
+0.5,Linkage-table priors,CPUE,0,0
+0.5,Linkage random effects,CPUE,0,0
