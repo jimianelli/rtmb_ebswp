@@ -1696,6 +1696,25 @@ the converged all-data 2021 solution and used the same parameter map. Each
 refit removed one newly available observation block, so these results measure
 conditional influence rather than providing independent alternative models.
 
+The survey context makes this transition unusual. NOAA Fisheries canceled the
+2020 eastern Bering Sea bottom-trawl survey, along with the standard
+vessel-based pollock acoustic survey, because the COVID-19 pandemic prevented
+safe survey operations ([NOAA Fisheries
+2020](https://www.fisheries.noaa.gov/index.php/media-release/noaa-fisheries-will-cancel-five-alaska-research-surveys-2020)).
+The missing BTS observation therefore created a two-year interval between the
+2019 and 2021 BTS biomass estimates. AFSC used three saildrone uncrewed surface
+vehicles to collect acoustic observations across the standard pollock survey
+area as a substitute for the research-vessel acoustic sampling. That effort
+provided useful abundance information, but it lacked the trawl samples used to
+identify species and estimate the age and size composition of the acoustic
+signal. NOAA consequently characterized the information as less detailed and
+more uncertain than a standard vessel survey, and the assessment assigned the
+estimate greater observation error ([NOAA Fisheries
+2020](https://www.fisheries.noaa.gov/feature-story/ocean-going-robots-effective-surveying-pollock)).
+This combination of a missing BTS year and a higher-uncertainty acoustic
+substitute reduces the continuity of fishery-independent information available
+to track the 2012--2014 cohorts before the 2021 BTS observation enters.
+
 ```{r}
 #| label: fig-retro-block-deletion
 #| fig-cap: "Influence of observation blocks entering between the 2020 and 2021 peels. Bars show the percentage change from the all-data 2021-peel estimate after removing one block and refitting from the converged 2021 solution with the same parameter map."
