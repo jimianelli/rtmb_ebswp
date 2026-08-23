@@ -28,7 +28,7 @@ abstract: |
   modern software developments. In this study, we tailored Rceattle code
   and configurations so that Rceattle can closely mimic the custom
   ADMB/RTMB assessment code. The Rceattle configuration uses the supported
-  AFSC multinomial composition likelihood and a non-parametric
+  multinomial composition likelihood with a robustifying constant and a non-parametric
   selectivity form. We also evaluated a
   two-dimensional, first-order autoregressive (AR1) selectivity sensitivity;
   it did not converge and remains a research topic. An exploratory dynamic
@@ -670,6 +670,32 @@ selectivity_ridges <- bind_rows(
   ungroup() |>
   mutate(Year_factor = factor(Year, levels = rev(sort(unique(Year)))))
 
+bts_selectivity_ridges <- bind_rows(
+  as.data.frame(fixed_parameter_comparison$selectivity$BTS) |>
+    mutate(Year = yrs, Model = "ADMB reference"),
+  as.data.frame(t(fits$nonparametric_pm$quantities$sel_at_age[
+    "BTS", "Sex combined", , seq_len(nyr)
+  ])) |>
+    mutate(Year = yrs, Model = "Rceattle robustified multinomial")
+) |>
+  pivot_longer(
+    cols = starts_with(c("V", "Age")),
+    names_to = "Age_label",
+    values_to = "Selectivity"
+  ) |>
+  mutate(
+    Age = readr::parse_number(Age_label),
+    Model = factor(Model, levels = c("ADMB reference", "Rceattle robustified multinomial"))
+  ) |>
+  filter(
+    is.finite(Selectivity), Age >= 1, Age <= 15,
+    Year >= 1982L
+  ) |>
+  group_by(Model, Year) |>
+  mutate(Relative_selectivity = Selectivity / max(Selectivity, na.rm = TRUE)) |>
+  ungroup() |>
+  mutate(Year_factor = factor(Year, levels = rev(sort(unique(Year)))))
+
 fleet_names <- est$fleet_control |>
   select(Fleet_code, Fleet_name) |>
   distinct()
@@ -975,7 +1001,7 @@ bottom trawl survey (BTS) and acoustic-trawl survey (ATS) sample sizes use the
 integer values aligned with the modified ADMB model. Age-1 survey selectivity
 remains separately parameterized from the age-2--15 curve, and each likelihood
 contribution evaluates the complete 15-age composition. Compositions use the
-supported `MultinomialAFSC` likelihood. We added a robustness constant of
+multinomial likelihood with a robustifying constant. We added a constant of
 0.001 to both observed and expected proportions before evaluating the
 likelihood. This prevents `log(0)` and limits the influence of observations in
 bins with expected proportions near zero.
@@ -1045,6 +1071,83 @@ ggplot(
   scale_fill_manual(values = c(
     "ADMB reference" = "#1f78b4",
     "Rceattle NonParametricPM" = "#1b9e77"
+  )) +
+  scale_x_continuous(limits = c(1, 15), breaks = 1:15) +
+  labs(x = "Age", y = "Year") +
+  ggthemes::theme_few() +
+  theme(
+    strip.text = element_text(face = "bold"),
+    panel.spacing.x = grid::unit(1.2, "lines")
+  )
+```
+
+For the BTS, both implementations use a logistic selectivity curve for ages
+2--15 and override age 1 with a separately estimated parameter. The age-1
+term therefore does not lie on the fitted logistic curve. Its annual deviation
+is multiplicative on the age-1 log-selectivity parameter and is penalized as a
+random walk, with weight 8 on squared year-to-year increments. Rceattle encodes
+this ADMB specification as `LogisticPM`; the plotted age-1 values are the
+realized annual selectivities after applying the separate parameter and its
+annual deviations.
+
+The BTS age compositions contribute directly to estimation of this selectivity
+through the multinomial likelihood with a robustifying constant. For each of
+the 42 BTS composition
+years, predicted numbers at age are formed from population abundance at the
+survey timing, BTS selectivity at age, and the ageing-error matrix, and are then
+normalized across ages 1--15. Catchability cancels during this normalization,
+so the compositions primarily inform the age pattern of selectivity and the
+population age structure rather than the absolute survey scale. In particular,
+the observed age-1 proportion informs the separate age-1 selectivity parameter
+and its annual deviations; ages 2--15 inform the logistic slope, inflection,
+their annual deviations, and abundance at age.
+
+For year $y$, the fitted contribution is
+
+$$
+-w_y N_y \sum_{a=1}^{15}(o_{y,a}+c)
+\log\left(\frac{p_{y,a}+c}{o_{y,a}+c}\right),
+$$
+
+where $o_{y,a}$ and $p_{y,a}$ are observed and predicted proportions,
+$c=0.001$, and the fleet composition weight $w_y$ is 1. The nominal BTS sample
+sizes are truncated to the integer values read by ADMB; they range from 48 to
+329 and sum to 5,403 across years. No young- or old-tail accumulation is used,
+so age 1 remains in the likelihood as its own bin. Larger-$N_y$ years exert
+more influence, while $c$ stabilizes empty or near-empty bins. The composition
+contributions are optimized jointly with the BTS biomass
+index likelihood and the selectivity random-walk penalties; the fitted curve
+therefore balances annual age-composition fit, survey biomass fit, and temporal
+smoothness.
+
+```{r}
+#| label: fig-bts-selectivity-ridges
+#| fig-cap: "Relative bottom trawl survey selectivity by year for the ADMB model and Rceattle configuration. Ages 2--15 follow a time-varying logistic curve; age 1 is separately parameterized with annual random-walk deviations. Each annual curve is normalized to a maximum of one."
+#| fig-alt: "Two side-by-side ridge plots compare ADMB and Rceattle bottom trawl survey selectivity at ages 1 through 15 for survey years 1982 through 2024. In both panels, age 1 varies independently of the logistic selectivity curve fitted to ages 2 through 15."
+#| fig-width: 15
+#| fig-height: 10
+#| out-width: "100%"
+
+ggplot(
+  bts_selectivity_ridges,
+  aes(
+    x = Age,
+    y = Year_factor,
+    height = Relative_selectivity,
+    fill = Model
+  )
+) +
+  ggridges::geom_ridgeline(
+    scale = 3.8,
+    alpha = 0.28,
+    color = "black",
+    linewidth = 0.2,
+    show.legend = FALSE
+  ) +
+  facet_wrap(vars(Model), nrow = 1) +
+  scale_fill_manual(values = c(
+    "ADMB reference" = "#1f78b4",
+    "Rceattle robustified multinomial" = "#1b9e77"
   )) +
   scale_x_continuous(limits = c(1, 15), breaks = 1:15) +
   labs(x = "Age", y = "Year") +
@@ -1254,7 +1357,7 @@ for predicted catch. This confirms that the package update preserved the
 agreement in the population calculations.
 
 The self-test uses the same delivered EBS workbook and supported
-`MultinomialAFSC` composition criterion as the Rceattle configuration. The
+multinomial criterion with the same robustifying constant as the Rceattle configuration. The
 observed-data fit reproduced the stored
 objective of 716.948070, maximum gradient of 0.000041, and `OK` status with a
 positive-definite Hessian. The Hessian condition number was approximately
@@ -1622,7 +1725,7 @@ tibble(
   ),
   Value = c(
     spmr_lineage$fit, spmr_lineage$source_md5,
-    spmr_lineage$composition_likelihood,
+    "Multinomial with c = 0.001",
     spmr_lineage$composition_sample_sizes,
     spmr_lineage$spmR, substr(spmr_lineage$spmR_commit, 1, 8),
     spmr_lineage$terminal_year,
@@ -2725,7 +2828,7 @@ The [5.8.1 summary script](R/finalize_rceattle_5_8_1_analysis.R) fits the
 standard-multinomial sensitivity and writes the summaries used here when run
 with `Rscript R/finalize_rceattle_5_8_1_analysis.R`.
 
-The Rceattle configuration uses the supported `MultinomialAFSC` composition
+The Rceattle configuration uses a multinomial composition
 likelihood with a robustness constant of 0.001 added to observed and expected
 proportions. A standard multinomial fit without this constant was retained as
 an observation-model sensitivity. Both fits reached small gradients and
@@ -2745,10 +2848,10 @@ model_summary |>
         "Standard multinomial",
       TRUE ~ "Final configuration"
     ),
-    Composition_likelihood = recode(
-      Composition_likelihood,
-      MultinomialAFSC = "AFSC multinomial",
-      Multinomial = "Standard multinomial"
+    Composition_likelihood = case_when(
+      grepl("standard multinomial", Model, ignore.case = TRUE) ~
+        "Standard multinomial",
+      TRUE ~ "Multinomial with c = 0.001"
     )
   ) |>
   select(
@@ -2775,7 +2878,7 @@ model_summary |>
   )
 ```
 
-Relative to the `MultinomialAFSC` configuration, the standard
+Relative to the multinomial configuration with $c=0.001$, the standard
 multinomial sensitivity changed spawning biomass by
 `r sprintf("%.2f", comparison_summary$Mean_absolute_percent[comparison_summary$Method == "Standard multinomial sensitivity" & comparison_summary$Quantity == "Spawning biomass"])`%,
 recruitment by
