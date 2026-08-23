@@ -1243,14 +1243,17 @@ comparison_summary |>
 
 ```{r}
 #| label: fig-trajectories
-#| fig-cap: "ADMB and fitted Rceattle trajectories for spawning biomass, recruitment, and total biomass. The Rceattle series is from the fit in which its parameters were estimated."
-#| fig-alt: "Three vertically stacked time-series panels compare ADMB estimates with estimates from the fitted Rceattle model for spawning biomass, recruitment, and total biomass from 1964 through 2024."
+#| fig-cap: "ADMB and fitted Rceattle trajectories for spawning biomass and recruitment. The Rceattle series is from the fit in which its parameters were estimated."
+#| fig-alt: "Two vertically stacked time-series panels compare ADMB estimates with estimates from the fitted Rceattle model for spawning biomass and recruitment from 1964 through 2024. Both vertical axes begin at zero."
 #| fig-width: 11
-#| fig-height: 8
+#| fig-height: 6
 
 ggplot(
   quantity_long |>
-    filter(Method %in% c("ADMB reference", "Rceattle NonParametricPM")) |>
+    filter(
+      Method %in% c("ADMB reference", "Rceattle NonParametricPM"),
+      Quantity != "Total biomass"
+    ) |>
     mutate(
       Method = recode(
         as.character(Method),
@@ -1261,6 +1264,7 @@ ggplot(
 ) +
   geom_line(linewidth = 0.75) +
   facet_wrap(vars(Quantity), ncol = 1, scales = "free_y") +
+  scale_y_continuous(limits = c(0, NA), labels = label_comma()) +
   scale_color_manual(values = c(
     "ADMB reference" = "#1b9e77",
     "Rceattle fit (parameters estimated)" = "#d95f02"
