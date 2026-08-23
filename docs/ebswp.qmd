@@ -1089,8 +1089,8 @@ ggplot(
 For the BTS, both implementations use a logistic selectivity curve for ages
 2--15 and override age 1 with a separately estimated parameter. The age-1
 term therefore does not lie on the fitted logistic curve. Its annual deviation
-is multiplicative on the age-1 log-selectivity parameter and is penalized as a
-random walk, with weight 8 on squared year-to-year increments. Rceattle encodes
+is multiplicative on the age-1 log-selectivity parameter, and the CV on the
+year-to-year deviations is specified at 25%. Rceattle encodes
 this ADMB specification as `LogisticPM`; the plotted age-1 values are the
 realized annual selectivities after applying the separate parameter and its
 annual deviations.
