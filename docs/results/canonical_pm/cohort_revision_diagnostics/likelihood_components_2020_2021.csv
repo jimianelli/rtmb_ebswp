@@ -1,0 +1,33 @@
+Component,Fleet,NLL,Terminal_year
+Catch data,EBS Pollock or Fishery,-125.66178868583107,2020
+Composition data,EBS Pollock or Fishery,149.28001576674643,2020
+Non-parametric selectivity,EBS Pollock or Fishery,14.361799774866695,2020
+Selectivity deviates,EBS Pollock or Fishery,99.86785657519916,2020
+Initial abundance deviates,EBS Pollock or Fishery,19.68671686195637,2020
+Recruitment deviates,EBS Pollock or Fishery,68.24623662871745,2020
+Index data,AVO,7.990514148987297,2020
+Non-parametric selectivity,AVO,1.3620611801686746,2020
+Selectivity deviates,AVO,5.235956512528388,2020
+Index data,BTS,26.681228362719594,2020
+Composition data,BTS,166.30945187281296,2020
+Selectivity deviates,BTS,41.85272520640794,2020
+Index data,ATS,-4.79850350227684,2020
+Composition data,ATS,23.900115484223445,2020
+Index data,ATS_1,24.46131102634166,2020
+Index data,CPUE,94.43401974465606,2020
+Catch data,EBS Pollock or Fishery,-124.66915923162468,2021
+Composition data,EBS Pollock or Fishery,163.57849491418088,2021
+Non-parametric selectivity,EBS Pollock or Fishery,16.317427369271307,2021
+Selectivity deviates,EBS Pollock or Fishery,112.13425029898045,2021
+Initial abundance deviates,EBS Pollock or Fishery,19.71022442394816,2021
+Recruitment deviates,EBS Pollock or Fishery,68.45341174983695,2021
+Index data,AVO,9.095033990180815,2021
+Non-parametric selectivity,AVO,1.1940307344089385,2021
+Selectivity deviates,AVO,6.042692677854726,2021
+Index data,BTS,27.411204653785944,2021
+Composition data,BTS,177.83802825564658,2021
+Selectivity deviates,BTS,43.07911998252642,2021
+Index data,ATS,-5.645890056896134,2021
+Composition data,ATS,26.338228489634538,2021
+Index data,ATS_1,24.359390570223365,2021
+Index data,CPUE,94.45861724443405,2021

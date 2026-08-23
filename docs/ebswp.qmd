@@ -74,6 +74,7 @@ params:
   osa_diagnostics_file: "results/canonical_pm/ebs_pollock_osa_diagnostics.rds"
   retrospective_file: "results/canonical_pm/ebs_pollock_nonparametric_two_stage_retro_9peels.rds"
   retrospective_summary_file: "results/canonical_pm/ebs_pollock_nonparametric_two_stage_retro_9peels_mohns.csv"
+  cohort_diagnostic_dir: "results/canonical_pm/cohort_revision_diagnostics"
   fixed_parameter_comparison_file: "results/canonical_pm/bridge_forward_pass/bridge_forward_pass_results.rds"
   fixed_parameter_summary_file: "results/canonical_pm/bridge_forward_pass/bridge_forward_pass_summary.csv"
   rceattle_581_validation_summary_file: "results/rceattle_5.8.1_validation/self_test/validation_summary.csv"
@@ -843,7 +844,7 @@ diagnostic_status <- tibble::tribble(
   "Completed and saved in the ADMB-to-Rceattle comparison outputs.",
   "Primary numerical agreement check.",
   "Rceattle fit",
-  "Completed with OK status, a positive-definite Hessian, and a condition number of approximately 489,000.",
+  "Convergence criteria were fully met, with a positive-definite Hessian and a condition number of approximately 489,000.",
   "Primary Rceattle comparison fit to the data.",
   "2D AR1 selectivity sensitivity",
   "Received a FAIL convergence status, an unsuccessful Hessian inversion, and parameter-bound warnings.",
@@ -852,13 +853,13 @@ diagnostic_status <- tibble::tribble(
   "Completed for 1,864 residuals and saved in RDS outputs.",
   "Useful, but analytical and exactly reproduced index groups need interpretation.",
   "Rceattle retrospectives",
-  "Nine peels completed for the Rceattle fit with OK status.",
+  "Nine peels completed and fully met the convergence criteria.",
   "The revised peels preserve data availability and fix terminal fishery/CPUE selectivity increments at zero, holding the terminal selectivity-at-age curve at its preceding-year value.",
   "Legacy ADMB retrospectives",
   "Existing ADMB retro.rep files are present.",
   "Provides historical context distinct from the Rceattle retrospective peels.",
   "Rceattle 5.8.1 self-tests",
-  "Fifty initial-start and 50 estimated-start refits completed with OK status.",
+  "Fifty initial-start and 50 estimated-start refits fully met the convergence criteria.",
   "Supports the revised positive-index simulation workflow; it does not resolve observed-data multimodality.",
   "Jitters and likelihood profile",
   "Forty-eight of 50 jitters returned to the best mode; two WARN fits reached an inferior mode. The age-3+ M profile was shallow with its grid minimum at 0.20.",
@@ -927,8 +928,8 @@ for spawning biomass and
 for predicted catch. This result establishes agreement in the population
 dynamics when both implementations use the same parameter values.
 
-When Rceattle was fit to the data, it reached `OK` convergence status with a
-positive-definite Hessian. The least-identified direction remained in annual
+When Rceattle was fit to the data, the convergence criteria were fully met,
+including a positive-definite Hessian. The least-identified direction remained in annual
 ATS/AVO selectivity deviations, but the added direct coefficient-increment
 penalty reduced the condition number below the warning threshold. Relative to the
 ADMB fit, mean absolute differences were
@@ -1024,8 +1025,8 @@ complete assessment workbook.
 
 The configuration uses `NonParametricPM` fishery selectivity with annual
 deviations. When fit to the data, the model reached a small maximum gradient.
-The Hessian condition number was approximately 489,000 and received `OK`
-status. Its least-identified direction remained concentrated in
+The Hessian condition number was approximately 489,000 and the convergence
+criteria were fully met. Its least-identified direction remained concentrated in
 `sel_coff_dev`, specifically the shared ATS/AVO block rather than the shared
 fishery/CPUE block.
 
@@ -1299,7 +1300,6 @@ convergence_summary |>
   filter(Model == "Rceattle fit") |>
   select(
     Model,
-    Status,
     Objective,
     Max_gradient,
     Worst_parameter,
@@ -1314,7 +1314,6 @@ convergence_summary |>
   ) |>
   cols_width(
     Model ~ px(135),
-    Status ~ px(65),
     Objective ~ px(95),
     Max_gradient ~ px(95),
     Worst_parameter ~ px(105),
@@ -1359,8 +1358,8 @@ agreement in the population calculations.
 The self-test uses the same delivered EBS workbook and supported
 multinomial criterion with the same robustifying constant as the Rceattle configuration. The
 observed-data fit reproduced the stored
-objective of 716.948070, maximum gradient of 0.000041, and `OK` status with a
-positive-definite Hessian. The Hessian condition number was approximately
+objective of 716.948070 and maximum gradient of 0.000041; the convergence
+criteria were fully met, including a positive-definite Hessian. The Hessian condition number was approximately
 $4.9 \times 10^5$; its least-identified direction remained concentrated in the
 shared ATS/AVO `sel_coff_dev` block rather than fishery/CPUE.
 
@@ -1381,9 +1380,9 @@ rceattle_581_validation |>
   cols_width(Metric ~ px(520), Value ~ px(150))
 ```
 
-All 50 phased simulations converged with `OK` status when refitted from the
-original initial values. Repeating the same simulated datasets from the fitted
-parameter values also produced 50 `OK` fits. Paired objectives agreed within
+All 50 phased simulations fully met the convergence criteria when refitted from
+the original initial values. Repeating the same simulated datasets from the fitted
+parameter values also produced 50 fits that fully met the criteria. Paired objectives agreed within
 $3.1 \times 10^{-8}$, so these simulations showed no start-dependent mode.
 Median spawning-biomass bias was -1.06% across years and -0.91% in the terminal
 year. These results validate the revised self-test workflow; they do not rule
@@ -1521,7 +1520,7 @@ original ending years.
 Each peel applies the fitting sequence documented in the appendix. The
 terminal-year fishery and mirrored catch-per-unit-effort selectivity
 increments are fixed at zero. All nine final fits received
-`OK` convergence status, with maximum gradients from
+fully met the convergence criteria, with maximum gradients from
 `r scientific(min(retro_convergence$Maximum_gradient[retro_convergence$Terminal_year < terminal_year]), digits = 2)`
 to
 `r scientific(max(retro_convergence$Maximum_gradient[retro_convergence$Terminal_year < terminal_year]), digits = 2)`.
@@ -1539,7 +1538,7 @@ retrospective files.
 
 ```{r}
 #| label: fig-rceattle-retrospectives
-#| fig-cap: "Nine retrospective peels for the Rceattle configuration. The black line is the unpeeled model ending in 2024; colored lines are successive peels ending in 2023 through 2015 and are plotted through each peel's terminal year. Each peel preserves the original data-availability lags and fixes the terminal fishery/CPUE selectivity-at-age increment at zero, holding the terminal curve at its preceding-year value. All nine fits received OK convergence status."
+#| fig-cap: "Nine retrospective peels for the Rceattle configuration. The black line is the unpeeled model ending in 2024; colored lines are successive peels ending in 2023 through 2015 and are plotted through each peel's terminal year. Each peel preserves the original data-availability lags and fixes the terminal fishery/CPUE selectivity-at-age increment at zero, holding the terminal curve at its preceding-year value. All nine fits fully met the convergence criteria."
 #| fig-alt: "Faceted line plots of spawning biomass, total biomass, recruitment, and fishing mortality for the 2024 Rceattle fit and nine retrospective peels. The peeled trajectories show moderate systematic departures from the base fit, especially for spawning biomass."
 #| fig-width: 10
 #| fig-height: 8
@@ -1621,11 +1620,186 @@ indicate that the peeled models generally estimate higher quantities at
 their terminal years than the corresponding unpeeled estimates. The
 negative fishing-mortality value indicates lower terminal fishing
 mortality in the peels. Spawning biomass shows the largest average
-relative difference. The consistent `OK` statuses and small gradients
+relative difference. The fully met convergence criteria and small gradients
 support interpretation of these values as properties of the revised
 retrospective specification, while the magnitude of spawning-biomass
 rho motivates continued evaluation of selectivity, survey influence,
 and recent recruitment estimates.
+
+#### Cohort revision and data-source diagnostics
+
+The elevated spawning biomass in the peels ending approximately in
+2015--2020 is associated primarily with the initially large estimates of the
+2013 and 2014 year classes, with a smaller contribution from the 2012 year
+class. Those cohorts support much of the estimated spawning biomass during
+2015--2020 as they recruit to the mature population. Their estimated age-1
+abundances subsequently decline when later observations are included. For
+example, between the peels ending in 2020 and 2021, estimated age-1 abundance
+declines from 63,618 to 45,548 million fish for the 2013 cohort and from 66,666
+to 49,473 million fish for the 2014 cohort. The corresponding estimate for the
+2012 cohort declines from 15,947 to 12,622 million fish.
+
+```{r}
+#| label: cohort-diagnostic-data
+#| include: false
+cohort_diagnostic_dir <- project_file(params$cohort_diagnostic_dir)
+cohort_revisions <- read_csv(
+  file.path(cohort_diagnostic_dir, "cohort_revisions.csv"),
+  show_col_types = FALSE
+)
+new_data_inventory <- read_csv(
+  file.path(cohort_diagnostic_dir, "new_data_inventory.csv"),
+  show_col_types = FALSE
+)
+block_deletions <- read_csv(
+  file.path(cohort_diagnostic_dir, "block_deletion_results.csv"),
+  show_col_types = FALSE
+)
+cumulative_additions <- read_csv(
+  file.path(cohort_diagnostic_dir, "cumulative_addition_results.csv"),
+  show_col_types = FALSE
+)
+selectivity_controls <- read_csv(
+  file.path(cohort_diagnostic_dir, "selectivity_control_results.csv"),
+  show_col_types = FALSE
+)
+```
+
+```{r}
+#| label: fig-rceattle-retrospective-uncertainty
+#| fig-cap: "Rceattle retrospective spawning-biomass estimates with approximate plus or minus two-standard-deviation intervals from each peel's Hessian-based covariance calculation. The intervals describe within-peel estimation uncertainty conditional on each fitted model; they do not include structural uncertainty or covariance among peels."
+#| fig-alt: "Spawning-biomass trajectories for Rceattle peels ending from 2015 through 2024, with broad translucent uncertainty bands. Earlier peels estimate substantially higher biomass during 2013 through 2019, but their uncertainty bands overlap considerably."
+
+knitr::include_graphics(file.path(
+  cohort_diagnostic_dir,
+  "ssb_retrospective_uncertainty.png"
+))
+```
+
+This uncertainty display is directly comparable in intent to the historical
+ADMB retrospective figure supplied for reference. Both show the same broad
+qualitative feature: earlier terminal-year fits produce higher spawning
+biomass over the mid-2010s, but with substantial uncertainty. The comparison
+does not establish identical causes because the ADMB and Rceattle
+retrospectives differ in implementation and fitted configuration. The
+Rceattle bands also represent approximate, conditional Hessian uncertainty;
+they should not be interpreted as uncertainty in the retrospective bias
+itself.
+
+The transition from the 2020 to 2021 peel is especially informative because
+it contains the main downward step. Five records become available: the 2020
+fishery age composition (effective sample size 565.2), the 2021 BTS biomass
+index (4,889 kt), the 2021 BTS age composition (effective sample size 149),
+the 2021 AVO index, and the BTS age-1 index record. Controlled refits began at
+the converged all-data 2021 solution and used the same parameter map. Each
+refit removed one newly available observation block, so these results measure
+conditional influence rather than providing independent alternative models.
+
+```{r}
+#| label: fig-retro-block-deletion
+#| fig-cap: "Influence of observation blocks entering between the 2020 and 2021 peels. Bars show the percentage change from the all-data 2021-peel estimate after removing one block and refitting from the converged 2021 solution with the same parameter map."
+#| fig-alt: "Horizontal bars show that removing the 2021 BTS biomass index or 2020 fishery age composition increases the 2013 and 2014 cohort and spawning-biomass estimates most. Removing the 2021 BTS composition has a small effect, while removing AVO or the BTS age-1 index has almost none."
+
+knitr::include_graphics(file.path(
+  cohort_diagnostic_dir,
+  "block_deletion_effects.png"
+))
+```
+
+Removing the 2021 BTS biomass index increases the 2013 and 2014 recruitment
+estimates by 10.2% and 14.5%, respectively, and increases 2020 spawning
+biomass by 27.6%. Removing the 2020 fishery age composition increases the two
+cohort estimates by 19.5% and 10.8% and 2020 spawning biomass by 14.8%.
+In contrast, removing the 2021 BTS age composition changes these quantities
+by only about 0--4%, removing AVO changes them by less than 0.5%, and removing
+the BTS age-1 index has no effect on these older cohorts. The cumulative
+addition experiment gives the same ordering: adding the 2020 fishery
+composition produces the first major decline, adding the 2021 BTS index
+produces the second, and the BTS composition and AVO index make smaller
+subsequent adjustments.
+
+```{r}
+#| label: tbl-retro-cumulative-addition
+#| tbl-cap: "Controlled cumulative addition of observations entering the 2021 peel. Percentages are relative to the complete 2021-peel fit. All fits fully met the convergence criteria."
+
+cumulative_additions |>
+  select(
+    Scenario,
+    `R2013 (%)` = R2013_percent_vs_all_2021,
+    `R2014 (%)` = R2014_percent_vs_all_2021,
+    `SSB 2018 (%)` = SSB2018_percent_vs_all_2021,
+    `SSB 2020 (%)` = SSB2020_percent_vs_all_2021,
+    `Maximum gradient` = Maximum_gradient
+  ) |>
+  gt() |>
+  fmt_number(columns = ends_with("(%)"), decimals = 1) |>
+  fmt_scientific(columns = `Maximum gradient`, decimals = 2)
+```
+
+The composition traces clarify why the fishery record is influential. For the
+2013 cohort at age 8, the 2020 fishery observed proportion is 0.063 compared
+with a fitted proportion of 0.110. The 2021 BTS composition also places less
+mass on that cohort at age 9 (0.042 observed versus 0.070 fitted), but its
+conditional leverage is smaller. Evidence for the 2014 cohort is less
+uniform: its fishery and BTS terminal proportions are close to their fitted
+values. The 2013 cohort therefore shows a recognizable late-age composition
+signal across two data sources, whereas the 2014 downward revision is tied
+more strongly to the overall BTS abundance scale and the model's allocation
+of that abundance among ages.
+
+```{r}
+#| label: fig-cohort-composition-trace
+#| fig-cap: "Observed and fitted contributions of the 2012--2014 cohorts to ATS, BTS, and fishery age compositions through the 2021 peel. Each point follows a cohort as it ages; differences are proportions within an annual age composition, not survival estimates."
+#| fig-alt: "Nine panels compare observed and fitted proportions for the 2012, 2013, and 2014 cohorts in ATS, BTS, and fishery data. The 2013 cohort is below its fitted value in the terminal fishery and BTS observations, while the 2014 terminal observations are closer to fitted values."
+
+knitr::include_graphics(file.path(
+  cohort_diagnostic_dir,
+  "cohort_composition_trace.png"
+))
+```
+
+Selectivity is an important mediator rather than a separate observation. When
+the 2021 peel is refit with BTS selectivity fixed at its realized 2020-peel
+curves, the 2013 and 2014 recruitment estimates increase by 14.5% and 14.9%,
+and 2020 spawning biomass increases by 19.2%, relative to the all-data 2021
+fit. Fixing fishery and CPUE selectivity at their 2020-peel curves has much
+smaller and mixed effects. Thus, the lower 2021 BTS index supplies the main
+new abundance-scale information, and re-estimated BTS selectivity determines
+how much of that scale change is assigned to these cohorts.
+
+```{r}
+#| label: tbl-retro-selectivity-controls
+#| tbl-cap: "Selectivity-control refits of the 2021 peel. Each listed fleet's selectivity parameter fields were fixed at the 2020-peel estimates; percentages are relative to the complete 2021-peel fit. These are diagnostic controls, not candidate assessment configurations."
+
+selectivity_controls |>
+  select(
+    Scenario,
+    `R2013 (%)` = R2013_percent_vs_all_2021,
+    `R2014 (%)` = R2014_percent_vs_all_2021,
+    `SSB 2018 (%)` = SSB2018_percent_vs_all_2021,
+    `SSB 2020 (%)` = SSB2020_percent_vs_all_2021,
+    `Maximum gradient` = Maximum_gradient
+  ) |>
+  gt() |>
+  fmt_number(columns = ends_with("(%)"), decimals = 1) |>
+  fmt_scientific(columns = `Maximum gradient`, decimals = 2)
+```
+
+These experiments narrow the source of the shift but do not yet identify a
+unique biological process. Natural mortality is fixed in this configuration,
+so the model cannot represent cohort-specific anomalous survival directly.
+The same observations could instead reflect changing survey availability or
+movement, ageing or composition inconsistencies, or selectivity changes that
+are not fully separated from abundance. The next diagnostic stage should
+therefore (1) audit the age determinations and sample construction for the
+2013 cohort in the 2020 fishery and 2021 BTS samples, (2) map the spatial and
+size composition of the 2019 and 2021 BTS observations to test availability
+changes across the survey gap, (3) profile or otherwise perturb BTS
+selectivity while retaining the 2021 index, and (4) run a targeted
+cohort-survival or time-varying-mortality sensitivity. Until those checks are
+complete, the evidence supports a data-conflict/selectivity explanation for
+the downward revision, not a definitive attribution to mortality or any
+single survey record.
 
 ## Projections
 
@@ -2152,7 +2326,7 @@ dsem_summary |>
   )
 ```
 
-All four fits reached `OK` status, had positive-definite Hessians, and had
+All four fits fully met the convergence criteria, had positive-definite Hessians, and had
 maximum absolute gradients no larger than
 `r format(max(dsem_summary$maximum_gradient), scientific = TRUE, digits = 2)`.
 The age-0 late-summer SST model had the lowest AIC
@@ -2645,7 +2819,7 @@ Rceattle configuration used data-based fishery-selectivity starting values and t
 stages. The first stage disabled the annual selectivity deviations to establish
 the selectivity and abundance scale. The second stage restored the deviations
 and used the first-stage solution as its initial values. This sequence produced
-a small maximum gradient and `OK` status. With the direct ATS/AVO
+a small maximum gradient and fully met the convergence criteria. With the direct ATS/AVO
 coefficient-increment penalty, the Hessian condition number was approximately
 489,000; its weakest direction remained in the shared ATS/AVO annual
 selectivity deviations (`sel_coff_dev`) rather than fishery/CPUE.
@@ -2708,6 +2882,13 @@ run is not sufficient evidence that the global mode was found.
 #| tbl-cap: "Rceattle 5.8.1 phased-jitter results for the fitted configuration. Delta objective is measured from the best of 50 runs."
 
 jitter_summary |>
+  mutate(
+    Convergence_status = if_else(
+      Convergence_status == "OK",
+      "Criteria fully met",
+      Convergence_status
+    )
+  ) |>
   group_by(Convergence_status) |>
   summarise(
     Runs = n(),
@@ -2747,8 +2928,8 @@ this configuration.
 
 ```{r}
 #| label: fig-natural-mortality-profile
-#| fig-cap: "Component decomposition of the age-3-and-older natural-mortality profile. Each curve is the change in that NLL component relative to its value at M = 0.20. Positive values favor M = 0.20 over the plotted value; negative values favor the plotted value. Components in the three lower panels sum to the total objective change in the upper-left panel."
-#| fig-alt: "Four-panel natural-mortality profile. The total objective is shallow with a minimum at M equals 0.20. Index likelihood and both selectivity penalties rise toward M equals 0.50 and therefore favor lower M. Composition likelihood and initial-abundance penalties decline and partly offset that preference. Catch and recruitment-deviation contributions change little."
+#| fig-cap: "Negative-log-likelihood components across the age-3-and-older natural-mortality profile. Each curve shows delta NLL relative to that component's value at M = 0.20. Positive values favor M = 0.20 over the plotted value; negative values favor the plotted value. Components in the three lower panels sum to the total objective change in the upper-left panel."
+#| fig-alt: "Four-panel plot with M on the horizontal axis and delta NLL on the vertical axis. The total objective is shallow with a minimum at M equals 0.20. Index likelihood and both selectivity penalties rise toward M equals 0.50. Composition likelihood and initial-abundance penalties decline and partly offset that increase. Catch and recruitment-deviation components change little."
 #| fig-width: 9
 #| fig-height: 7
 #| fig-pos: "H"
@@ -2788,8 +2969,8 @@ mortality_profile_components |>
   facet_wrap(vars(Group), ncol = 2, scales = "free_y") +
   scale_color_brewer(type = "qual", palette = "Dark2") +
   labs(
-    x = "Age-3+ natural mortality",
-    y = "Change in NLL component from M = 0.20",
+    x = expression(M),
+    y = expression(Delta*"NLL"),
     color = NULL,
     shape = NULL
   ) +
@@ -2847,7 +3028,7 @@ interpreting the difference as biological evidence about M.
 \clearpage
 ```
 
-### A-7 2D age-by-year AR1 selectivity sensitivity {.unnumbered}
+### A-6 2D age-by-year AR1 selectivity sensitivity {.unnumbered}
 
 The penalized-effects initialization and subsequent Laplace fit are in the
 [two-stage fitting script](<2024 EBS pollock.R>) and are run with
@@ -2934,7 +3115,7 @@ ggplot(
   )
 ```
 
-### A-8 Acronyms {.unnumbered}
+### A-7 Acronyms {.unnumbered}
 
 This appendix follows the glossary convention in the [Alaska Stock Assessment
 Report (`asar`) package](https://github.com/nmfs-ost/asar)

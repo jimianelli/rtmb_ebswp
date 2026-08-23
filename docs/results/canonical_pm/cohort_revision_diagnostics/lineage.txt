@@ -1,0 +1,5 @@
+Generated: 2026-08-23 04:14:53 UTC
+Rceattle version: 5.8.1
+Source retrospective: results/canonical_pm/ebs_pollock_nonparametric_two_stage_retro_9peels.rds
+Controlled refits start from the converged 2021-peel solution.
+Cumulative-addition order: 2020 fishery composition, 2021 BTS index, 2021 BTS composition, 2021 AVO index.
