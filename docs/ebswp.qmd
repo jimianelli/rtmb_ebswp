@@ -81,9 +81,6 @@ params:
   rceattle_581_truncation_summary_file: "results/rceattle_5.8.1_validation/self_test/index_truncation_diagnostics_by_fleet.csv"
   rceattle_581_restart_comparison_file: "results/rceattle_5.8.1_validation/self_test/self_test_restart_comparison.csv"
   jitter_summary_file: "results/rceattle_5.8.1_validation/extended_diagnostics/jitter_50_summary.csv"
-  mortality_profile_file: "results/rceattle_5.8.1_validation/extended_diagnostics/profile_M_age3plus.csv"
-  mortality_profile_components_file: "results/rceattle_5.8.1_validation/extended_diagnostics/profile_M_age3plus_components.csv"
-  mortality_profile_fleet_components_file: "results/rceattle_5.8.1_validation/extended_diagnostics/profile_M_age3plus_fleet_components.csv"
   model_input_workbook: "Data/EBS_24_pollock_m23_rceattle_full_1964-2024.xlsx"
   bts_covariance_file: "Data/BTS_survey_covariance_2024.dat"
   admb_retro_file: "ADMB/m23_rceattle_full/retro.rep"
@@ -286,13 +283,6 @@ rceattle_581_restart_comparison_file <- project_file(
   params$rceattle_581_restart_comparison_file
 )
 jitter_summary_file <- project_file(params$jitter_summary_file)
-mortality_profile_file <- project_file(params$mortality_profile_file)
-mortality_profile_components_file <- project_file(
-  params$mortality_profile_components_file
-)
-mortality_profile_fleet_components_file <- project_file(
-  params$mortality_profile_fleet_components_file
-)
 dsem_summary_file <- project_file(params$dsem_summary_file)
 dsem_paths_file <- project_file(params$dsem_paths_file)
 dsem_variance_file <- project_file(params$dsem_variance_file)
@@ -314,9 +304,6 @@ core_files <- c(
   rceattle_581_truncation_summary_file,
   rceattle_581_restart_comparison_file,
   jitter_summary_file,
-  mortality_profile_file,
-  mortality_profile_components_file,
-  mortality_profile_fleet_components_file,
   dsem_summary_file,
   dsem_paths_file,
   dsem_variance_file,
@@ -353,62 +340,6 @@ rceattle_581_restart <- readr::read_csv(
   show_col_types = FALSE
 )
 jitter_summary <- readr::read_csv(jitter_summary_file, show_col_types = FALSE)
-mortality_profile <- readr::read_csv(
-  mortality_profile_file,
-  show_col_types = FALSE
-) |>
-  rename(`Age-3+ natural mortality` = slot_1)
-mortality_profile_components <- readr::read_csv(
-  mortality_profile_components_file,
-  show_col_types = FALSE
-)
-mortality_profile_fleet_components <- readr::read_csv(
-  mortality_profile_fleet_components_file,
-  show_col_types = FALSE
-)
-mortality_profile_min_m <- mortality_profile[["Age-3+ natural mortality"]][
-  which.min(mortality_profile$Objective)
-]
-mortality_profile_compare_m <- max(
-  mortality_profile[["Age-3+ natural mortality"]]
-)
-mortality_profile_material_contributions <- mortality_profile_fleet_components |>
-  filter(
-    abs(`Age-3+ natural mortality` - mortality_profile_compare_m) < 1e-10,
-    abs(Delta_component) >= 0.25
-  ) |>
-  mutate(
-    Fleet_label = recode(Fleet, `EBS Pollock or Fishery` = "Fishery"),
-    Term = case_when(
-      Fleet == "AVO" & Component == "Non-parametric selectivity" ~
-        "Shared ATS/AVO selectivity-curve penalty",
-      Fleet == "AVO" & Component == "Selectivity deviates" ~
-        "Shared ATS/AVO annual-selectivity penalty",
-      Component == "Composition data" ~
-        paste(Fleet_label, "age-composition likelihood"),
-      Component == "Index data" ~ paste(Fleet_label, "index likelihood"),
-      Component == "Non-parametric selectivity" ~
-        paste(Fleet_label, "selectivity-curve penalty"),
-      Component == "Selectivity deviates" ~
-        paste(Fleet_label, "annual-selectivity penalty"),
-      Component == "Initial abundance deviates" ~
-        "Population initial-abundance penalty",
-      Component == "Recruitment deviates" ~
-        "Population recruitment-deviation penalty",
-      TRUE ~ paste(Fleet_label, tolower(Component))
-    ),
-    Direction = if_else(
-      Delta_component > 0,
-      "Lower M",
-      "Higher M"
-    )
-  ) |>
-  select(Term, Direction, `NLL contribution` = Delta_component) |>
-  arrange(desc(`NLL contribution`))
-mortality_profile_contribution <- setNames(
-  mortality_profile_material_contributions[["NLL contribution"]],
-  mortality_profile_material_contributions$Term
-)
 dsem_summary <- readr::read_csv(dsem_summary_file, show_col_types = FALSE)
 dsem_paths <- readr::read_csv(dsem_paths_file, show_col_types = FALSE)
 dsem_variance <- readr::read_csv(dsem_variance_file, show_col_types = FALSE)
@@ -826,7 +757,7 @@ initial_development_status <- tibble::tribble(
   "The NonParametricPM configuration is the relevant Rceattle comparison; 2D AR1 is diagnostic only.",
   "3",
   "Convergence and model diagnostics",
-  "Structured convergence checks, OSA diagnostics, nine retrospective peels, 50 self-tests, 50 jitters, and a natural-mortality profile are saved.",
+  "Structured convergence checks, OSA diagnostics, nine retrospective peels, 50 self-tests, and 50 jitters are saved.",
   "The ATS/AVO coefficient-increment penalty resolves the prior Hessian-conditioning warning; two inferior jitter solutions remain.",
   "4",
   "Next-assessment data update workflow",
@@ -846,9 +777,6 @@ diagnostic_status <- tibble::tribble(
   "Rceattle fit",
   "Convergence criteria were fully met, with a positive-definite Hessian and a condition number of approximately 489,000.",
   "Primary Rceattle comparison fit to the data.",
-  "2D AR1 selectivity sensitivity",
-  "Received a FAIL convergence status, an unsuccessful Hessian inversion, and parameter-bound warnings.",
-  "Requires further research before it can be considered as an alternative selectivity form.",
   "OSA residuals",
   "Completed for 1,864 residuals and saved in RDS outputs.",
   "Useful, but analytical and exactly reproduced index groups need interpretation.",
@@ -861,9 +789,9 @@ diagnostic_status <- tibble::tribble(
   "Rceattle 5.8.1 self-tests",
   "Fifty initial-start and 50 estimated-start refits fully met the convergence criteria.",
   "Supports the revised positive-index simulation workflow; it does not resolve observed-data multimodality.",
-  "Jitters and likelihood profile",
-  "Forty-eight of 50 jitters returned to the best mode; two WARN fits reached an inferior mode. The age-3+ M profile was shallow with its grid minimum at 0.20.",
-  "Documents multimodality and weak information about natural mortality."
+  "Jitter tests",
+  "Forty-eight of 50 jitters returned to the best mode; two WARN fits reached an inferior mode.",
+  "Documents multimodality in the observed-data fit."
 )
 
 file_inventory <- tibble::tribble(
@@ -881,10 +809,6 @@ file_inventory <- tibble::tribble(
   "Rceattle 5.8.1 truncation diagnostics", "Local CSV file", params$rceattle_581_truncation_summary_file,
   "Rceattle 5.8.1 restart comparison", "Local CSV file", params$rceattle_581_restart_comparison_file,
   "Rceattle 5.8.1 jitter summary", "Local CSV file", params$jitter_summary_file,
-  "Age-3+ natural-mortality profile", "Local CSV file", params$mortality_profile_file,
-  "Age-3+ natural-mortality profile components", "Local CSV file", params$mortality_profile_components_file,
-  "Age-3+ natural-mortality fleet components", "Local CSV file", params$mortality_profile_fleet_components_file,
-  "Natural-mortality profile summarizer", "Local R script", "R/summarize_rceattle_5_8_1_m_profile.R",
   "ADMB-to-Rceattle comparison summary", "Local comma-separated-values (CSV) file", params$fixed_parameter_summary_file,
   "Rceattle fitting script", "Local R script", params$two_stage_script,
   "Diagnostics script", "Local R script", params$diagnostics_script,
@@ -1295,41 +1219,11 @@ sensitivity checks even though the formal warning is resolved.
 
 ## Diagnostics
 
-The numerical convergence checks for the fitted Rceattle model, including the
-objective, maximum gradient, and Hessian status, indicated convergence
-(@tbl-convergence). The remaining diagnostic products distinguish completed
-checks from the failed 2D AR1 research sensitivity
+The fitted Rceattle model fully met the convergence criteria: it reached a
+small maximum gradient, had a positive-definite Hessian, and remained below
+the Hessian-condition-number warning threshold. The supporting diagnostic
+products include OSA residuals, retrospectives, self-tests, and jitter tests
 (@tbl-diagnostic-status).
-
-```{r}
-#| label: tbl-convergence
-#| tbl-cap: "Stored Rceattle convergence checks for the evaluated configurations."
-#| tbl-pos: H
-
-convergence_summary |>
-  filter(Model == "Rceattle fit") |>
-  select(
-    Model,
-    Objective,
-    Max_gradient,
-    Worst_parameter,
-    Positive_definite_Hessian
-  ) |>
-  gt() |>
-  fmt_number(columns = c(Objective, Max_gradient), decimals = 6) |>
-  cols_label(
-    Max_gradient = "Max gradient",
-    Worst_parameter = "Weakest component",
-    Positive_definite_Hessian = "PD Hessian"
-  ) |>
-  cols_width(
-    Model ~ px(135),
-    Objective ~ px(95),
-    Max_gradient ~ px(95),
-    Worst_parameter ~ px(105),
-    Positive_definite_Hessian ~ px(80)
-  )
-```
 
 ```{r}
 #| label: tbl-diagnostic-status
@@ -2446,7 +2340,7 @@ positive retrospective bias in spawning biomass, total biomass, and
 recruitment, together with negative bias in fishing mortality. The historical
 2D AR1 sensitivity did not converge and retains its research status. The
 50-jitter diagnostic recovered the best solution 48 times and found a poorer
-mode twice; the age-3+ natural-mortality profile is shallow.
+mode twice.
 
 The scaled-back DSEM proof of concept compared two prespecified proxy edges
 with the no-edge IID reference. The age-0 late-summer SST model had the lowest
@@ -2880,14 +2774,11 @@ initial_development_status |>
   )
 ```
 
-### A-5 Jitter and natural-mortality profile {.unnumbered}
+### A-5 Jitter-tests {.unnumbered}
 
 The [extended-diagnostics runner](R/run_rceattle_5_8_1_extended_diagnostics.R)
-generates both the 50 jitter fits and the age-3-and-older natural-mortality
-profile with `Rscript R/run_rceattle_5_8_1_extended_diagnostics.R`.
-The [profile-component summarizer](R/summarize_rceattle_5_8_1_m_profile.R)
-extracts the saved `jnll_comp` matrices without refitting the model and is run
-with `Rscript R/summarize_rceattle_5_8_1_m_profile.R`.
+generates the 50 jitter fits with
+`Rscript R/run_rceattle_5_8_1_extended_diagnostics.R`.
 
 The 50 phased jitter runs test sensitivity to dispersed starting values.
 Forty-eight returned to the best objective within numerical precision. Two
@@ -2930,121 +2821,6 @@ jitter_summary |>
   )
 ```
 
-The age-3-and-older natural-mortality profile was evaluated from 0.15 to 0.50.
-The grid minimum occurred at
-`r sprintf("%.2f", mortality_profile[["Age-3+ natural mortality"]][which.min(mortality_profile$Objective)])`,
-but the objective changed by only
-`r sprintf("%.2f", max(mortality_profile$Delta_objective))`
-across the entire grid. The profile is therefore shallow and does not support
-precise estimation of natural mortality from these data alone.
-
-The saved profile fits retain Rceattle's full negative-log-likelihood (NLL)
-component matrix. The component entries sum to the reported objective at every
-grid point to within numerical precision. Each component is centered on its
-value at the grid minimum of
-`r sprintf("%.2f", mortality_profile_min_m)`. Positive changes indicate that a
-component favors the lower grid-minimum value over the plotted value; negative
-changes indicate that the component favors the plotted value. The total panel
-is the sum of the data and penalty panels. The M-prior contribution is zero in
-this configuration (@fig-natural-mortality-profile).
-
-```{r}
-#| label: fig-natural-mortality-profile
-#| fig-cap: "Negative-log-likelihood components across the age-3-and-older natural-mortality profile. Each curve shows delta NLL relative to that component's value at M = 0.20. Positive values favor M = 0.20 over the plotted value; negative values favor the plotted value. Components in the three lower panels sum to the total objective change in the upper-left panel."
-#| fig-alt: "Four-panel plot with M on the horizontal axis and delta NLL on the vertical axis. The total objective is shallow with a minimum at M equals 0.20. Index likelihood and both selectivity penalties rise toward M equals 0.50. Composition likelihood and initial-abundance penalties decline and partly offset that increase. Catch and recruitment-deviation components change little."
-#| fig-width: 9
-#| fig-height: 7
-#| fig-pos: "H"
-
-mortality_profile_components |>
-  filter(Component %in% c(
-    "Total objective",
-    "Index data", "Catch data", "Composition data",
-    "Non-parametric selectivity", "Selectivity deviates",
-    "Initial abundance deviates", "Recruitment deviates"
-  )) |>
-  mutate(
-    Group = factor(
-      Group,
-      levels = c(
-        "Total objective", "Data likelihoods",
-        "Selectivity penalties", "Population penalties"
-      )
-    ),
-    Component = recode(
-      Component,
-      `Non-parametric selectivity` = "Selectivity-curve penalty",
-      `Selectivity deviates` = "Annual-selectivity penalty",
-      `Initial abundance deviates` = "Initial-abundance penalty",
-      `Recruitment deviates` = "Recruitment-deviation penalty"
-    )
-  ) |>
-  ggplot(aes(
-    x = `Age-3+ natural mortality`,
-    y = Delta_component,
-    color = Component,
-    shape = Component
-  )) +
-  geom_hline(yintercept = 0, color = "gray55", linetype = 2) +
-  geom_line(linewidth = 0.8) +
-  geom_point(size = 2) +
-  facet_wrap(vars(Group), ncol = 2, scales = "free_y") +
-  scale_color_brewer(type = "qual", palette = "Dark2") +
-  labs(
-    x = expression(M),
-    y = expression(Delta*"NLL"),
-    color = NULL,
-    shape = NULL
-  ) +
-  ggthemes::theme_few() +
-  theme(
-    legend.position = "bottom",
-    legend.key.width = grid::unit(1.2, "lines")
-  ) +
-  guides(
-    color = guide_legend(nrow = 3, byrow = TRUE),
-    shape = guide_legend(nrow = 3, byrow = TRUE)
-  )
-```
-
-The increase in total NLL from \(M=0.20\) to \(M=0.50\) was
-`r sprintf("%.2f", mortality_profile$Objective[mortality_profile[["Age-3+ natural mortality"]] == mortality_profile_compare_m] - min(mortality_profile$Objective))`.
-The strongest single counterweight
-was the BTS age-composition likelihood, which improved by
-`r sprintf("%.2f", abs(mortality_profile_contribution[["BTS age-composition likelihood"]]))`
-NLL units as M increased. Lower M was favored mainly by the ATS age-composition
-likelihood, the BTS index likelihood, and the selectivity penalties. Because
-ATS and AVO share a selectivity index in this configuration, the shared
-ATS/AVO penalties are stored in the AVO-labeled column of `jnll_comp`
-(@tbl-natural-mortality-profile-components).
-
-```{r}
-#| label: tbl-natural-mortality-profile-components
-#| tbl-cap: "Material fleet-specific contributions to the total NLL change from M = 0.20 to M = 0.50. The direction column identifies the M value favored by each term; positive contributions favor lower M and negative contributions favor higher M. Terms with absolute contributions below 0.25 NLL units are omitted."
-#| tbl-pos: "H"
-
-mortality_profile_material_contributions |>
-  gt() |>
-  fmt_number(columns = `NLL contribution`, decimals = 2) |>
-  cols_label(Direction = "Direction favored") |>
-  cols_width(
-    Term ~ px(320),
-    Direction ~ px(115),
-    `NLL contribution` ~ px(110)
-  ) |>
-  tab_style(
-    style = cell_text(weight = "bold"),
-    locations = cells_body(columns = Direction)
-  )
-```
-
-This decomposition shows that the low profile minimum is a trade-off among
-specific survey, composition, and selectivity terms rather than a uniform
-signal for lower natural mortality. It also explains why this result can
-differ from natural-mortality analyses that use different composition
-likelihoods, survey weights, or selectivity penalties. A direct comparison
-with those analyses should match these components and their weights before
-interpreting the difference as biological evidence about M.
 
 ```{=latex}
 \clearpage
