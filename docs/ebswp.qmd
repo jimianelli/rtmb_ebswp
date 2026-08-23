@@ -1615,12 +1615,11 @@ for total biomass,
 `r sprintf("%.3f", retro_mohns[["Mohn's rho"]][retro_mohns$Quantity == "Recruitment"])`
 for recruitment, and
 `r sprintf("%.3f", retro_mohns[["Mohn's rho"]][retro_mohns$Quantity == "Fishing mortality"])`
-for fishing mortality. The positive biomass and recruitment values
-indicate that the peeled models generally estimate higher quantities at
-their terminal years than the corresponding unpeeled estimates. The
-negative fishing-mortality value indicates lower terminal fishing
-mortality in the peels. Spawning biomass shows the largest average
-relative difference. The fully met convergence criteria and small gradients
+for fishing mortality. Across the recent nine-year period, the available data
+and model tended to overestimate recruitment and spawning biomass when recent
+years of data were successively removed. Fishing mortality showed the opposite
+pattern, with lower estimates when recent data were removed. Spawning biomass
+shows the largest average relative difference. The fully met convergence criteria and small gradients
 support interpretation of these values as properties of the revised
 retrospective specification, while the magnitude of spawning-biomass
 rho motivates continued evaluation of selectivity, survey influence,
@@ -1628,13 +1627,15 @@ and recent recruitment estimates.
 
 #### Cohort revision and data-source diagnostics
 
-The elevated spawning biomass in the peels ending approximately in
+The elevated spawning biomass in model runs with terminal years set to
 2015--2020 is associated primarily with the initially large estimates of the
 2013 and 2014 year classes, with a smaller contribution from the 2012 year
 class. Those cohorts support much of the estimated spawning biomass during
-2015--2020 as they recruit to the mature population. Their estimated age-1
-abundances subsequently decline when later observations are included. For
-example, between the peels ending in 2020 and 2021, estimated age-1 abundance
+2015--2020 as they recruit to the mature population. The purpose of the
+following diagnostics is to learn which data signals and model processes cause
+their estimated strength, and consequently spawning biomass, to shift downward
+when later observations are included. For example, between model runs with
+terminal years set to 2020 and 2021, estimated age-1 abundance
 declines from 63,618 to 45,548 million fish for the 2013 cohort and from 66,666
 to 49,473 million fish for the 2014 cohort. The corresponding estimate for the
 2012 cohort declines from 15,947 to 12,622 million fish.

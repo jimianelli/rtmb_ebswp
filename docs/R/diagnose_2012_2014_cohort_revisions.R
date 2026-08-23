@@ -420,7 +420,10 @@ p_uncertainty <- ggplot(
   geom_line(linewidth = 0.7) +
   scale_color_viridis_d(option = "C", end = 0.9, direction = -1) +
   scale_fill_viridis_d(option = "C", end = 0.9, direction = -1) +
-  scale_y_continuous(labels = scales::label_number(big.mark = ",")) +
+  scale_y_continuous(
+    limits = c(0, NA),
+    labels = scales::label_number(big.mark = ",")
+  ) +
   labs(
     x = NULL,
     y = "Spawning biomass (kt)",
