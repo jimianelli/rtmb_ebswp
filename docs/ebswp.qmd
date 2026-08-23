@@ -2247,7 +2247,7 @@ stability, alternative cohort timing, and observation-error sensitivity.
 These DSEM results remain separate from the assessment configuration and
 projection results.
 
-## Summary
+## Summary and conclusions
 
 When Rceattle parameters and fishery selectivity are set to the values used in
 the ADMB model, Rceattle reproduces spawning
@@ -2289,6 +2289,32 @@ robust-multinomial approach used in this example). The exploratory DSEM work
 provides a reproducible approach for adding cohort-aligned covariates, while
 remaining separate from the final assessment configuration and projection
 results.
+
+Rceattle is broadly used beyond this EBS pollock application. The framework
+has been applied to single- and multispecies groundfish cases in the eastern
+Bering Sea and Gulf of Alaska, including configurations for pollock, Pacific
+cod, and arrowtooth flounder. Its shared data structure accommodates one or
+more stocks, one- or two-sex population dynamics, and multiple fisheries and
+surveys. The present bridge therefore represents an application of a broader
+assessment framework rather than a model developed only for EBS pollock.
+
+Rceattle is also under active development. Continued work on its TMB model,
+data interfaces, diagnostics, simulation tools, and documentation is expanding
+the set of configurations that can be represented and tested. This development
+is an advantage for future assessment work, but it also reinforces the need to
+record package versions, preserve model inputs and fitted outputs, and repeat
+the ADMB bridge and convergence checks when consequential components change.
+
+Only part of the available Rceattle feature set was explored here. This study
+focused on a single-species age-structured configuration, ADMB parameter
+mapping, selectivity, composition fitting, standard diagnostics, projections,
+and an exploratory DSEM extension. It did not fully evaluate joint multispecies
+estimation, bioenergetics-based predation mortality, estimable growth,
+environmental linkages across other biological parameters, alternative harvest
+control rules and climate scenarios, or closed-loop management strategy
+evaluation. These capabilities provide a substantial agenda for future testing,
+but each should be evaluated through controlled sensitivities and diagnostics
+before contributing to operational EBS pollock advice.
 
 ## References {.unnumbered}
 
