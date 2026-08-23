@@ -1043,6 +1043,10 @@ of 10. These values are penalty coefficients rather than SDs.
 The fitting sequence, composition-likelihood sensitivity, and 2D age-by-year
 AR1 development work are documented in the appendix.
 
+The ADMB and Rceattle fishery selectivity curves have similar age patterns,
+while their annual variation differs most in the earlier years
+(@fig-selectivity-ridges).
+
 ```{r}
 #| label: fig-selectivity-ridges
 #| fig-cap: "Relative fishery selectivity by year for the ADMB model and Rceattle configuration. Each annual curve is normalized to a maximum of one."
@@ -1119,7 +1123,8 @@ more influence, while $c$ stabilizes empty or near-empty bins. The composition
 contributions are optimized jointly with the BTS biomass
 index likelihood and the selectivity random-walk penalties; the fitted curve
 therefore balances annual age-composition fit, survey biomass fit, and temporal
-smoothness.
+smoothness. Both implementations preserve the distinct age-1 term outside the
+logistic ages 2--15 curve (@fig-bts-selectivity-ridges).
 
 ```{r}
 #| label: fig-bts-selectivity-ridges
@@ -1288,8 +1293,9 @@ sensitivity checks even though the formal warning is resolved.
 
 The numerical convergence checks for the fitted Rceattle model, including the
 objective, maximum gradient, and Hessian status, indicated convergence
-(@tbl-convergence). The fit and status of the other diagnostic products are
-provided in @tbl-diagnostic-status.
+(@tbl-convergence). The remaining diagnostic products distinguish completed
+checks from the failed 2D AR1 research sensitivity
+(@tbl-diagnostic-status).
 
 ```{r}
 #| label: tbl-convergence
@@ -1386,7 +1392,8 @@ parameter values also produced 50 fits that fully met the criteria. Paired objec
 $3.1 \times 10^{-8}$, so these simulations showed no start-dependent mode.
 Median spawning-biomass bias was -1.06% across years and -0.91% in the terminal
 year. These results validate the revised self-test workflow; they do not rule
-out the mode previously encountered when fitting the observed data.
+out the mode previously encountered when fitting the observed data
+(@tbl-rceattle-581-self-test).
 
 ```{r}
 #| label: tbl-rceattle-581-truncation
@@ -1414,7 +1421,8 @@ rceattle_581_truncation |>
 One AVO row had a 3.76% non-positive probability and one BTS multivariate-normal
 row had a 6.67% probability. Those rows exceed the package's 2% warning
 threshold and should be identified when interpreting recovery. CPUE and the
-remaining index series had negligible or zero marginal rejection probability.
+remaining index series had negligible or zero marginal rejection probability
+(@tbl-rceattle-581-truncation).
 
 ### OSA Residuals
 
@@ -1519,8 +1527,8 @@ original ending years.
 
 Each peel applies the fitting sequence documented in the appendix. The
 terminal-year fishery and mirrored catch-per-unit-effort selectivity
-increments are fixed at zero. All nine final fits received
-fully met the convergence criteria, with maximum gradients from
+increments are fixed at zero. All nine final fits fully met the convergence
+criteria, with maximum gradients from
 `r scientific(min(retro_convergence$Maximum_gradient[retro_convergence$Terminal_year < terminal_year]), digits = 2)`
 to
 `r scientific(max(retro_convergence$Maximum_gradient[retro_convergence$Terminal_year < terminal_year]), digits = 2)`.
@@ -1534,7 +1542,9 @@ curve. Across all peels and both the fishery and mirrored catch-per-unit-effort
 series, the maximum absolute terminal-to-preceding-year difference was
 `r scientific(retro_terminal_selectivity_max_difference, digits = 2)`.
 These Rceattle fits are separate from the legacy AD Model Builder (ADMB)
-retrospective files.
+retrospective files. The model runs with earlier terminal years generally
+estimate greater spawning biomass and recruitment and lower fishing mortality
+over their shared years (@fig-rceattle-retrospectives).
 
 ```{r}
 #| label: fig-rceattle-retrospectives
@@ -1623,7 +1633,7 @@ shows the largest average relative difference. The fully met convergence criteri
 support interpretation of these values as properties of the revised
 retrospective specification, while the magnitude of spawning-biomass
 rho motivates continued evaluation of selectivity, survey influence,
-and recent recruitment estimates.
+and recent recruitment estimates (@tbl-rceattle-mohns-rho).
 
 #### Cohort revision and data-source diagnostics
 
@@ -1685,7 +1695,7 @@ does not establish identical causes because the ADMB and Rceattle
 retrospectives differ in implementation and fitted configuration. The
 Rceattle bands also represent approximate, conditional Hessian uncertainty;
 they should not be interpreted as uncertainty in the retrospective bias
-itself.
+itself (@fig-rceattle-retrospective-uncertainty).
 
 The transition from the 2020 to 2021 peel is especially informative because
 it contains the main downward step. Five records become available: the 2020
@@ -1736,7 +1746,8 @@ the BTS age-1 index has no effect on these older cohorts. The cumulative
 addition experiment gives the same ordering: adding the 2020 fishery
 composition produces the first major decline, adding the 2021 BTS index
 produces the second, and the BTS composition and AVO index make smaller
-subsequent adjustments.
+subsequent adjustments (@fig-retro-block-deletion;
+@tbl-retro-cumulative-addition).
 
 ```{r}
 #| label: tbl-retro-cumulative-addition
@@ -1765,7 +1776,7 @@ uniform: its fishery and BTS terminal proportions are close to their fitted
 values. The 2013 cohort therefore shows a recognizable late-age composition
 signal across two data sources, whereas the 2014 downward revision is tied
 more strongly to the overall BTS abundance scale and the model's allocation
-of that abundance among ages.
+of that abundance among ages (@fig-cohort-composition-trace).
 
 ```{r}
 #| label: fig-cohort-composition-trace
@@ -1785,7 +1796,8 @@ and 2020 spawning biomass increases by 19.2%, relative to the all-data 2021
 fit. Fixing fishery and CPUE selectivity at their 2020-peel curves has much
 smaller and mixed effects. Thus, the lower 2021 BTS index supplies the main
 new abundance-scale information, and re-estimated BTS selectivity determines
-how much of that scale change is assigned to these cohorts.
+how much of that scale change is assigned to these cohorts
+(@tbl-retro-selectivity-controls).
 
 ```{r}
 #| label: tbl-retro-selectivity-controls
@@ -1823,19 +1835,14 @@ single survey record.
 
 ## Projections
 
-The saved Rceattle fit supplies every population and
-fishery input for the Standard Projection Model calculations implemented in
-`spmR` [@ianelli2026spmR]. The run uses `spmR` version 0.3.0 from pinned
-main-branch commit `e86fc6aa`. The adapter in
-`R/write_spmr_projection_inputs.R` writes terminal abundance, natural
-mortality, maturity, spawning and fishery weights, the arithmetic mean of
-fishery selectivity-at-age over the most recent five assessment years
-(2020--2024), recruitment, and spawning-biomass histories to `pm.prj`. The
-same five years define the recent average fishing mortality. The reproducible
-runner `R/run_spmr_tier3_projection.R` then applies those inputs to all seven
-Tier 3 alternatives. The report reads the saved projection products, so every
-table and figure in this section comes from the same saved Rceattle fit. The
-complete field mapping and validation sequence are documented in Appendix A-2.
+The projections carry the terminal Rceattle population state and biological
+schedules forward under the seven Tier 3 harvest alternatives implemented in
+the Standard Projection Model [@ianelli2026spmR]. Fishery selectivity and
+fishing mortality represent average conditions during 2020--2024. All
+alternatives use the same assessment results and fixed catches for 2025 and
+2026, after which their harvest rules produce different catch, biomass, and
+fishing-mortality trajectories. The technical conversion, execution steps,
+and validation checks are documented in Appendix A-2.
 
 ```{r}
 #| label: spmr-projection-products
@@ -1882,25 +1889,26 @@ spmr_alt_desc <- tibble(
 
 ```{r}
 #| label: tbl-spmr-projection-files
-#| tbl-cap: "Projection files generated from the saved Rceattle fit for the spmR/SPM calculations. Checksums show the first eight MD5 characters; the complete values are retained in manifest.csv."
+#| tbl-cap: "Projection files generated from the saved Rceattle fit for the spmR/SPM calculations."
 #| tbl-pos: "H"
 spmr_manifest |>
   transmute(
     file,
     role,
-    exists,
-    checksum = substr(md5, 1, 8)
+    exists
   ) |>
   gt() |>
   cols_width(
-    file ~ px(200),
-    role ~ px(300),
-    exists ~ px(50),
-    checksum ~ px(70)
+    file ~ pct(32),
+    role ~ pct(58),
+    exists ~ pct(10)
   ) |>
-  tab_options(table.font.size = px(8)) |>
   tab_header(title = "spmR Projection Files")
 ```
+
+The saved projection products include the population inputs, projection
+controls, simulation output, and summary tables used in this section
+(@tbl-spmr-projection-files).
 
 ```{r}
 #| label: tbl-spmr-projection-settings
@@ -1908,8 +1916,8 @@ spmr_manifest |>
 #| tbl-pos: "H"
 tibble(
   Item = c(
-    "Rceattle source fit", "Source checksum", "Composition likelihood",
-    "Composition sample sizes", "spmR version", "spmR commit",
+    "Rceattle source fit", "Composition likelihood",
+    "Composition sample sizes", "spmR version",
     "Terminal assessment year",
     "Fishery selectivity rule", "Fishery selectivity years",
     "Recent average-F years",
@@ -1918,10 +1926,10 @@ tibble(
     "Projection years", "Simulations", "Alternatives"
   ),
   Value = c(
-    spmr_lineage$fit, spmr_lineage$source_md5,
+    spmr_lineage$fit,
     "Multinomial with c = 0.001",
     spmr_lineage$composition_sample_sizes,
-    spmr_lineage$spmR, substr(spmr_lineage$spmR_commit, 1, 8),
+    spmr_lineage$spmR,
     spmr_lineage$terminal_year,
     spmr_lineage$fishery_selectivity_rule,
     gsub(";", ", ", spmr_lineage$fishery_selectivity_years),
@@ -1936,12 +1944,15 @@ tibble(
 ) |>
   gt() |>
   cols_width(
-    Item ~ px(185),
-    Value ~ px(420)
+    Item ~ pct(34),
+    Value ~ pct(66)
   ) |>
-  tab_options(table.font.size = px(9)) |>
   tab_header(title = "Generated SPM Setup and Source Information")
 ```
+
+The projection setup identifies the assessment source, biological timing,
+averaging years, simulation count, and harvest alternatives
+(@tbl-spmr-projection-settings).
 
 ```{r}
 #| label: tbl-spmr-alternative-descriptions
@@ -1950,13 +1961,16 @@ tibble(
 spmr_alt_desc |>
   gt() |>
   cols_width(
-    Alternative ~ px(65),
-    Name ~ px(170),
-    Description ~ px(370)
+    Alternative ~ pct(12),
+    Name ~ pct(28),
+    Description ~ pct(60)
   ) |>
-  tab_options(table.font.size = px(9)) |>
   tab_header(title = "SPM Projection Alternatives")
 ```
+
+The seven alternatives span maximum permissible ABC, recent fishing
+mortality, a higher spawning-potential-ratio target, no fishing, and
+status-determination calculations (@tbl-spmr-alternative-descriptions).
 
 ### Seven Tier 3 Scenario Results
 
@@ -1986,14 +2000,10 @@ readr::read_csv(
   fmt_number(columns = F, decimals = 3) |>
   fmt_number(columns = `B/B35`, decimals = 2) |>
   cols_width(
-    Alt ~ px(35),
-    Scenario ~ px(175),
-    Year ~ px(45),
-    c(Catch, ABC, OFL, SSB) ~ px(58),
-    F ~ px(45),
-    `B/B35` ~ px(55)
+    Alt ~ pct(6),
+    Scenario ~ pct(28),
+    Year ~ pct(9)
   ) |>
-  tab_options(table.font.size = px(8)) |>
   tab_header(title = "Seven Tier 3 Projection Alternatives")
 ```
 
@@ -2007,10 +2017,16 @@ spmr_age_schedules |>
   tab_header(title = "Projection Age-Specific Schedules")
 ```
 
+The projection retains the terminal natural mortality, maturity, and weight
+schedules and uses mean fishery selectivity at age for 2020--2024
+(@tbl-spmr-projection-age-schedules).
+
 ### Alternative 2 Fixed-Catch Projection
 
 This additional run applies Alternative 2 and fixes catch at 1,300 thousand t
-for 2025--2032. The projection horizon includes every fixed-catch year.
+for 2025--2032. The projection horizon includes every fixed-catch year, and
+spawning biomass remains above the Tier 3 $B_{35\%}$ proxy throughout the
+reported period (@tbl-spmr-alt2-fixed-results).
 
 ```{r}
 #| label: tbl-spmr-alt2-fixed-results
@@ -2033,31 +2049,12 @@ spmr_alt2_detail |>
   tab_header(title = "Candidate ABC Projection Given Assumed Future Catches")
 ```
 
-```{r}
-#| label: tbl-spmr-projection-results
-#| tbl-cap: 'Mean SPM results by alternative and projection year. Biomass, catch, ABC, and OFL are in thousand t.'
-spmr_detail |>
-  group_by(Alt, Year) |>
-  summarize(
-    B = mean(SSB), Catch = mean(Catch), ABC = mean(ABC), OFL = mean(OFL),
-    F = mean(F), `B/B35%` = 100 * mean(SSB / B35), .groups = "drop"
-  ) |>
-  gt() |>
-  fmt_number(columns = c(B, Catch, ABC, OFL), decimals = 0) |>
-  fmt_number(columns = F, decimals = 3) |>
-  fmt_number(
-    columns = `B/B35%`,
-    decimals = 0,
-    pattern = if (knitr::is_latex_output()) "{x}\\%" else "{x}%"
-  ) |>
-  cols_label(`B/B35%` = md("$B/B_{35\\%}$")) |>
-  tab_header(title = "SPM Projection Means")
-```
-
 ### Projection Figures
 
-The figures summarize the 1,000 simulations for each alternative. Lines show
-simulation medians and ribbons show central 90% intervals.
+Projected spawning biomass remains above $B_{35\%}$ under the harvest
+alternatives over the displayed horizon, with trajectories diverging after
+the fixed-catch years. Lines show simulation medians and ribbons show central
+90% intervals (@fig-spmr-projection-stock-status).
 
 ```{r}
 #| label: fig-spmr-projection-stock-status
@@ -2087,6 +2084,10 @@ spmr_plot_data |>
   ggthemes::theme_few()
 ```
 
+Projected catch, ABC, and OFL are identical during the fixed-catch period and
+then separate according to the alternative harvest rules
+(@fig-spmr-projection-removals).
+
 ```{r}
 #| label: fig-spmr-projection-removals
 #| fig-cap: "Projected catch, ABC, and OFL under all seven Tier 3 alternatives. Lines are simulation medians and catch ribbons span the 5th to 95th percentiles."
@@ -2112,26 +2113,6 @@ ggplot(removal_summary, aes(Year, Median, linetype = Quantity)) +
   facet_wrap(vars(Scenario), ncol = 2) +
   scale_y_continuous(labels = label_comma()) +
   labs(x = "Year", y = "Thousand metric tons", linetype = "Quantity") +
-  ggthemes::theme_few()
-```
-
-```{r}
-#| label: fig-spmr-projection-fishing-mortality
-#| fig-cap: "Projected fishing mortality under all seven Tier 3 alternatives. Lines are simulation medians and ribbons span the 5th to 95th percentiles."
-#| fig-alt: "Seven-panel chart of projected fishing mortality. Each panel shows the median trajectory and central 90-percent interval for one Tier 3 alternative."
-#| fig-width: 10
-#| fig-height: 8
-spmr_plot_data |>
-  group_by(Scenario, Year) |>
-  summarize(
-    Lower = quantile(F, 0.05), Median = median(F), Upper = quantile(F, 0.95),
-    .groups = "drop"
-  ) |>
-  ggplot(aes(Year, Median)) +
-  geom_ribbon(aes(ymin = Lower, ymax = Upper), fill = "#d18b2c", alpha = 0.24) +
-  geom_line(color = "#4d3210", linewidth = 0.9) +
-  facet_wrap(vars(Scenario), ncol = 2) +
-  labs(x = "Year", y = "Fishing mortality") +
   ggthemes::theme_few()
 ```
 
@@ -2169,8 +2150,9 @@ condition, cannibalism, or survival.
 The September product documents the justification, synthesis, generic DAG,
 mechanism table, and two illustrative fits. It does not substitute a long list
 of available covariates for a small set of causal hypotheses. The intended
-progression to November is summarized in @tbl-esp-development-scope; the full
-draft ESP structure is provided in Appendix A-3.
+progression identifies the completed September analyses and the work deferred
+to November (@tbl-esp-development-scope). The full draft ESP structure is
+provided in Appendix A-3.
 
 ```{r}
 #| label: tbl-esp-development-scope
@@ -2350,14 +2332,14 @@ All four fits fully met the convergence criteria, had positive-definite Hessians
 maximum absolute gradients no larger than
 `r format(max(dsem_summary$maximum_gradient), scientific = TRUE, digits = 2)`.
 The age-0 late-summer SST model had the lowest AIC
-(@tbl-dsem-model-comparison; @fig-dsem-aic) and reduced estimated residual
-recruitment variation by
+and reduced estimated residual recruitment variation by
 `r sprintf("%.1f", 100 * dsem_variance$variance_reduction_from_iid[dsem_variance$model == "late_summer_sst"])`%
 relative to IID. The cold-pool-only model reduced residual variation by
 `r sprintf("%.1f", 100 * dsem_variance$variance_reduction_from_iid[dsem_variance$model == "cold_pool"])`%
 and had higher AIC than IID. The combined model reduced residual variation by
 `r sprintf("%.1f", 100 * dsem_variance$variance_reduction_from_iid[dsem_variance$model == "combined"])`%,
-but its additional parameter left its AIC above the SST-only model.
+but its additional parameter left its AIC above the SST-only model
+(@tbl-dsem-model-comparison; @fig-dsem-aic).
 
 ```{r}
 #| label: fig-dsem-aic
@@ -2391,11 +2373,11 @@ dsem_recruitment_paths |>
 
 The SST coefficient was negative and its interval excluded zero in both the
 single-edge and combined models. The cold-pool coefficient was small and its
-interval included zero in both models (@tbl-dsem-recruitment-paths;
-@fig-dsem-edges). In plain language, the current annual data contain a modest
+interval included zero in both models. In plain language, the current annual data contain a modest
 in-sample association consistent with the warm-year energetic-constraint
 hypothesis, while the direct cold-pool proxy edge received little support.
-Neither result establishes the intervening mechanism.
+Neither result establishes the intervening mechanism
+(@tbl-dsem-recruitment-paths; @fig-dsem-edges).
 
 ```{r}
 #| label: fig-dsem-edges
@@ -2566,6 +2548,10 @@ required by a later analysis.
 8. After these saved products are available, the HTML and PDF are generated
    together with `quarto render ebswp.qmd`.
 
+The report inventory identifies the model inputs, saved diagnostic products,
+scripts, and projection outputs needed to reproduce the working paper
+(@tbl-files).
+
 ```{r}
 #| label: tbl-files
 #| tbl-cap: "Files used or referenced by this working paper."
@@ -2607,13 +2593,14 @@ It also writes the projection controls in `spm.dat`. The
 and returns the simulation-level output used by the report.
 
 The adapter preserves the terminal assessment state and makes each conversion
-explicit (@tbl-spmr-bridge-fields). Numbers at age, natural mortality, and the
+explicit. Numbers at age, natural mortality, and the
 weight schedules are passed on their Rceattle scales. With abundance in
 millions of fish and weight in kilograms, their product has units of thousand
 metric tons. Maturity is divided by its maximum, matching the SPM input
 convention used for this stock. The spawning-month encodings differ by one
 because Rceattle records elapsed months and SPM uses a one-based calendar
-month; both represent survival through 0.25 of the year.
+month; both represent survival through 0.25 of the year
+(@tbl-spmr-bridge-fields).
 
 ```{r}
 #| label: tbl-spmr-bridge-fields
@@ -2661,15 +2648,20 @@ The `spm.dat` file starts projections in 2025, runs 14 projection years and
 at 1,350 thousand t in 2025 and 2026 before the alternatives diverge. A
 separate call uses Alternative 2 with catch fixed at 1,300 thousand t for
 2025--2032. The writer copies the validated SPM executable and `tacpar.dat`
-control file into each run directory. `manifest.csv` records the role,
-presence, and MD5 checksum of every required input, while `lineage.csv`
-records the Rceattle source checksum, terminal year, Rceattle and spmR
-versions, selectivity rule, and averaging years.
+control file into each run directory. `manifest.csv` records the role and
+presence of every required input, while `lineage.csv` records the terminal
+year, software versions, selectivity rule, and averaging years.
 
-The saved products passed the bridge checks in @tbl-spmr-bridge-checks. These
-checks establish file and field consistency; they do not replace review of the
-harvest assumptions or the biological appropriateness of a five-year
-selectivity average.
+The saved products passed all file and field consistency checks. These checks
+do not replace review of the harvest assumptions or the biological
+appropriateness of a five-year selectivity average
+(@tbl-spmr-bridge-checks).
+
+The means formerly displayed in the long main-text table remain available as
+a [downloadable CSV](results/canonical_pm/spmR_projection/spm_projection_means.csv){download="spm_projection_means.csv"}.
+This file retains every alternative and projection year in a compact,
+machine-readable form. The underlying simulation-level output remains in the
+saved analysis products but is omitted from the report because of its size.
 
 ```{r}
 #| label: tbl-spmr-bridge-checks
@@ -2747,7 +2739,9 @@ the national ESP tables and the 2026 Gulf of Alaska arrowtooth flounder ESP
 [@afsc2026esptemplate; @shotwell2026goaatfesp]. It is a September draft: the
 indicator synthesis and proposed causal structure are present, while the final
 indicator updates, expanded candidate-DAG comparison, and management summary
-are November deliverables.
+are November deliverables. The proposed components and their present status
+show which elements are complete and which remain scheduled for November
+(@tbl-esp-appendix-structure).
 
 ```{r}
 #| label: tbl-esp-appendix-structure
@@ -2780,9 +2774,9 @@ tibble::tribble(
   tab_options(table.font.size = px(8.5))
 ```
 
-The draft life-history synthesis in @tbl-esp-life-history condenses the
-standard ESP life-history table to the stages and information needed for the
-recruitment question. A later stand-alone ESP can expand each stage into the
+The draft life-history synthesis condenses the standard ESP table to the
+stages and information needed for the recruitment question
+(@tbl-esp-life-history). A later stand-alone ESP can expand each stage into the
 national-template fields for habitat and distribution, phenology, growth,
 energetics, diet, and predators or competitors.
 
@@ -2855,7 +2849,9 @@ The retrospective peels repeat this sequence after recalculating the data-based
 selectivity starting values for each terminal year. Because `sel_coff_dev`
 contains annual random-walk increments at age, each peel fixes the terminal-year
 fishery and mirrored catch-per-unit-effort increments at zero. This holds their
-terminal selectivity-at-age curves at the preceding-year curves.
+terminal selectivity-at-age curves at the preceding-year curves. The completed
+development components distinguish the accepted comparison, diagnostic work,
+and unresolved research sensitivities (@tbl-initial-developments).
 
 ```{r}
 #| label: tbl-initial-developments
@@ -2895,7 +2891,9 @@ received `WARN` status and reached an inferior mode with an objective increase
 of approximately
 `r sprintf("%.1f", max(jitter_summary$Delta_objective, na.rm = TRUE))`.
 This reproduces the pre-existing multimodality and shows why convergence of one
-run is not sufficient evidence that the global mode was found.
+run is not sufficient evidence that the global mode was found. Forty-eight
+runs returned to the best mode and two reached the inferior mode
+(@tbl-jitter-summary).
 
 ```{r}
 #| label: tbl-jitter-summary
@@ -2938,13 +2936,13 @@ precise estimation of natural mortality from these data alone.
 
 The saved profile fits retain Rceattle's full negative-log-likelihood (NLL)
 component matrix. The component entries sum to the reported objective at every
-grid point to within numerical precision. In @fig-natural-mortality-profile,
-each component is centered on its value at the grid minimum of
+grid point to within numerical precision. Each component is centered on its
+value at the grid minimum of
 `r sprintf("%.2f", mortality_profile_min_m)`. Positive changes indicate that a
 component favors the lower grid-minimum value over the plotted value; negative
 changes indicate that the component favors the plotted value. The total panel
 is the sum of the data and penalty panels. The M-prior contribution is zero in
-this configuration.
+this configuration (@fig-natural-mortality-profile).
 
 ```{r}
 #| label: fig-natural-mortality-profile
@@ -3007,14 +3005,14 @@ mortality_profile_components |>
 
 The increase in total NLL from \(M=0.20\) to \(M=0.50\) was
 `r sprintf("%.2f", mortality_profile$Objective[mortality_profile[["Age-3+ natural mortality"]] == mortality_profile_compare_m] - min(mortality_profile$Objective))`.
-The material fleet-specific contributions to that change are shown in
-@tbl-natural-mortality-profile-components. The strongest single counterweight
+The strongest single counterweight
 was the BTS age-composition likelihood, which improved by
 `r sprintf("%.2f", abs(mortality_profile_contribution[["BTS age-composition likelihood"]]))`
 NLL units as M increased. Lower M was favored mainly by the ATS age-composition
 likelihood, the BTS index likelihood, and the selectivity penalties. Because
 ATS and AVO share a selectivity index in this configuration, the shared
-ATS/AVO penalties are stored in the AVO-labeled column of `jnll_comp`.
+ATS/AVO penalties are stored in the AVO-labeled column of `jnll_comp`
+(@tbl-natural-mortality-profile-components).
 
 ```{r}
 #| label: tbl-natural-mortality-profile-components
@@ -3061,7 +3059,9 @@ The 2D AR1 sensitivity applied an age-by-year field to the shared fishery and
 catch-per-unit-effort selectivity block over 1964--2024. The age-year deviations
 were first fit as penalized effects to initialize the field and then integrated
 as random effects with a Laplace approximation. The initialized Laplace fit
-failed the gradient, Hessian, and bound checks.
+failed the gradient, Hessian, and bound checks. The estimated correlation and
+scale parameters are retained only as diagnostics
+(@tbl-ar1-selectivity-parameter-summary).
 
 ```{r}
 #| label: tbl-ar1-selectivity-parameter-summary
@@ -3094,7 +3094,10 @@ ar1_selectivity_parameter_summary |>
 
 The failed random-effects fit had a maximum marginal gradient of 19.7 on
 `rec_pars`, a non-invertible Hessian, 61 `log_F` parameters at their configured
-bounds, and `FAIL` convergence status. These estimates remain diagnostic.
+bounds, and `FAIL` convergence status. Its selectivity surfaces differ visibly
+from both the ADMB reference and accepted Rceattle configuration, but the
+failed fit precludes biological interpretation
+(@fig-development-selectivity-ridges).
 
 ```{r}
 #| label: fig-development-selectivity-ridges
@@ -3141,7 +3144,8 @@ This appendix follows the glossary convention in the [Alaska Stock Assessment
 Report (`asar`) package](https://github.com/nmfs-ost/asar)
 [@schiano2026asar]. The project glossary uses ASAR's `\newacronym` format and
 adds terms specific to this Rceattle comparison. The quoted label "PM" is a
-model name.
+model name. The glossary defines the abbreviations used throughout the report
+(@tbl-acronyms).
 
 ```{r}
 #| label: tbl-acronyms

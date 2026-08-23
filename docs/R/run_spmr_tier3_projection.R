@@ -11,6 +11,21 @@ source(file.path("R", "write_spmr_projection_inputs.R"))
 main <- write_spmr_projection_inputs()
 detail <- spmR::runSPM(main$output_dir, run = TRUE, engine = "admb")
 readr::write_csv(detail, file.path(main$output_dir, "spm_detail.csv"))
+projection_means <- detail |>
+  dplyr::group_by(Alt, Year) |>
+  dplyr::summarize(
+    B = mean(SSB),
+    Catch = mean(Catch),
+    ABC = mean(ABC),
+    OFL = mean(OFL),
+    F = mean(F),
+    B_B35_percent = 100 * mean(SSB / B35),
+    .groups = "drop"
+  )
+readr::write_csv(
+  projection_means,
+  file.path(main$output_dir, "spm_projection_means.csv")
+)
 years <- sort(unique(detail$Year))
 comparison_years <- head(years[years > max(main$fixed_catch_years)], 2)
 tier3 <- spmR::tier3_scenario_table(detail, years = comparison_years, digits = 2)
