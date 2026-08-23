@@ -2259,9 +2259,8 @@ annual selectivity deviations. The added ATS/AVO coefficient-increment penalty
 reduced the condition number below the convergence-warning threshold.
 
 The diagnostic results identify a focused development path for the September
-2026 Plan Team evaluation. The Rceattle fit reaches a small gradient,
-an `OK` convergence status, and a positive-definite Hessian. Composition OSA
-residuals remain underdispersed.
+2026 Plan Team evaluation. The Rceattle fit fully met the convergence criteria.
+Composition OSA residuals remain underdispersed.
 Nine terminal-year-consistent peels converge successfully and produce
 positive retrospective bias in spawning biomass, total biomass, and
 recruitment, together with negative bias in fishing mortality. The historical
