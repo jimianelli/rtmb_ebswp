@@ -92,7 +92,7 @@ proposed as a replacement assessment for September 2026.
 |---|---|---|
 | [**RTMB: main report**](ebs_pollock_rtmb_ebswp_assessment.html) | Can RTMB reproduce the base ADMB model, and what do its diagnostics and model alternatives show? | Main technical report and shared reference for comparing implementations |
 | [**SPoRC: companion report**](https://jimianelli.github.io/sporc_ebswp/) | Can SPoRC reproduce the same base model and support different population-process structures? | Independent software comparison and continuing methods-development track |
-| [**Rceattle: companion report**](rceattle_ebswp.html) | Can Rceattle reproduce the main assessment dynamics and provide a practical foundation for future operational development? | Leading candidate for future operational development, after the remaining diagnostic and review work |
+| [**Rceattle: companion report**](https://noaa-afsc.github.io/ebswp_rceattle/) | Can Rceattle reproduce the main assessment dynamics and provide a practical foundation for future operational development? | Leading candidate for future operational development, after the remaining diagnostic and review work |
 
 The [main RTMB report](ebs_pollock_rtmb_ebswp_assessment.html) provides the
 most detail on the shared data definitions, checks made using the same
@@ -207,8 +207,8 @@ copies are provided for downloading, printing, and archiving.
 - [Supporting analysis S-1: Fishery selectivity alternatives (PDF)](appendix_fishery_selectivity.pdf)
 - [SPoRC companion report (HTML - preferred)](https://jimianelli.github.io/sporc_ebswp/)
 - [SPoRC companion report (PDF)](https://jimianelli.github.io/sporc_ebswp/EBS_wp_sporc.pdf)
-- [Rceattle companion report (HTML - preferred)](rceattle_ebswp.html)
-- [Rceattle companion report (PDF)](rceattle_ebswp.pdf)
+- [Rceattle companion report (HTML - preferred)](https://noaa-afsc.github.io/ebswp_rceattle/)
+- [Rceattle companion report (PDF)](https://noaa-afsc.github.io/ebswp_rceattle/ebswp.pdf)
 :::
 
 ::: {.content-visible when-format="pdf"}
@@ -218,5 +218,5 @@ download, printing, and archiving.
 - RTMB main report: [HTML (preferred)](ebs_pollock_rtmb_ebswp_assessment.html); [PDF](ebs_pollock_rtmb_ebswp_assessment.pdf)
 - Fishery selectivity analysis: [HTML (preferred)](appendix_fishery_selectivity.html); [PDF](appendix_fishery_selectivity.pdf)
 - SPoRC companion report: [HTML (preferred)](https://jimianelli.github.io/sporc_ebswp/); [PDF](https://jimianelli.github.io/sporc_ebswp/EBS_wp_sporc.pdf)
-- Rceattle companion report: [HTML (preferred)](rceattle_ebswp.html); [PDF](rceattle_ebswp.pdf)
+- Rceattle companion report: [HTML (preferred)](https://noaa-afsc.github.io/ebswp_rceattle/); [PDF](https://noaa-afsc.github.io/ebswp_rceattle/ebswp.pdf)
 :::

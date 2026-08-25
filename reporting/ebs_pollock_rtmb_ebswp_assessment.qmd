@@ -630,7 +630,7 @@ three competing operational assessments.
 |---|---|---|
 | **RTMB** (this report) | Primary report and detailed reference for the corrected ADMB translation, diagnostics, retrospectives, selectivity alternatives, and projections | Establishes the common implementation baseline and identifies issues requiring further evaluation |
 | [**SPoRC**](https://jimianelli.github.io/sporc_ebswp/) | Companion comparison using the SPoRC single-region framework | Demonstrates close reproduction of the corrected ADMB candidate and supports continued methods development |
-| [**Rceattle**](rceattle_ebswp.html) | Companion comparison using a more general and extensible assessment framework | Leading candidate for future operational assessment development; advancement depends on resolving selectivity identification, retrospective bias, posterior mixing, and completing formal review |
+| [**Rceattle**](https://noaa-afsc.github.io/ebswp_rceattle/) | Companion comparison using a more general and extensible assessment framework | Leading candidate for future operational assessment development; advancement depends on resolving selectivity identification, retrospective bias, posterior mixing, and completing formal review |
 
 The accepted ADMB model continues to provide management advice during this
 evaluation. The near-term review question is therefore how the three analyses

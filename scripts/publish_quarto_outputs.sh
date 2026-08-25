@@ -67,14 +67,3 @@ cp analysis/output/corrected_full_age_bts/spmR_projection/tier3_seven_scenario_t
   docs/data-output/tier3_seven_scenario_table.csv
 cp reporting/data/lf_length_frequency_summary.csv \
   docs/data-output/lf_length_frequency_summary.csv
-
-# Publish the self-contained Rceattle companion report for Plan Team review.
-rceattle_companion="../ebswp_rceattle/ebswp.html"
-if [ -f "$rceattle_companion" ]; then
-  cp "$rceattle_companion" docs/rceattle_ebswp.html
-fi
-
-rceattle_companion_pdf="../ebswp_rceattle/ebswp.pdf"
-if [ -f "$rceattle_companion_pdf" ]; then
-  cp "$rceattle_companion_pdf" docs/rceattle_ebswp.pdf
-fi
