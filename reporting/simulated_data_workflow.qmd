@@ -22,6 +22,8 @@ params:
   base_file: "analysis/output/base.rds"
 ---
 
+{{< include _ai_disclosure.qmd >}}
+
 ```{r setup}
 #| include: false
 qmd_file <- tryCatch(knitr::current_input(dir = TRUE), error = function(e) NULL)

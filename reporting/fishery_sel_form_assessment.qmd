@@ -21,6 +21,8 @@ params:
   sparsenuts_file: "analysis/output/sparsenuts/rtmb_ebswp_sparsenuts_form0.rds"
 ---
 
+{{< include _ai_disclosure.qmd >}}
+
 ```{r setup}
 #| include: false
 suppressPackageStartupMessages({

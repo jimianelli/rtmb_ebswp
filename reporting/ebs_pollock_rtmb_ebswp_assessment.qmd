@@ -78,6 +78,8 @@ params:
   force_sparsenuts: false
 ---
 
+{{< include _ai_disclosure.qmd >}}
+
 ::: {.content-visible when-format="html"}
 ::: {.pollock-brand .framework-rtmb}
 ![](assets/branding/alaska-pollock-logo.png){fig-alt="Circular Alaska Pollock mark showing a walleye pollock, mountain and water motifs, and Alaska Fisheries Science Center and NOAA NMFS identification." width="32%"}

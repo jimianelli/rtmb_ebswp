@@ -30,6 +30,8 @@ knitr:
     dpi: 150
 ---
 
+{{< include _ai_disclosure.qmd >}}
+
 ```{r}
 #| label: setup
 #| include: false

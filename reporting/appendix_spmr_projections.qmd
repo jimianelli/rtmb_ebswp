@@ -19,6 +19,8 @@ execute:
   message: false
 ---
 
+{{< include _ai_disclosure.qmd >}}
+
 ```{r}
 #| label: setup
 #| include: false

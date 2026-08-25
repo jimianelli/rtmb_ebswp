@@ -55,6 +55,8 @@ params:
   compare_forms: [2, 5, 6]
 ---
 
+{{< include _ai_disclosure.qmd >}}
+
 ```{r setup}
 #| include: false
 suppressPackageStartupMessages({
