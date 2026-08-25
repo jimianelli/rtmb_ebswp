@@ -67,3 +67,13 @@ cp analysis/output/corrected_full_age_bts/spmR_projection/tier3_seven_scenario_t
   docs/data-output/tier3_seven_scenario_table.csv
 cp reporting/data/lf_length_frequency_summary.csv \
   docs/data-output/lf_length_frequency_summary.csv
+
+# Refresh the historical parent-site URL when the standalone Rceattle release
+# is available beside this repository. GitHub Pages otherwise serves the last
+# committed compatibility mirror.
+rceattle_companion_dir="${RCEATTLE_COMPANION_DIR:-../ebswp_rceattle/docs}"
+if [ -f "$rceattle_companion_dir/index.html" ] && \
+   [ -f "$rceattle_companion_dir/ebswp.pdf" ]; then
+  RCEATTLE_COMPANION_DIR="$rceattle_companion_dir" \
+    scripts/sync_rceattle_companion.sh
+fi
