@@ -81,7 +81,6 @@ params:
   rceattle_581_truncation_summary_file: "results/rceattle_5.8.1_validation/self_test/index_truncation_diagnostics_by_fleet.csv"
   rceattle_581_restart_comparison_file: "results/rceattle_5.8.1_validation/self_test/self_test_restart_comparison.csv"
   jitter_summary_file: "results/rceattle_5.8.1_validation/extended_diagnostics/jitter_50_summary.csv"
-  mortality_profile_components_file: "results/rceattle_5.8.1_validation/extended_diagnostics/profile_M_age3plus_components.csv"
   model_input_workbook: "Data/EBS_24_pollock_m23_rceattle_full_1964-2024.xlsx"
   bts_covariance_file: "Data/BTS_survey_covariance_2024.dat"
   admb_retro_file: "ADMB/m23_rceattle_full/retro.rep"
@@ -284,9 +283,6 @@ rceattle_581_restart_comparison_file <- project_file(
   params$rceattle_581_restart_comparison_file
 )
 jitter_summary_file <- project_file(params$jitter_summary_file)
-mortality_profile_components_file <- project_file(
-  params$mortality_profile_components_file
-)
 dsem_summary_file <- project_file(params$dsem_summary_file)
 dsem_paths_file <- project_file(params$dsem_paths_file)
 dsem_variance_file <- project_file(params$dsem_variance_file)
@@ -308,7 +304,6 @@ core_files <- c(
   rceattle_581_truncation_summary_file,
   rceattle_581_restart_comparison_file,
   jitter_summary_file,
-  mortality_profile_components_file,
   dsem_summary_file,
   dsem_paths_file,
   dsem_variance_file,
@@ -345,14 +340,6 @@ rceattle_581_restart <- readr::read_csv(
   show_col_types = FALSE
 )
 jitter_summary <- readr::read_csv(jitter_summary_file, show_col_types = FALSE)
-mortality_profile_components <- readr::read_csv(
-  mortality_profile_components_file,
-  show_col_types = FALSE
-)
-mortality_profile_min_m <- mortality_profile_components |>
-  filter(Component == "Total objective") |>
-  slice_min(NLL, n = 1, with_ties = FALSE) |>
-  pull(`Age-3+ natural mortality`)
 dsem_summary <- readr::read_csv(dsem_summary_file, show_col_types = FALSE)
 dsem_paths <- readr::read_csv(dsem_paths_file, show_col_types = FALSE)
 dsem_variance <- readr::read_csv(dsem_variance_file, show_col_types = FALSE)
@@ -2787,7 +2774,7 @@ initial_development_status |>
   )
 ```
 
-### A-5 Jitter and natural-mortality profile {.unnumbered}
+### A-5 Jitter-tests {.unnumbered}
 
 The [extended-diagnostics runner](R/run_rceattle_5_8_1_extended_diagnostics.R)
 generates the 50 jitter fits with
@@ -2831,73 +2818,6 @@ jitter_summary |>
     Convergence_status = "Status",
     Minimum_delta_objective = "Minimum delta objective",
     Maximum_delta_objective = "Maximum delta objective"
-  )
-```
-
-The age-3-and-older natural-mortality profile was evaluated from 0.15 to 0.50.
-The saved profile fits retain Rceattle's full negative-log-likelihood (NLL)
-component matrix. Each component in @fig-natural-mortality-profile is shown as
-delta NLL relative to its value at the grid minimum of
-`r sprintf("%.2f", mortality_profile_min_m)`. The total-objective curve equals
-the sum of the data and penalty components. The shallow total profile indicates
-that these data provide limited information for estimating natural mortality.
-
-```{r}
-#| label: fig-natural-mortality-profile
-#| fig-cap: "Negative-log-likelihood components across the age-3-and-older natural-mortality profile. Each curve shows delta NLL relative to that component's value at M = 0.20. Positive values favor M = 0.20 over the plotted value; negative values favor the plotted value. Components in the three lower panels sum to the total objective change in the upper-left panel."
-#| fig-alt: "Four-panel plot with M on the horizontal axis and delta NLL on the vertical axis. The total objective is shallow with a minimum at M equals 0.20. Index likelihood and both selectivity penalties rise toward M equals 0.50. Composition likelihood and initial-abundance penalties decline and partly offset that increase. Catch and recruitment-deviation components change little."
-#| fig-width: 9
-#| fig-height: 7
-#| fig-pos: "H"
-
-mortality_profile_components |>
-  filter(Component %in% c(
-    "Total objective",
-    "Index data", "Catch data", "Composition data",
-    "Non-parametric selectivity", "Selectivity deviates",
-    "Initial abundance deviates", "Recruitment deviates"
-  )) |>
-  mutate(
-    Group = factor(
-      Group,
-      levels = c(
-        "Total objective", "Data likelihoods",
-        "Selectivity penalties", "Population penalties"
-      )
-    ),
-    Component = recode(
-      Component,
-      `Non-parametric selectivity` = "Selectivity-curve penalty",
-      `Selectivity deviates` = "Annual-selectivity penalty",
-      `Initial abundance deviates` = "Initial-abundance penalty",
-      `Recruitment deviates` = "Recruitment-deviation penalty"
-    )
-  ) |>
-  ggplot(aes(
-    x = `Age-3+ natural mortality`,
-    y = Delta_component,
-    color = Component,
-    shape = Component
-  )) +
-  geom_hline(yintercept = 0, color = "gray55", linetype = 2) +
-  geom_line(linewidth = 0.8) +
-  geom_point(size = 2) +
-  facet_wrap(vars(Group), ncol = 2, scales = "free_y") +
-  scale_color_brewer(type = "qual", palette = "Dark2") +
-  labs(
-    x = expression(M),
-    y = expression(Delta*"NLL"),
-    color = NULL,
-    shape = NULL
-  ) +
-  ggthemes::theme_few() +
-  theme(
-    legend.position = "bottom",
-    legend.key.width = grid::unit(1.2, "lines")
-  ) +
-  guides(
-    color = guide_legend(nrow = 3, byrow = TRUE),
-    shape = guide_legend(nrow = 3, byrow = TRUE)
   )
 ```
 
