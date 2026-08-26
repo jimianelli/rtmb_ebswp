@@ -68,12 +68,7 @@ cp analysis/output/corrected_full_age_bts/spmR_projection/tier3_seven_scenario_t
 cp reporting/data/lf_length_frequency_summary.csv \
   docs/data-output/lf_length_frequency_summary.csv
 
-# Refresh the historical parent-site URL when the standalone Rceattle release
-# is available beside this repository. GitHub Pages otherwise serves the last
-# committed compatibility mirror.
-rceattle_companion_dir="${RCEATTLE_COMPANION_DIR:-../ebswp_rceattle/docs}"
-if [ -f "$rceattle_companion_dir/index.html" ] && \
-   [ -f "$rceattle_companion_dir/ebswp.pdf" ]; then
-  RCEATTLE_COMPANION_DIR="$rceattle_companion_dir" \
-    scripts/sync_rceattle_companion.sh
-fi
+# Preserve the historical parent-site URL as a redirect. The report and PDF
+# themselves are published only from noaa-afsc/ebswp_rceattle.
+cp reporting/rceattle_redirect.html.template docs/rceattle_ebswp.html
+rm -f docs/rceattle_ebswp.pdf

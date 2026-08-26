@@ -194,6 +194,19 @@ The rendered report is published with GitHub Pages at:
 https://jimianelli.github.io/rtmb_ebswp/
 ```
 
+## Rceattle companion report
+
+The Rceattle EBS pollock working paper is maintained and released only from
+[`noaa-afsc/ebswp_rceattle`](https://github.com/noaa-afsc/ebswp_rceattle).
+Edit its Quarto source, regenerate its compact report inputs, and publish its
+HTML/PDF in that repository. Do not copy those report artifacts into this RTMB
+repository.
+
+The historical `rceattle_ebswp.html` parent-site address is retained only as a
+redirect to the authoritative NOAA-AFSC site. The parent post-render hook copies
+`reporting/rceattle_redirect.html.template` into `docs/`; it does not synchronize the
+Rceattle report or PDF.
+
 ## Repository Contents
 
 - `R/`: RTMB model, data utilities, run scripts, and output writers.
