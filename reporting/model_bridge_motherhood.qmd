@@ -180,20 +180,6 @@ The review would benefit from direction on the following questions:
 6. At what review stage should posterior uncertainty be incorporated, given
    the current mixing limitations in candidate selectivity models?
 
-# Suggested order for the meeting
-
-For an efficient discussion, the reports can be presented in this order:
-
-1. Use this overview to establish the decision context and requested feedback.
-2. Present the RTMB report as the shared technical reference.
-3. Summarize supporting analysis S-1, including the 30% CV double-logistic and
-   AR1 comparisons.
-4. Present SPoRC, including its independent confirmation and remaining issues.
-5. Present Rceattle, including its potential operational role and required
-   diagnostics.
-6. Conclude with Plan Team direction on priorities, required analyses, and the
-   criteria for the next review.
-
 # Documents
 
 ::: {.content-visible when-format="html"}
